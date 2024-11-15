@@ -30,7 +30,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4)
 - [x] Release the paper and demo page. Visit [magicquill.art](magicquill.art) 🪩
 - [x] Release the code and checkpoints.
 - [x] Release gradio demo.
-- [ ] Release ComfyUI demo.
+- [ ] Release ComfyUI MagicQuill custom node.
 
 <img src="docs/comfyui.png" width="50%" >
 
