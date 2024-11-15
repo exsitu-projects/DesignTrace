@@ -8,7 +8,7 @@
 
 https://github.com/user-attachments/assets/8ee9663a-fef2-484a-a0b7-8427ab590424
 
-There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4)
+There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 [Zichen Liu](https://zliucz.github.io)<sup>\*,1,2</sup>, [Yue Yu](https://bruceyyu.github.io/)<sup>\*,1,2</sup>, [Hao Ouyang](https://ken-ouyang.github.io/)<sup>2</sup>, [Qiuyu Wang](https://github.com/qiuyu96)<sup>2</sup>, [Ka Leong Cheng](https://felixcheng97.github.io/)<sup>1,2</sup>, [Wen Wang](https://github.com/encounter1997)<sup>3,2</sup>, [Zhiheng Liu](https://johanan528.github.io/)<sup>4</sup>, [Qifeng Chen](https://cqf.io/)<sup>†,1</sup>, [Yujun Shen](https://shenyujun.github.io/)<sup>†,2</sup><br>
 <sup>1</sup>HKUST <sup>2</sup>Ant Group <sup>3</sup>ZJU <sup>4</sup>HKU <sup>\*</sup>equal contribution <sup>†</sup>corresponding author
