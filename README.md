@@ -1,6 +1,6 @@
 # 🪶 MagicQuill: An Intelligent Interactive Image Editing System
 <a href="https://magicquill.art/demo/"><img src="https://img.shields.io/static/v1?label=Project&message=magicquill.art&color=blue"></a>
-<a href="#"><img src="https://img.shields.io/badge/arXiv-xxxx.xxxxx-b31b1b.svg"></a>
+<a href="https://arxiv.org/abs/2411.09703"><img src="https://img.shields.io/badge/arXiv-2411.09703-b31b1b.svg"></a>
 <a href="https://huggingface.co/spaces/AI4Editing/MagicQuill"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)"></a>
 <a href="https://creativecommons.org/licenses/by-sa/4.0/"><img src="https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg"></a>
 
@@ -27,7 +27,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4)
 
 ## TODO List
 
-- [x] Release the paper and demo page. Visit [magicquill.art](magicquill.art) 🪩
+- [x] Release the paper and demo page. Visit [magicquill.art](https://magicquill.art) 🪩
 - [x] Release the code and checkpoints.
 - [x] Release gradio demo.
 - [ ] Release ComfyUI MagicQuill custom node.
@@ -96,7 +96,7 @@ Don't forget to cite this source if it proves useful in your research!
 	title={MagicQuill: An Intelligent Interactive Image Editing System}, 
 	author={Zichen Liu and Yue Yu and Hao Ouyang and Qiuyu Wang and Ka Leong Cheng and Wen Wang and Zhiheng Liu and Qifeng Chen and Yujun Shen}, 
 	year={2024}, 
-	eprint={xxxx.xxxxx}, 
+	eprint={2411.09703}, 
 	archivePrefix={arXiv}, 
 	primaryClass={cs.CV}}
 ```
