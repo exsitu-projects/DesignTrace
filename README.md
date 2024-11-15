@@ -67,7 +67,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4)
     pip install -e MagicQuill/LLaVA/
     ```
 
-6. install the remaining envrionment
+6. install the remaining environment
     ```
     pip install -r requirements.txt
     ```
