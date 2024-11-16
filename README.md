@@ -45,6 +45,8 @@ For users with limited GPU resources, please try our [Huggingface Demo](https://
 
 
 ##  Setup
+If you are a Linux user, follow the following guide to set up the environment. If you are a Windows user, you may find [this](https://github.com/magic-quill/MagicQuill/issues/11) helpful.
+
 1. git clone repo
     ```
     git clone --recursive https://github.com/magic-quill/MagicQuill.git
