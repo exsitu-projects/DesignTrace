@@ -19,6 +19,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 - [🪶 MagicQuill: An Intelligent Interactive Image Editing System](#-magicquill-an-intelligent-interactive-image-editing-system)
   - [TODO List](#todo-list)
+  - [Hardware Requirements](#hardware-requirements)
   - [Setup](#setup)
   - [Tutorial](#tutorial)
   - [Citation](#citation)
@@ -34,6 +35,14 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 <img src="docs/comfyui.png" width="50%" >
 
+## Hardware Requirements
+
+- GPU is required to run MagicQuill
+- Instant prompt guessing ("Draw&Guess") requires ~5GB VRAM
+- Image editing operations require ~15GB VRAM
+
+For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill) or [Web Demo (Alipay Cloud)](http://magic.chenjunfeng.xyz/).
+
 
 ##  Setup
 1. git clone repo
@@ -47,8 +56,6 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
     unzip models.zip
     ```
     If the .zip file is not accessible, download it via browser. All checkpoints are about 25 GB in total. It may take some time to download. Alternatively, check our checkpoints at [huggingface](https://huggingface.co/LiuZichen/MagicQuill-models).
-
-
 
 3. create environment
     ```
