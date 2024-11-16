@@ -24,7 +24,7 @@ class ScribbleColorEditModel():
         self.ksampler = KSampler()
         self.vae_decoder = VAEDecode()
         self.blender = BlendInpaint()
-        self.ckpt_name = "SD1.5/realisticVisionV60B1_v51VAE.safetensors"
+        self.ckpt_name = os.path.normpath("SD1.5/realisticVisionV60B1_v51VAE.safetensors")
         with torch.no_grad():
             self.model, self.clip, self.vae = self.checkpoint_loader.load_checkpoint(self.ckpt_name)
         self.load_models('SD1.5', 'float16')
@@ -33,11 +33,7 @@ class ScribbleColorEditModel():
         if base_model_version == "SD1.5":
             edge_controlnet_name = "control_v11p_sd15_scribble.safetensors"
             color_controlnet_name = "color_finetune.safetensors"
-            brushnet_name = "brushnet/random_mask_brushnet_ckpt/diffusion_pytorch_model.safetensors"
-        # elif base_model_version == "SDXL":
-        #     edge_controlnet_name = "controlnet-scribble-sdxl-1.0.safetensors"
-        #     color_controlnet_name = "colorGridControlnet_v10.safetensors"
-        #     brushnet_name = "brushnet_xl/random_mask_brushnet_ckpt_sdxl_v0/diffusion_pytorch_model.safetensors"
+            brushnet_name = os.path.normpath("brushnet/random_mask_brushnet_ckpt/diffusion_pytorch_model.safetensors")
         else:
             raise ValueError("Invalid base_model_version, not supported yet!!!: {}".format(base_model_version))
         self.edge_controlnet = self.controlnet_loader.load_controlnet(edge_controlnet_name)[0]
@@ -53,12 +49,12 @@ class ScribbleColorEditModel():
                 self.model, self.clip, self.vae = self.checkpoint_loader.load_checkpoint(ckpt_name)
         if not hasattr(self, 'edge_controlnet') or not hasattr(self, 'color_controlnet') or not hasattr(self, 'brushnet'):
             self.load_models(base_model_version, dtype)
-        # 根据基础模型版本加载相应的 ControlNet&BrushNet 模型
+            
         positive = self.clip_text_encoder.encode(self.clip, positive_prompt)[0]
         negative = self.clip_text_encoder.encode(self.clip, negative_prompt)[0]        
-        # Grow Mask for Color Editing
+
         mask = self.mask_processor.expand_mask(mask, expand=grow_size, tapered_corners=True)[0]
-        # Realistic Lineart
+
         image_copy = image.clone()
         if stroke_as_edge == "disable":
             bool_add_mask = add_mask > 0.5
@@ -90,9 +86,7 @@ class ScribbleColorEditModel():
             bool_remove_mask_resized = (remove_mask_resized > 0.5)
 
             if stroke_as_edge == "enable":
-                # 将remove_mask区域的像素变成黑色
                 lineart_output[bool_remove_mask_resized] = 0.0
-                # 将add_mask区域的像素变成白色
                 lineart_output[bool_add_mask_resized] = 1.0
             else:
                 lineart_output[bool_remove_mask_resized & ~bool_add_mask_resized] = 0.0
@@ -101,7 +95,7 @@ class ScribbleColorEditModel():
         # BrushNet
         model, positive, negative, latent = self.brushnet_node.model_update(
             model=self.model,
-            vae=self.vae,  # 需要根据实际情况提供 VAE 模型
+            vae=self.vae,
             image=image,
             mask=mask,
             brushnet=self.brushnet,
@@ -125,6 +119,7 @@ class ScribbleColorEditModel():
             latent_image=latent,
         )[0]
 
+        # Image Blending
         final_image = self.vae_decoder.decode(self.vae, latent_samples)[0]
         final_image = self.blender.blend_inpaint(final_image, image, mask, kernel=10, sigma=10.0)[0]
 

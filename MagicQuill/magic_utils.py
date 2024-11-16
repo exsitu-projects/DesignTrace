@@ -110,17 +110,14 @@ def draw_contour(img, mask):
     img_np = img_np.astype(np.uint8)
     img_bgr = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
 
-    # 膨胀掩码
     kernel = np.ones((5, 5), np.uint8)
     mask_dilated = cv2.dilate(mask_np, kernel, iterations=3)
     contours, _ = cv2.findContours(mask_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     for contour in contours:
-        cv2.drawContours(img_bgr, [contour], -1, (0, 0, 255), thickness=10)  # 红色线条绘制轮廓
+        cv2.drawContours(img_bgr, [contour], -1, (0, 0, 255), thickness=10)
     img_np = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    # 转换回tensor
     transform = transforms.ToTensor()
     img_tensor = transform(img_np)
-
     img_tensor = img_tensor.permute(1, 2, 0)
 
     return img_tensor.unsqueeze(0)
@@ -128,9 +125,7 @@ def draw_contour(img, mask):
 def get_colored_contour(img1, img2, threshold=10):
     diff = torch.abs(img1 - img2).float()
     diff_gray = torch.mean(diff, dim=-1)
-    # 阈值处理以生成二进制掩码
     mask = diff_gray > threshold
-
     return draw_contour(img2, mask), mask
 
 def closest_colour(requested_colour):
@@ -153,9 +148,7 @@ def rgb_to_name(rgb_tuple):
 def find_different_colors(img1, img2, threshold=10):
     img1 = img1.to(torch.uint8)
     img2 = img2.to(torch.uint8)
-    # 计算图像之间的绝对差异
     diff = torch.abs(img1 - img2).float().mean(dim=-1)
-    # 找到大于阈值的差异区域
     diff_mask = diff > threshold
     diff_indices = torch.nonzero(diff_mask, as_tuple=True)
 
@@ -165,14 +158,10 @@ def find_different_colors(img1, img2, threshold=10):
     else:
         sampled_diff_indices = diff_indices
 
-    # 提取不同区域的颜色
     diff_colors = img2[sampled_diff_indices[0], sampled_diff_indices[1], :]
-    # 将颜色值转换为颜色名称
     color_names = [rgb_to_name(tuple(color)) for color in diff_colors]
     name_counter = Counter(color_names)
-    # 过滤出现超过10次的颜色
     filtered_colors = {name: count for name, count in name_counter.items() if count > 10}
-    # 按出现次数从大到小排序
     sorted_color_names = [name for name, count in sorted(filtered_colors.items(), key=lambda item: item[1], reverse=True)]
     if len(sorted_color_names) >= 3:
         return "colorful"
@@ -189,13 +178,10 @@ def get_bounding_box_from_mask(mask, padded=False):
     height, width = mask.shape
     if padded:
         padded_size = max(width, height)
-        # 检查填充发生在哪个方向
         if width < height:
-            # 宽度较小，填充发生在宽度上
             offset_x = (padded_size - width) / 2
             offset_y = 0
         else:
-            # 高度较小，填充发生在高度上
             offset_y = (padded_size - height) / 2
             offset_x = 0
         # Find the bounding box coordinates
