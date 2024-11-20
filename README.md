@@ -39,7 +39,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 - GPU is required to run MagicQuill
 - Instant prompt guessing ("Draw&Guess") requires ~5GB VRAM
-- Image editing operations require ~15GB VRAM
+- Image editing operations require ~12GB VRAM
 
 For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill) or [Web Demo (Alipay Cloud)](http://magic.chenjunfeng.xyz/).
 
