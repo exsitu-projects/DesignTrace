@@ -19,8 +19,6 @@ from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 llavaModel = LLaVAModel()
 scribbleColorEditModel = ScribbleColorEditModel()
 
-url = "http://localhost:7860"
-
 def tensor_to_base64(tensor):
     tensor = tensor.squeeze(0) * 255.
     pil_image = Image.fromarray(tensor.cpu().byte().numpy())
@@ -148,32 +146,29 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
         seed = random.randint(0, 2**32 - 1)
     ms_data = x['from_frontend']
     positive_prompt = x['from_backend']['prompt']
-    payload = {
-        "ckpt_name": ckpt_name,
-        "total_mask": ms_data['total_mask'],
-        "original_image": ms_data['original_image'],
-        "add_color_image": ms_data['add_color_image'],
-        "add_edge_image": ms_data['add_edge_image'],
-        "remove_edge_image": ms_data['remove_edge_image'],
-        "positive_prompt": positive_prompt,
-        "negative_prompt": negative_prompt,
-        "grow_size": grow_size,
-        "stroke_as_edge": "enable",
-        "fine_edge": fine_edge,
-        "edge_strength": edge_strength,
-        "color_strength": color_strength,
-        "inpaint_strength": inpaint_strength,
-        "seed": seed,
-        "steps": steps,
-        "cfg": cfg,
-        "sampler_name": sampler_name,
-        "scheduler": scheduler
-    }
-    res = requests.post(f"{url}/magic_quill/generate_image", json=payload).json()
-    if 'error' in res:
-        print(res['error'])
-        x["from_backend"]["generated_image"] = None
-    x["from_backend"]["generated_image"] = res['res']
+    stroke_as_edge = "enable"
+    res = generate(
+        ckpt_name,
+        ms_data['total_mask'],
+        ms_data['original_image'],
+        ms_data['add_color_image'],
+        ms_data['add_edge_image'],
+        ms_data['remove_edge_image'],
+        positive_prompt,
+        negative_prompt,
+        grow_size,
+        stroke_as_edge,
+        fine_edge,
+        edge_strength,
+        color_strength,
+        inpaint_strength,
+        seed,
+        steps,
+        cfg,
+        sampler_name,
+        scheduler
+    )
+    x["from_backend"]["generated_image"] = res
     return x
 
 css = '''
@@ -287,36 +282,6 @@ with gr.Blocks(css=css) as demo:
         btn.click(generate_image_handler, inputs=[ms, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler], outputs=ms)
 
 app = FastAPI()
-
-@app.post("/magic_quill/generate_image")
-async def generate_image(request: Request):
-    data = await request.json()
-    try :
-        res = generate(
-            data['ckpt_name'],
-            data['total_mask'],
-            data['original_image'],
-            data['add_color_image'],
-            data['add_edge_image'],
-            data['remove_edge_image'],
-            data['positive_prompt'],
-            data['negative_prompt'],
-            data['grow_size'],
-            data['stroke_as_edge'],
-            data['fine_edge'],
-            data['edge_strength'],
-            data['color_strength'],
-            data['inpaint_strength'],
-            data['seed'],
-            data['steps'],
-            data['cfg'],
-            data['sampler_name'],
-            data['scheduler']
-        )
-        return {'res': res}
-    except Exception as e:
-        print(e)
-        return{'error': str(e)}
 
 @app.post("/magic_quill/guess_prompt")
 async def guess_prompt(request: Request):
