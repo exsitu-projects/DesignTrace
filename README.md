@@ -68,20 +68,33 @@ If you are a Linux user, follow the following guide to set up the environment. I
     pip install gradio_magicquill-0.0.1-py3-none-any.whl
     ```
 
-5. install llava environment
+5. install torch with GPU support
     ```
+    pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+    ```
+    
+6. install llava environment
+    ```
+    (For Linux)
     cp -f pyproject.toml MagicQuill/LLaVA/
     pip install -e MagicQuill/LLaVA/
     ```
+    or
+    ```
+    (For Windows)
+    copy /Y pyproject.toml MagicQuill\LLaVA\
+    pip install -e MagicQuill\LLaVA\
+    ```
+    
 
-6. install the remaining environment
+8. install the remaining environment
     ```
     pip install -r requirements.txt
     ```
 
-7. run magicquill
+9. run magicquill
     ```
-    CUDA_VISIBLE_DEVICES=0 python gradio_run.py
+    python gradio_run.py
     ```
     If you are mainland user, you may try `export HF_ENDPOINT=https://hf-mirror.com` to use huggingface mirror to facilitate the download of some necessary checkpoints to run our system.
 
