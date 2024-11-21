@@ -10,7 +10,7 @@ assignees: ''
 **PLEASE READ BEFORE SUBMITTING AN ISSUE**  
 
 MagicQuill is not a commercial software but a research project. While we strive to improve and maintain it, support is provided on a best-effort basis. Please be patient and respectful in your communications.
-We will To help us respond faster and better, please ensure the following:  
+To help us respond faster and better, please ensure the following:  
 
 1. **Search Existing Resources**: Have you looked through the documentation (e.g., hardware requirement and setup steps), and searched online for potential solutions?  
 2. **Avoid Duplication**: Check if a similar issue already exists.  
