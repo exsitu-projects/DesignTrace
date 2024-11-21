@@ -193,7 +193,7 @@ with gr.Blocks(css=css) as demo:
                 ckpt_name = gr.Dropdown(
                     label="Base Model Name",
                     choices=folder_paths.get_filename_list("checkpoints"),
-                    value='SD1.5/realisticVisionV60B1_v51VAE.safetensors',
+                    value=os.path.join('SD1.5', 'realisticVisionV60B1_v51VAE.safetensors'),
                     interactive=True
                 )
                 negative_prompt = gr.Textbox(

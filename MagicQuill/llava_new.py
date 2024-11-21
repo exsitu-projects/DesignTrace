@@ -21,8 +21,8 @@ import re
 
 class LLaVAModel:
     def __init__(self):
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(current_dir, "../models/llava-v1.5-7b-finetune-clean")
+        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(current_dir, "models", "llava-v1.5-7b-finetune-clean")
         self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(
             model_path=model_path,
             model_base=None,

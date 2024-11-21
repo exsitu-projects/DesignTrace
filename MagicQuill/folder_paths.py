@@ -9,8 +9,8 @@ SupportedFileExtensionsType = Set[str]
 ScanPathType = List[str]
 folder_names_and_paths: Dict[str, Tuple[ScanPathType, SupportedFileExtensionsType]] = {}
 
-base_path = os.path.dirname(os.path.realpath(__file__))
-models_dir = os.path.join(base_path, "../models")
+base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+models_dir = os.path.join(base_path, "models")
 
 folder_names_and_paths["checkpoints"] = ([os.path.join(models_dir, "checkpoints")], supported_pt_extensions)
 folder_names_and_paths["configs"] = ([os.path.join(models_dir, "configs")], [".yaml"])
