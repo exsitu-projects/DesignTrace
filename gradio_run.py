@@ -15,6 +15,8 @@ import requests
 from MagicQuill import folder_paths
 from MagicQuill.llava_new import LLaVAModel
 from MagicQuill.scribble_color_edit import ScribbleColorEditModel
+import time
+import io
 
 llavaModel = LLaVAModel()
 scribbleColorEditModel = ScribbleColorEditModel()
@@ -171,6 +173,29 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
     x["from_backend"]["generated_image"] = res
     return x
 
+def save_generated_image(image_data):
+    if image_data is None:
+        return "No image to save"
+
+    try:
+        if isinstance(image_data, dict) and 'original_image' in image_data.get('from_frontend', {}):
+            img_str = image_data['from_frontend']['original_image']
+            if img_str.startswith("data:image/png;base64,"):
+                img_str = img_str.split(",")[1]
+            img_data = base64.b64decode(img_str)
+            img = Image.open(io.BytesIO(img_data))
+            
+            os.makedirs("output", exist_ok=True)
+            
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            save_path = os.path.join("output", f"magicquill_{timestamp}.png")
+            img.save(save_path)
+            return f"Image saved to: {save_path}"
+    except Exception as e:
+        return f"Error saving image: {str(e)}"
+
+    return "Failed to save image"
+
 css = '''
 .row {
     width: 90%;
@@ -281,6 +306,12 @@ with gr.Blocks(css=css) as demo:
 
         btn.click(generate_image_handler, inputs=[ms, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler], outputs=ms)
 
+        with gr.Row(elem_classes="row"):
+            with gr.Column():
+                save_btn = gr.Button("Save Image", variant="secondary")
+                # save_status = gr.Textbox(label="Save Status", interactive=False)
+        save_btn.click(fn=save_generated_image, inputs=[ms])
+    
 app = FastAPI()
 
 @app.post("/magic_quill/guess_prompt")
