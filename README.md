@@ -19,6 +19,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 - [🪶 MagicQuill: An Intelligent Interactive Image Editing System](#-magicquill-an-intelligent-interactive-image-editing-system)
   - [TODO List](#todo-list)
+  - [Update Log](#update-log)
   - [Hardware Requirements](#hardware-requirements)
   - [Setup](#setup)
   - [Tutorial](#tutorial)
@@ -35,6 +36,10 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 <img src="docs/comfyui.png" width="50%" >
 
+## Update Log
+
+- [2024.11.21] Update the save button; Fix path bug on Windows; Add `.bat` and `.sh` files for convenient environment install on Windows and Linux.
+
 ## Hardware Requirements
 
 - GPU is required to run MagicQuill. **Through our testing, we have confirmed that the model can run on GPUs with 8GB VRAM.**
@@ -43,9 +48,9 @@ For users with limited GPU resources, please try our [Huggingface Demo](https://
 
 
 ##  Setup
-If you are a Linux user, follow the following guide to set up the environment. If you are a Windows user, you may find [this](https://github.com/magic-quill/MagicQuill/issues/11) helpful.
+Follow the following guide to set up the environment.
 
-1. git clone repo
+1. git clone repo. **Please don't forget the `--recursive` flag.** Otherwise, you will find `LLaVA` submodule missing.
     ```
     git clone --recursive https://github.com/magic-quill/MagicQuill.git
     cd MagicQuill
@@ -57,20 +62,26 @@ If you are a Linux user, follow the following guide to set up the environment. I
     ```
     If the .zip file is not accessible, download it via browser. All checkpoints are about 25 GB in total. It may take some time to download. Alternatively, check our checkpoints at [huggingface](https://huggingface.co/LiuZichen/MagicQuill-models).
 
+---
+
+If you are a Windows user, you may try to use `windows_setup.bat` to conveniently install environments. For Linux user, check `linux_setup.sh`.
+
+Alternatively, follow the step-by-step installation guide.
+
 3. create environment
     ```
     conda create -n MagicQuill python=3.10 -y
     conda activate MagicQuill
     ```
 
-4. install the interface
-    ```
-    pip install gradio_magicquill-0.0.1-py3-none-any.whl
-    ```
-
-5. install torch with GPU support
+4. install torch with GPU support
     ```
     pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+    ```
+
+5. install the interface
+    ```
+    pip install gradio_magicquill-0.0.1-py3-none-any.whl
     ```
     
 6. install llava environment
@@ -87,12 +98,12 @@ If you are a Linux user, follow the following guide to set up the environment. I
     ```
     
 
-8. install the remaining environment
+7. install the remaining environment
     ```
     pip install -r requirements.txt
     ```
 
-9. run magicquill
+8. run magicquill
     ```
     python gradio_run.py
     ```
