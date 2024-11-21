@@ -1,16 +1,16 @@
 :: Create conda environment if it doesn't exist
-conda env list | find "MagicQuill" &gt;nul 2&gt;nul
+conda env list | find "MagicQuill" >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-echo Creating conda environment MagicQuill...
-call conda create -n MagicQuill python=3.10 -y
-
-:: Initialize conda after creating new environment
-echo Initializing conda...
-call conda init cmd.exe
-
-echo Environment created. Please run this script again to continue installation.
-pause
-exit /b 0
+    echo Creating conda environment MagicQuill...
+    call conda create -n MagicQuill python=3.10 -y
+    
+    :: 初始化conda
+    echo Initializing conda...
+    call conda init cmd.exe
+    
+    echo Environment created. Please restart the script.
+    pause
+    exit /b 0
 )
 
 :: Activate conda environment
