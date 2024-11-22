@@ -44,7 +44,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 - GPU is required to run MagicQuill. **Through our testing, we have confirmed that the model can run on GPUs with 8GB VRAM (RTX4070 Laptop).**
 
-For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill).
+For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill) and [Web Demo (Alipay Cloud)](http://magic.chenjunfeng.xyz/).
 
 
 ##  Setup
