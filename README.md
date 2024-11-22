@@ -64,7 +64,7 @@ Follow the following guide to set up the environment.
 
 ---
 
-If you are a Windows user, you may try to use `windows_setup.bat` to conveniently install environments. For Linux user, check `linux_setup.sh`.
+If you are a Windows user, you may try to use `windows_setup.bat` to conveniently install environments, just enter `windows_setup.bat` in your Python shell. For Linux user, check `linux_setup.sh`.
 
 Alternatively, follow the step-by-step installation guide.
 
