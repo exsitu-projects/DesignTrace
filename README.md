@@ -44,7 +44,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 
 - GPU is required to run MagicQuill. **Through our testing, we have confirmed that the model can run on GPUs with 8GB VRAM (RTX4070 Laptop).**
 
-For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill) and [Web Demo (Alipay Cloud)](http://magic.chenjunfeng.xyz/).
+For users with limited GPU resources, please try our [Huggingface Demo](https://huggingface.co/spaces/AI4Editing/MagicQuill) and [Web Demo (Alipay Cloud)](http://magic.chenjunfeng.xyz/). Also, consider disabling the DrawNGuess automatic prompt filling by clicking the wand icon above if it takes too long time on your machine.
 
 
 ##  Setup
@@ -96,6 +96,7 @@ Alternatively, follow the step-by-step installation guide.
     copy /Y pyproject.toml MagicQuill\LLaVA\
     pip install -e MagicQuill\LLaVA\
     ```
+    (For Windows PowerShell, the first line should be `Copy-Item -Path pyproject.toml -Destination "MagicQuill\LLaVA" -Force`)
     
 
 7. install the remaining environment
