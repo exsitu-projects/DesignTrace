@@ -306,11 +306,11 @@ with gr.Blocks(css=css) as demo:
 
         btn.click(generate_image_handler, inputs=[ms, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler], outputs=ms)
 
-        with gr.Row(elem_classes="row"):
-            with gr.Column():
-                save_btn = gr.Button("Save Image", variant="secondary")
-                # save_status = gr.Textbox(label="Save Status", interactive=False)
-        save_btn.click(fn=save_generated_image, inputs=[ms])
+        # with gr.Row(elem_classes="row"):
+        #     with gr.Column():
+        #         save_btn = gr.Button("Save Image", variant="secondary")
+        #         # save_status = gr.Textbox(label="Save Status", interactive=False)
+        # save_btn.click(fn=save_generated_image, inputs=[ms])
     
 app = FastAPI()
 
