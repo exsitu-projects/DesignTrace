@@ -41,6 +41,12 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 - [2024.11.21] Update the save button; Fix path bug on Windows; Add `.bat` and `.sh` files for convenient environment install on Windows and Linux. Thanks [lior007](https://github.com/lior007) and [JamesIV4](https://github.com/JamesIV4).
 - [2024.11.25] New UI Updates: Drag & Drop Images + Download Button: We've enhanced our interface with two exciting features! Now you can easily upload images with drag & drop functionality, and quickly save your work using our new download button. Try it out and let us know what you think!
 
+To update the latest features, pull the latest code and re-install the gradio_magicquill:
+```
+pip uninstall -y gradio_magicquill-0.0.1-py3-none-any.whl
+pip install gradio_magicquill-0.0.1-py3-none-any.whl
+```
+
 ## Hardware Requirements
 
 - GPU is required to run MagicQuill. **Through our testing, we have confirmed that the model can run on GPUs with 8GB VRAM (RTX4070 Laptop).**
