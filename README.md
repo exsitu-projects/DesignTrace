@@ -32,7 +32,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 - [x] Release the paper and demo page. Visit [magicquill.art](https://magicquill.art) 🪩
 - [x] Release the code and checkpoints.
 - [x] Release gradio demo.
-- [ ] Release ComfyUI MagicQuill custom node.
+- [x] Release ComfyUI MagicQuill custom node.
 
 <img src="docs/comfyui.png" width="50%" >
 
@@ -41,6 +41,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 - [2024.11.21] 📢 Update the save button; Fix path bug on Windows; Add `.bat` and `.sh` files for convenient environment install on Windows and Linux. Thanks [lior007](https://github.com/lior007) and [JamesIV4](https://github.com/JamesIV4).
 - [2024.11.25] 📢 New UI Updates: Drag & Drop Images + Download Button: We've enhanced our interface with two exciting features! Now you can easily upload images with drag & drop functionality, and quickly save your work using our new download button. Try it out and let us know what you think!
 - [2024.12.06] 📢 New Feature Updates: Auto-save and Resolution Adjustment are now enabled in the parameter settings. Thanks [Furkan Gözükara](https://github.com/FurkanGozukara) for his brilliant suggestions.
+- [2024.12.07] 🎉 Exciting News: ComfyUI MagicQuill Node has been released! Check the repository https://github.com/magic-quill/ComfyUI_MagicQuill for more details.
 
 To update the latest features, pull the latest code and re-install the gradio_magicquill:
 ```
