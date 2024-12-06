@@ -18,6 +18,9 @@ from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 import time
 import io
 
+AUTO_SAVE = False
+RES = 512
+
 llavaModel = LLaVAModel()
 scribbleColorEditModel = ScribbleColorEditModel()
 
@@ -171,30 +174,24 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
         scheduler
     )
     x["from_backend"]["generated_image"] = res
+    global AUTO_SAVE
+    if AUTO_SAVE:
+        auto_save_generated_image(res)
     return x
 
-def save_generated_image(image_data):
-    if image_data is None:
-        return "No image to save"
-
-    try:
-        if isinstance(image_data, dict) and 'original_image' in image_data.get('from_frontend', {}):
-            img_str = image_data['from_frontend']['original_image']
-            if img_str.startswith("data:image/png;base64,"):
-                img_str = img_str.split(",")[1]
-            img_data = base64.b64decode(img_str)
-            img = Image.open(io.BytesIO(img_data))
-            
-            os.makedirs("output", exist_ok=True)
-            
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            save_path = os.path.join("output", f"magicquill_{timestamp}.png")
-            img.save(save_path)
-            return f"Image saved to: {save_path}"
-    except Exception as e:
-        return f"Error saving image: {str(e)}"
-
-    return "Failed to save image"
+def auto_save_generated_image(res):
+    img_str = res
+    if img_str.startswith("data:image/png;base64,"):
+        img_str = img_str.split(",")[1]
+    img_data = base64.b64decode(img_str)
+    img = Image.open(io.BytesIO(img_data))
+    
+    os.makedirs("output", exist_ok=True)
+    
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    save_path = os.path.join("output", f"magicquill_{timestamp}.png")
+    img.save(save_path)
+    print(f"Image saved to: {save_path}")
 
 css = '''
 .row {
@@ -219,6 +216,19 @@ with gr.Blocks(css=css) as demo:
                     label="Base Model Name",
                     choices=folder_paths.get_filename_list("checkpoints"),
                     value=os.path.join('SD1.5', 'realisticVisionV60B1_v51VAE.safetensors'),
+                    interactive=True
+                )
+                auto_save_checkbox = gr.Checkbox(
+                    label="Auto Save",
+                    value=False,
+                    interactive=True
+                )
+                resolution_slider = gr.Slider(
+                    label="Resolution (Please update this before you upload the image :))",
+                    minimum=256,
+                    maximum=2048,
+                    value=512,
+                    step=64,
                     interactive=True
                 )
                 negative_prompt = gr.Textbox(
@@ -304,13 +314,17 @@ with gr.Blocks(css=css) as demo:
                     interactive=True
                 )
 
-        btn.click(generate_image_handler, inputs=[ms, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler], outputs=ms)
+        def update_auto_save(value):
+            global AUTO_SAVE
+            AUTO_SAVE = value
+            
+        def update_resolution(value):
+            global RES
+            RES = value
 
-        # with gr.Row(elem_classes="row"):
-        #     with gr.Column():
-        #         save_btn = gr.Button("Save Image", variant="secondary")
-        #         # save_status = gr.Textbox(label="Save Status", interactive=False)
-        # save_btn.click(fn=save_generated_image, inputs=[ms])
+        auto_save_checkbox.change(fn=update_auto_save, inputs=[auto_save_checkbox])
+        resolution_slider.change(fn=update_resolution, inputs=[resolution_slider])
+        btn.click(generate_image_handler, inputs=[ms, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler], outputs=ms)
     
 app = FastAPI()
 
@@ -322,8 +336,11 @@ async def guess_prompt(request: Request):
 
 @app.post("/magic_quill/process_background_img")
 async def process_background_img(request: Request):
+    global RES
+    max_size = RES
     img = await request.json()
-    resized_img_tensor = load_and_resize_image(img)
+    print("max_size:", max_size)
+    resized_img_tensor = load_and_resize_image(img, max_size=max_size)
     resized_img_base64 = "data:image/png;base64," + tensor_to_base64(resized_img_tensor)
     # add more processing here
     return resized_img_base64
