@@ -224,7 +224,7 @@ with gr.Blocks(css=css) as demo:
                     interactive=True
                 )
                 resolution_slider = gr.Slider(
-                    label="Resolution (Please update this before you upload the image :))",
+                    label="Resolution (Please update this before you upload the image ;).)",
                     minimum=256,
                     maximum=2048,
                     value=512,
