@@ -34,7 +34,7 @@ There is an HD video on [Youtube](https://www.youtube.com/watch?v=5DiKfONMnE4).
 - [x] Release gradio demo.
 - [x] Release ComfyUI MagicQuill custom node.
 
-<img src="docs/comfyui.png" width="50%" >
+<img src="docs/comfyui.png" width="100%" >
 
 ## Update Log
 
