@@ -3,4 +3,5 @@ __pycache__
 **/.DS_Store
 .DS_Store
 __MacOSX
-output/
+output/gradio_magicquill-0.0.1-py3-none-any.whl
+models/

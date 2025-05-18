@@ -19,6 +19,7 @@ from llava.constants import (
 )
 import re
 
+
 class LLaVAModel:
     def __init__(self):
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
