@@ -10,3 +10,4 @@ gradio_used_imgs
 *.png
 dist
 client/dist
+MagicQuill/LLaVA

@@ -36,8 +36,18 @@
     >
       <canvas ref="canvas" class="baseCanvas"></canvas>
       <canvas
-        ref="drawingCanvas"
+        ref="negDrawingCanvas"
         class="strokeCanvas"
+        :style="{ zIndex: currentTool === 'eraser' ? 3 : 2 }"
+        @mousedown="startDrawing"
+        @mousemove="draw"
+        @mouseup="stopDrawing"
+        @mouseleave="stopDrawing"
+      ></canvas>
+      <canvas
+        ref="posDrawingCanvas"
+        class="strokeCanvas"
+        :style="{ zIndex: currentTool === 'brush' ? 3 : 2 }"
         @mousedown="startDrawing"
         @mousemove="draw"
         @mouseup="stopDrawing"
@@ -62,7 +72,7 @@
 
     <!-- Generation Controls -->
     <div class="generate-controls">
-      <button class="generate-button" @click="generateImage" :disabled="!canGenerate">
+      <button class="generate-button" @click="generateImage">
         <i class="fas fa-magic"></i> Generate Image
       </button>
     </div>
@@ -122,11 +132,16 @@ export default {
       this.canvasHeight = this.originalImage.height
       // Draw original image
       ctx.drawImage(this.originalImage, 0, 0)
-      const drawingCanvas = this.$refs.drawingCanvas
+      this.setupPosNegDrawingCanvas()
+    },
+
+    setupPosNegDrawingCanvas() {
+      const drawingCanvas =
+        this.currentTool === 'brush' ? this.$refs.posDrawingCanvas : this.$refs.negDrawingCanvas
       const drawingCtx = drawingCanvas.getContext('2d')
       drawingCanvas.width = this.originalImage.width
       drawingCanvas.height = this.originalImage.height
-      drawingCtx.clearRect(0, 0, canvas.width, canvas.height)
+      drawingCtx.clearRect(0, 0, this.originalImage.width, this.originalImage.height)
       // Setup drawing styles
       drawingCtx.lineJoin = 'round'
       drawingCtx.lineCap = 'round'
@@ -136,19 +151,25 @@ export default {
     // Drawing Methods
     setTool(tool) {
       this.currentTool = tool
+      this.setupPosNegDrawingCanvas()
     },
 
     startDrawing(e) {
       this.isDrawing = true
-      const rect = this.$refs.drawingCanvas.getBoundingClientRect()
+      const canvasRef =
+        this.currentTool === 'brush' ? this.$refs.posDrawingCanvas : this.$refs.negDrawingCanvas
+      const rect = canvasRef.getBoundingClientRect()
+      console.log(rect)
       this.lastX = e.clientX - rect.left
       this.lastY = e.clientY - rect.top
     },
 
     draw(e) {
       if (!this.isDrawing) return
-      const ctx = this.$refs.drawingCanvas.getContext('2d')
-      const rect = this.$refs.drawingCanvas.getBoundingClientRect()
+      const canvasRef =
+        this.currentTool === 'brush' ? this.$refs.posDrawingCanvas : this.$refs.negDrawingCanvas
+      const ctx = canvasRef.getContext('2d')
+      const rect = canvasRef.getBoundingClientRect()
       const x = e.clientX - rect.left
       const y = e.clientY - rect.top
 
@@ -180,11 +201,11 @@ export default {
     },
 
     getCanvasCoordinates(e) {
-      const drawingCanvas = this.$refs.drawingCanvas
-      const rect = drawingCanvas.getBoundingClientRect()
+      const posDrawingCanvas = this.$refs.posDrawingCanvas
+      const rect = posDrawingCanvas.getBoundingClientRect()
 
-      const scaleX = drawingCanvas.width / rect.width
-      const scaleY = drawingCanvas.height / rect.height
+      const scaleX = posDrawingCanvas.width / rect.width
+      const scaleY = posDrawingCanvas.height / rect.height
 
       return [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY]
     },
@@ -203,7 +224,7 @@ export default {
           body: JSON.stringify({
             original_image: imageData,
             add_color_image: imageData,
-            add_edge_image: this.getEdgeData(),
+            add_edge_image: this.getPosEdgeData(),
           }),
         })
 
@@ -216,8 +237,26 @@ export default {
     },
 
     // Image Processing (Matches Gradio Format)
-    getEdgeData() {
-      const canvas = this.$refs.drawingCanvas
+    getPosEdgeData() {
+      const canvas = this.$refs.posDrawingCanvas
+      const tempCanvas = document.createElement('canvas')
+      tempCanvas.width = canvas.width
+      tempCanvas.height = canvas.height
+      const tempCtx = tempCanvas.getContext('2d')
+
+      // Fill background with black
+      tempCtx.fillStyle = 'black'
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+
+      // Erase strokes by using destination-out
+      tempCtx.globalCompositeOperation = 'destination-out'
+      tempCtx.drawImage(canvas, 0, 0)
+
+      return tempCanvas.toDataURL('image/png')
+    },
+
+    getNegEdgeData() {
+      const canvas = this.$refs.negDrawingCanvas
       const tempCanvas = document.createElement('canvas')
       tempCanvas.width = canvas.width
       tempCanvas.height = canvas.height
@@ -235,20 +274,28 @@ export default {
     },
 
     getMaskData() {
-      const canvas = this.$refs.drawingCanvas
+      const posCanvas = this.$refs.posDrawingCanvas
+      const negCanvas = this.$refs.negDrawingCanvas
+
       const tempCanvas = document.createElement('canvas')
-      tempCanvas.width = canvas.width
-      tempCanvas.height = canvas.height
+      tempCanvas.width = posCanvas.width
+      tempCanvas.height = posCanvas.height
       const tempCtx = tempCanvas.getContext('2d')
 
       // Fill background with black
       tempCtx.fillStyle = 'black'
       tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
 
-      // Erase strokes by using destination-out
+      // Set to destination-out to erase strokes
       tempCtx.globalCompositeOperation = 'destination-out'
-      tempCtx.drawImage(canvas, 0, 0)
 
+      // Draw positive strokes
+      tempCtx.drawImage(posCanvas, 0, 0)
+
+      // Draw negative strokes
+      tempCtx.drawImage(negCanvas, 0, 0)
+
+      // Return the final combined image
       return tempCanvas.toDataURL('image/png')
     },
 
@@ -267,8 +314,8 @@ export default {
             ms_data: {
               original_image: imageData,
               add_color_image: imageData,
-              add_edge_image: this.getEdgeData(),
-              remove_edge_image: '',
+              add_edge_image: this.getPosEdgeData(),
+              remove_edge_image: this.getNegEdgeData(),
               total_mask: this.getMaskData(),
             },
             prompt: this.prompt,
@@ -409,7 +456,7 @@ textarea {
 }
 .canvas-container {
   position: relative;
-  max-width: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -419,7 +466,7 @@ textarea {
   top: 0;
   left: 0;
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
 }
 </style>
