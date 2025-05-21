@@ -5,3 +5,8 @@ __pycache__
 __MacOSX
 output/gradio_magicquill-0.0.1-py3-none-any.whl
 models/
+app_used_imgs
+gradio_used_imgs
+*.png
+dist
+client/dist

@@ -17,6 +17,7 @@ from MagicQuill.llava_new import LLaVAModel
 from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 import time
 import io
+from gradio_client import Client
 
 AUTO_SAVE = False
 RES = 512
@@ -115,10 +116,72 @@ def guess_prompt_handler(original_image, add_color_image, add_edge_image):
 def generate(ckpt_name, total_mask, original_image, add_color_image, add_edge_image, remove_edge_image, positive_prompt, negative_prompt, grow_size, stroke_as_edge, fine_edge, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler):
     add_color_image, original_image, total_mask, add_edge_mask, remove_edge_mask = prepare_images_and_masks(total_mask, original_image, add_color_image, add_edge_image, remove_edge_image)
     progress = None
+
+    print("gradio run generate")
+
     if torch.sum(remove_edge_mask).item() > 0 and torch.sum(add_edge_mask).item() == 0:
         if positive_prompt == "":
             positive_prompt = "empty scene"
         edge_strength /= 3.
+#     print("ckpt_name")
+#     print(ckpt_name)
+#
+#     print("original_image")
+#     print(original_image)
+#
+#     print("add_color_image")
+#     print(add_color_image)
+#
+#     print("positive_prompt")
+#     print(positive_prompt)
+#
+#     print("negative_prompt")
+#     print(negative_prompt)
+#
+#     print("total_mask")
+#     print(total_mask)
+#
+#     print("add_edge_mask")
+#     print(add_edge_mask)
+#
+#     print("remove_edge_mask")
+#     print(remove_edge_mask)
+#
+#     print("grow_size")
+#     print(grow_size)
+#
+#     print("stroke_as_edge")
+#     print(stroke_as_edge)
+#
+#     print("fine_edge")
+#     print(fine_edge)
+#
+#     print("edge_strength")
+#     print(edge_strength)
+#
+#     print("color_strength")
+#     print(color_strength)
+#
+#     print("inpaint_strength")
+#     print(inpaint_strength)
+#
+#     print("seed")
+#     print(seed)
+#
+#     print("steps")
+#     print(steps)
+#
+#     print("cfg")
+#     print(cfg)
+#
+#     print("sampler_name")
+#     print(sampler_name)
+#
+#     print("scheduler")
+#     print(scheduler)
+#
+#     print("progress")
+#     print(progress)
 
     latent_samples, final_image, lineart_output, color_output = scribbleColorEditModel.process(
         ckpt_name,
@@ -145,6 +208,38 @@ def generate(ckpt_name, total_mask, original_image, add_color_image, add_edge_im
 
     final_image_base64 = tensor_to_base64(final_image)
     return final_image_base64
+def show_tensor_image(tensor, title='Image'):
+    # Remove batch dimension if present
+    if tensor.dim() == 4:
+        tensor = tensor[0]
+
+    img = tensor.detach().cpu().numpy()
+
+    if img.ndim == 2:
+        # Grayscale
+        img = (img * 255).astype(np.uint8)
+        image = Image.fromarray(img, mode='L')
+
+    elif img.ndim == 3:
+        if img.shape[0] == 1:
+            # (1, H, W) → (H, W)
+            img = img[0]
+            img = (img * 255).astype(np.uint8)
+            image = Image.fromarray(img, mode='L')
+        elif img.shape[0] == 3:
+            # (3, H, W) → (H, W, 3)
+            img = np.transpose(img, (1, 2, 0))
+            img = (img * 255).astype(np.uint8)
+            image = Image.fromarray(img, mode='RGB')
+        elif img.shape[2] == 3:
+            # Already (H, W, 3)
+            img = (img * 255).astype(np.uint8)
+            image = Image.fromarray(img, mode='RGB')
+        else:
+            raise ValueError(f"Unexpected 3D tensor shape: {img.shape}")
+    else:
+        raise ValueError(f"Unexpected tensor shape: {img.shape}")
+    image.save(f"gradio_used_imgs/{title}.png")
 
 def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, edge_strength, color_strength, inpaint_strength, seed, steps, cfg, sampler_name, scheduler):
     if seed == -1:
@@ -152,6 +247,15 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
     ms_data = x['from_frontend']
     positive_prompt = x['from_backend']['prompt']
     stroke_as_edge = "enable"
+    print( 'total_mask:::::' )
+    print( ms_data['total_mask'])
+    show_base64_image(ms_data['original_image'], title="Original Image")
+    show_base64_image(ms_data['add_color_image'], title="Color Image")
+    show_base64_image(ms_data['total_mask'], title="Total Mask")
+    show_base64_image(ms_data['add_edge_image'], title="Add Edge Mask")
+    show_base64_image(ms_data['remove_edge_image'], title="Remove Edge Mask")
+
+
     res = generate(
         ckpt_name,
         ms_data['total_mask'],
@@ -328,6 +432,23 @@ with gr.Blocks(css=css) as demo:
     
 app = FastAPI()
 
+def show_base64_image(base64_url, title='Image'):
+    # Remove the "data:image/..." prefix if present
+    if base64_url.startswith("data:image"):
+        base64_url = base64_url.split(",", 1)[1]
+
+    image_data = base64.b64decode(base64_url)
+    image = Image.open(io.BytesIO(image_data))
+#     image.show(title=title)  # This opens the default image viewer
+# Save with a meaningful filename
+    filename = f"{title.replace(' ', '_')}.png"
+    image.save(filename)
+
+    # Open it using the default viewer
+    os.system(filename)
+
+
+
 @app.post("/magic_quill/guess_prompt")
 async def guess_prompt(request: Request):
     data = await request.json()
@@ -345,8 +466,7 @@ async def process_background_img(request: Request):
     # add more processing here
     return resized_img_base64
 
-app = gr.mount_gradio_app(app, demo, "/")
-
+app = gr.mount_gradio_app(app, demo, path="/")
 if __name__ == "__main__":
-#    uvicorn.run(app, host="127.0.0.1", port=7860)
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    uvicorn.run(app, host="127.0.0.1", port=7860)
+#     uvicorn.run(app, host="0.0.0.0", port=7860)
