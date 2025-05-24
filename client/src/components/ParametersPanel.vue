@@ -62,7 +62,8 @@ export default {
     },
     async saveSettings() {
       try {
-        await fetch('/api/settings', {
+        //await fetch('/api/settings', {
+        await fetch('http://localhost:5000/api/settings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

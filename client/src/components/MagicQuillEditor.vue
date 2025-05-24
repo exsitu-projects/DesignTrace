@@ -215,8 +215,8 @@ export default {
       try {
         const canvas = this.$refs.canvas
         const imageData = canvas.toDataURL('image/png')
-
-        const response = await fetch('/api/magic_quill/guess_prompt', {
+        const response = await fetch('http://localhost:5000/api/magic_quill/guess_prompt', {
+          //const response = await fetch('/api/magic_quill/guess_prompt', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -305,7 +305,8 @@ export default {
         const canvas = this.$refs.canvas
         const imageData = canvas.toDataURL('image/png')
 
-        const response = await fetch('/api/magic_quill/generate', {
+        const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
+          // const response = await fetch('/api/magic_quill/generate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -10,7 +10,9 @@ from MagicQuill import folder_paths
 from MagicQuill.llava_new import LLaVAModel
 from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 import time
+from flask_cors import CORS
 
+CORS(app, supports_credentials=True)
 app = Flask(__name__)
 
 AUTO_SAVE = False
@@ -18,14 +20,7 @@ RES = 512
 
 llavaModel = LLaVAModel()
 scribbleColorEditModel = ScribbleColorEditModel()
-def show_base64_image(base64_url, title='Image'):
-    # Remove the "data:image/..." prefix if present
-    if base64_url.startswith("data:image"):
-        base64_url = base64_url.split(",", 1)[1]
 
-    image_data = base64.b64decode(base64_url)
-    image = Image.open(io.BytesIO(image_data))
-    image.show(title=title)  # This opens the default image viewer
 
 def tensor_to_base64(tensor):
     tensor = tensor.squeeze(0) * 255.
@@ -138,39 +133,6 @@ def process_background_img():
     resized_img_base64 = "data:image/png;base64," + tensor_to_base64(resized_img_tensor)
     return jsonify({'image': resized_img_base64})
 
-def show_tensor_image(tensor, title='Image'):
-    # Remove batch dimension if present
-    if tensor.dim() == 4:
-        tensor = tensor[0]
-
-    img = tensor.detach().cpu().numpy()
-
-    if img.ndim == 2:
-        # Grayscale
-        img = (img * 255).astype(np.uint8)
-        image = Image.fromarray(img, mode='L')
-
-    elif img.ndim == 3:
-        if img.shape[0] == 1:
-            # (1, H, W) → (H, W)
-            img = img[0]
-            img = (img * 255).astype(np.uint8)
-            image = Image.fromarray(img, mode='L')
-        elif img.shape[0] == 3:
-            # (3, H, W) → (H, W, 3)
-            img = np.transpose(img, (1, 2, 0))
-            img = (img * 255).astype(np.uint8)
-            image = Image.fromarray(img, mode='RGB')
-        elif img.shape[2] == 3:
-            # Already (H, W, 3)
-            img = (img * 255).astype(np.uint8)
-            image = Image.fromarray(img, mode='RGB')
-        else:
-            raise ValueError(f"Unexpected 3D tensor shape: {img.shape}")
-    else:
-        raise ValueError(f"Unexpected tensor shape: {img.shape}")
-    image.save(f"app_used_imgs/{title}.png")
-
 @app.route('/api/magic_quill/generate', methods=['POST'])
 def generate_image_handler():
     try:
@@ -218,91 +180,6 @@ def generate_image_handler():
 
         # ===== 4. IMAGE GENERATION =====
         # Original model processing
-#         print("app run generate")
-#         print("ckpt_name")
-#         print("SD1.5\\realisticVisionV60B1_v51VAE.safetensors")
-#
-#         print("original_image")
-#         print(original_image)
-#
-#         print("add_color_image")
-#         print(add_color_image)
-#
-#         print("positive_prompt")
-#         print(positive_prompt)
-#
-#         print("negative_prompt")
-#         print(data.get('negative_prompt', ''))
-#
-#         print("total_mask")
-#         print(total_mask)
-#
-#         print("add_edge_mask")
-#         print(add_edge_mask)
-#
-#         print("remove_edge_mask")
-#         print(remove_edge_mask)
-#
-#         print("grow_size")
-#         print(data.get('grow_size', 15))
-#
-#         print("stroke_as_edge")
-#         print("enable")
-#
-#         print("fine_edge")
-#         print(data.get('fine_edge', 'disable'))
-#
-#         print("edge_strength")
-#         print(edge_strength)
-#
-#         print("color_strength")
-#         print(data.get('color_strength', 0.55))
-#
-#         print("inpaint_strength")
-#         print(data.get('inpaint_strength', 1.0))
-#
-#         print("seed")
-#         print(seed)
-#
-#         print("steps")
-#         print(data.get('steps', 20))
-#
-#         print("cfg")
-#         print(data.get('cfg', 5.0))
-#
-#         print("sampler_name")
-#         print(data.get('sampler_name', 'euler_ancestral'))
-#
-#         print("scheduler")
-#         print(data.get('scheduler', 'karras'))
-#
-#         print("progress")
-#         print(None)
-#         show_base64_image(original_image, title='Original Image')
-#         show_base64_image(add_color_image, title='Color Image')
-#         show_base64_image(total_mask, title='total_mask')
-#         show_base64_image(add_edge_mask, title='add_edge_mask')
-#         show_base64_image(remove_edge_mask, title='remove_edge_mask')
-#         print("original_image:")
-#         print(original_image)
-#
-#         print("add_color_image:")
-#         print(add_color_image)
-#
-#         print("total_mask:")
-#         print(total_mask)
-#
-#         print("add_edge_mask:")
-#         print(add_edge_mask)
-#
-#         print("remove_edge_mask:")
-#         print(remove_edge_mask)
-        # Assuming your tensors are named like this:
-        show_tensor_image(original_image, title="original Image")
-        show_tensor_image(add_color_image, title="Color Image")
-        show_tensor_image(total_mask, title="Total Mask")
-        show_tensor_image(add_edge_mask, title="Add Edge Mask")
-        show_tensor_image(remove_edge_mask, title="Remove Edge Mask")
 
         latent_samples, final_image, lineart_output, color_output = scribbleColorEditModel.process(
             "SD1.5\\realisticVisionV60B1_v51VAE.safetensors",
@@ -359,9 +236,9 @@ def auto_save_generated_image(res):
     os.makedirs("output", exist_ok=True)
 
     timestamp = time.strftime("%Y%m%d_%H%M%S")
-    save_path = os.path.join("output", f"magicquill_{timestamp}.png")
-    img.save(save_path)
-    print(f"Image saved to: {save_path}")
+#     save_path = os.path.join("output", f"magicquill_{timestamp}.png")
+#     img.save(save_path)
+#     print(f"Image saved to: {save_path}")
 
 
 @app.route('/api/settings', methods=['POST'])
@@ -392,4 +269,5 @@ def serve_vue(path):
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000)
+#     app.run(host='127.0.0.1', port=5000)
+app.run(host='0.0.0.0', port=5000)

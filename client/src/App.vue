@@ -5,10 +5,7 @@
     </header>
 
     <main>
-      <MagicQuillEditor
-        @prompt-guessed="updatePrompt"
-        @image-generated="displayGeneratedImage"
-      />
+      <MagicQuillEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
 
       <ParametersPanel
         :params="generationParams"
@@ -16,17 +13,16 @@
         @update:params="updateParams"
       />
 
-
-       <div class="preview-section" v-if="generatedImage">
-    <h2>Generated Image</h2>
-    <div class="image-preview">
-      <img :src="generatedImage" alt="Generated Image">
-      <div class="image-actions">
-        <button @click="downloadImage">Download</button>
-        <button @click="useAsNewBase">Use as New Base</button>
+      <div class="preview-section" v-if="generatedImage">
+        <h2>Generated Image</h2>
+        <div class="image-preview">
+          <img :src="generatedImage" alt="Generated Image" />
+          <div class="image-actions">
+            <button @click="downloadImage">Download</button>
+            <button @click="useAsNewBase">Use as New Base</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
     </main>
   </div>
 </template>
@@ -39,7 +35,7 @@ export default {
   name: 'App',
   components: {
     MagicQuillEditor,
-    ParametersPanel
+    ParametersPanel,
   },
   data() {
     return {
@@ -58,21 +54,21 @@ export default {
         steps: 20,
         cfg: 5.0,
         sampler_name: 'euler_ancestral',
-        scheduler: 'karras'
+        scheduler: 'karras',
       },
       generatedImage: null,
-      prompt: ''
+      prompt: '',
     }
   },
   methods: {
-     downloadImage() {
-      const link = document.createElement('a');
-      link.href = this.generatedImage;
-      link.download = 'magicquill-generated.png';
-      link.click();
+    downloadImage() {
+      const link = document.createElement('a')
+      link.href = this.generatedImage
+      link.download = 'magicquill-generated.png'
+      link.click()
     },
     useAsNewBase() {
-      this.$refs.editor.loadGeneratedImage(this.generatedImage);
+      this.$refs.editor.loadGeneratedImage(this.generatedImage)
     },
     updatePrompt(prompt) {
       this.prompt = prompt
@@ -81,21 +77,22 @@ export default {
       this.generatedImage = imageData
     },
     updateParams(newParams) {
-      this.generationParams = {...newParams}
+      this.generationParams = { ...newParams }
     },
     async fetchModels() {
       try {
-        const response = await fetch('/api/checkpoints')
+        // const response = await fetch('/api/checkpoints')
+        const response = await fetch('http://localhost:5000/api/checkpoints')
         const data = await response.json()
         this.availableModels = data.checkpoints
       } catch (error) {
         console.error('Error fetching models:', error)
       }
-    }
+    },
   },
   mounted() {
     this.fetchModels()
-  }
+  },
 }
 </script>
 
