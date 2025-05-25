@@ -8,9 +8,7 @@
       placeholder="Describe what you want to generate..."
       rows="3"
     ></textarea>
-    <button class="generate-button" @click="generateLayer">
-      <i class="fas fa-magic"></i> Generate Layer
-    </button>
+    <button class="generate-button btn btn-dark" @click="generateLayer">Generate Layer</button>
     <label for="drawing-mode-selector">
       Mode:
       <select id="drawing-mode-selector">
@@ -45,13 +43,13 @@
     <label for="drawing-shadow-width">
       Shadow width:
       <span class="info">0</span>
-      <input type="range" min="0" max="50" id="drawing-shadow-width" />
+      <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
     </label>
 
     <label for="drawing-shadow-offset">
       Shadow offset:
       <span class="info">0</span>
-      <input type="range" min="0" max="50" id="drawing-shadow-offset" />
+      <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
     </label>
   </div>
 </template>
@@ -73,12 +71,16 @@ const renderNewLayer = (layer) => {
   img.onload = () => {
     try {
       const fabricImage = new fabric.Image(img, {
-        left: layer.left ?? 100,
-        top: layer.top ?? 100,
+        left: layer.left,
+        top: layer.top,
+        selectable: layer.selectable,
+        hasControls: layer.hasControls,
       })
       // fabricImage.scaleToWidth(250)
+      canvas.value.isDrawingMode = false
       canvas.value.add(fabricImage)
       canvas.value.requestRenderAll()
+      canvas.value.setActiveObject(fabricImage)
     } catch (error) {
       console.error('Failed to add image to canvas:', error)
     }
@@ -108,6 +110,8 @@ const generateLayer = async () => {
       url: imageUrl,
       left: 100,
       top: 100,
+      selectable: true,
+      hasControls: true,
     }
 
     layersStore.addLayer(newLayer)
@@ -225,8 +229,8 @@ onMounted(() => {
     canvas.value.freeDrawingBrush.shadow = new fabric.Shadow({
       blur: parseInt(elements.shadowWidth.value) || 0,
       color: elements.shadowColor.value,
-      offsetX: parseInt(elements.shadowOffset.value) || 0,
-      offsetY: parseInt(elements.shadowOffset.value) || 0,
+      offsetX: parseInt(elements.shadowOffsetX?.value ?? '0') || 0,
+      offsetY: parseInt(elements.shadowOffsetY?.value ?? '0') || 0,
       affectStroke: true,
     })
   }
@@ -235,9 +239,17 @@ onMounted(() => {
   elements.brushSelector.onchange = function () {
     const brushName = this.value
     canvas.value.freeDrawingBrush = brushes[brushName] || brushes.pencil
+
+    // Force re-generation of pattern source (important!)
+    if (['hline', 'vline', 'square', 'diamond', 'texture'].includes(brushName)) {
+      const brush = canvas.value.freeDrawingBrush
+      if (brush.getPatternSrc) {
+        brush.source = brush.getPatternSrc.call(brush)
+      }
+    }
+
     updateBrush()
   }
-
   elements.color.onchange = updateBrush
   elements.shadowColor.onchange = updateBrush
   elements.lineWidth.onchange = function () {
