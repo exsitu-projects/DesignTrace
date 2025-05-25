@@ -1,5 +1,5 @@
 <template>
-  <canvas class="border border-black" id="freeCanvas" width="800" height="800"></canvas>
+  <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
   <div id="drawing-mode-options">
     <button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button>
     <button id="clear-canvas" class="btn btn-info">Clear</button>
@@ -13,14 +13,10 @@
       Mode:
       <select id="drawing-mode-selector">
         <option>Pencil</option>
-        <option>Circle</option>
-        <option>Spray</option>
-        <option>Pattern</option>
         <option>hline</option>
         <option>vline</option>
-        <option>square</option>
         <option>diamond</option>
-        <option>texture</option>
+        <option>dotted</option>
       </select>
     </label>
 
@@ -146,54 +142,47 @@ onMounted(() => {
   // 4. Initialize All Brush Types
   const brushes = {
     pencil: new fabric.PencilBrush(canvas.value),
-    circle: new fabric.CircleBrush(canvas.value),
-    spray: new fabric.SprayBrush(canvas.value),
 
     // Pattern Brushes
     hline: new fabric.PatternBrush(canvas.value),
     vline: new fabric.PatternBrush(canvas.value),
-    square: new fabric.PatternBrush(canvas.value),
     diamond: new fabric.PatternBrush(canvas.value),
-    texture: new fabric.PatternBrush(canvas.value),
+    dotted: new fabric.PatternBrush(canvas.value),
   }
 
   // 5. Configure Pattern Brushes
   // Horizontal Line Pattern
   brushes.hline.getPatternSrc = function () {
-    const canvas = new fabric.StaticCanvas()
-    canvas.setDimensions({ width: 10, height: 10 })
-    const ctx = canvas.getContext()
+    const patternCanvas = document.createElement('canvas')
+    patternCanvas.width = 10
+    patternCanvas.height = 10
+    const ctx = patternCanvas.getContext('2d')
+
     ctx.strokeStyle = this.color
-    ctx.lineWidth = 5
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(0, 5)
     ctx.lineTo(10, 5)
     ctx.stroke()
-    return canvas.getElement()
+
+    return patternCanvas
   }
 
   // Vertical Line Pattern
   brushes.vline.getPatternSrc = function () {
-    const canvas = new fabric.StaticCanvas()
-    canvas.setDimensions({ width: 10, height: 10 })
-    const ctx = canvas.getContext()
+    const patternCanvas = document.createElement('canvas')
+    patternCanvas.width = 10
+    patternCanvas.height = 10
+    const ctx = patternCanvas.getContext('2d')
+
     ctx.strokeStyle = this.color
-    ctx.lineWidth = 5
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.moveTo(5, 0)
     ctx.lineTo(5, 10)
     ctx.stroke()
-    return canvas.getElement()
-  }
 
-  // Square Pattern
-  brushes.square.getPatternSrc = function () {
-    const canvas = new fabric.StaticCanvas()
-    canvas.setDimensions({ width: 12, height: 12 })
-    const ctx = canvas.getContext()
-    ctx.fillStyle = this.color
-    ctx.fillRect(0, 0, 10, 10)
-    return canvas.getElement()
+    return patternCanvas
   }
 
   // Diamond Pattern
@@ -217,31 +206,36 @@ onMounted(() => {
   // Texture Pattern
   const textureImg = new Image()
   textureImg.src = '../../assets/ladybug.png'
-  brushes.texture.source = textureImg
+  brushes.dotted.source = textureImg
 
   // 6. Brush Update Function
   const updateBrush = () => {
-    if (!canvas.value?.freeDrawingBrush) return
+    const brush = canvas.value?.freeDrawingBrush
+    if (!brush) return
 
-    canvas.value.freeDrawingBrush.color = elements.color.value
-    canvas.value.freeDrawingBrush.width = parseInt(elements.lineWidth.value) || 1
+    // Common properties
+    brush.color = elements.color.value
+    brush.width = parseInt(elements.lineWidth.value) || 1
 
-    canvas.value.freeDrawingBrush.shadow = new fabric.Shadow({
-      blur: parseInt(elements.shadowWidth.value) || 0,
-      color: elements.shadowColor.value,
-      offsetX: parseInt(elements.shadowOffsetX?.value ?? '0') || 0,
-      offsetY: parseInt(elements.shadowOffsetY?.value ?? '0') || 0,
-      affectStroke: true,
-    })
+    // Only apply shadow if supported
+    if ('shadow' in brush) {
+      brush.shadow = new fabric.Shadow({
+        blur: parseInt(elements.shadowWidth.value) || 0,
+        color: elements.shadowColor.value,
+        offsetX: parseInt(elements.shadowOffset.value) || 0,
+        offsetY: parseInt(elements.shadowOffset.value) || 0,
+        affectStroke: true,
+      })
+    }
   }
 
   // 7. Event Handlers
   elements.brushSelector.onchange = function () {
     const brushName = this.value
-    canvas.value.freeDrawingBrush = brushes[brushName] || brushes.pencil
+    canvas.value.freeDrawingBrush = brushes[brushName]
 
     // Force re-generation of pattern source (important!)
-    if (['hline', 'vline', 'square', 'diamond', 'texture'].includes(brushName)) {
+    if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
       const brush = canvas.value.freeDrawingBrush
       if (brush.getPatternSrc) {
         brush.source = brush.getPatternSrc.call(brush)
