@@ -1,7 +1,7 @@
 <template>
   <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
   <div id="drawing-mode-options">
-    <button id="drawing-mode" class="btn btn-info">Cancel drawing mode</button>
+    <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
     <button id="clear-canvas" class="btn btn-info">Clear</button>
     <textarea
       v-model="layerPrompt"
@@ -51,14 +51,18 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, markRaw, ref } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
+
 const layerPrompt = ref('')
 
 const layersStore = useLayers()
 const $ = (id) => document.getElementById(id)
-let canvas = ref(null)
+
+// Change from ref(null) to just null and markRaw later
+let canvas = null
+
 const renderNewLayer = (layer) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
@@ -69,14 +73,14 @@ const renderNewLayer = (layer) => {
       const fabricImage = new fabric.Image(img, {
         left: layer.left,
         top: layer.top,
-        selectable: layer.selectable,
-        hasControls: layer.hasControls,
+        selectable: true,
+        hasControls: true,
       })
-      // fabricImage.scaleToWidth(250)
-      canvas.value.isDrawingMode = false
-      canvas.value.add(fabricImage)
-      canvas.value.requestRenderAll()
-      canvas.value.setActiveObject(fabricImage)
+
+      fabricImage.scaleToWidth(250)
+      canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
+      canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
+      canvas.renderAll() // <-- changed from canvas.value.renderAll()
     } catch (error) {
       console.error('Failed to add image to canvas:', error)
     }
@@ -87,6 +91,12 @@ const renderNewLayer = (layer) => {
   }
 }
 
+const updateDrawingModeButtonText = async () => {
+  $('drawing-mode').textContent = canvas.isDrawingMode
+    ? 'Cancel drawing mode'
+    : 'Enter drawing mode'
+}
+
 const generateLayer = async () => {
   try {
     const response = await fetch('http://localhost:53578/api/generatelayer', {
@@ -94,7 +104,6 @@ const generateLayer = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt: layerPrompt.value,
-        img_id: 42,
       }),
     })
 
@@ -103,6 +112,7 @@ const generateLayer = async () => {
 
     const newLayer = {
       id: Date.now(),
+      prompt: layerPrompt.value,
       url: imageUrl,
       left: 100,
       top: 100,
@@ -117,17 +127,20 @@ const generateLayer = async () => {
     alert('Image generation failed. Please try again.')
   }
 }
-onMounted(() => {
-  // 1. Initialize Fabric Canvas
-  canvas.value = new fabric.Canvas($('freeCanvas'), {
-    isDrawingMode: true,
-  })
 
-  // 2. Set Default Brush
-  canvas.value.freeDrawingBrush = new fabric.PencilBrush(canvas.value)
+onMounted(() => {
+  // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
+  canvas = markRaw(
+    new fabric.Canvas($('freeCanvas'), {
+      isDrawingMode: false,
+    }),
+  )
+
+  // Set Default Brush
+  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
 
-  // 3. Get DOM Elements
+  // Get DOM Elements
   const elements = {
     drawingMode: $('drawing-mode'),
     clear: $('clear-canvas'),
@@ -139,19 +152,17 @@ onMounted(() => {
     brushSelector: $('drawing-mode-selector'),
   }
 
-  // 4. Initialize All Brush Types
+  // Initialize Brushes
   const brushes = {
-    pencil: new fabric.PencilBrush(canvas.value),
-
+    pencil: new fabric.PencilBrush(canvas),
     // Pattern Brushes
-    hline: new fabric.PatternBrush(canvas.value),
-    vline: new fabric.PatternBrush(canvas.value),
-    diamond: new fabric.PatternBrush(canvas.value),
-    dotted: new fabric.PatternBrush(canvas.value),
+    hline: new fabric.PatternBrush(canvas),
+    vline: new fabric.PatternBrush(canvas),
+    diamond: new fabric.PatternBrush(canvas),
+    dotted: new fabric.PatternBrush(canvas),
   }
 
-  // 5. Configure Pattern Brushes
-  // Horizontal Line Pattern
+  // Configure Pattern Brushes (same as before)
   brushes.hline.getPatternSrc = function () {
     const patternCanvas = document.createElement('canvas')
     patternCanvas.width = 10
@@ -168,7 +179,6 @@ onMounted(() => {
     return patternCanvas
   }
 
-  // Vertical Line Pattern
   brushes.vline.getPatternSrc = function () {
     const patternCanvas = document.createElement('canvas')
     patternCanvas.width = 10
@@ -185,10 +195,9 @@ onMounted(() => {
     return patternCanvas
   }
 
-  // Diamond Pattern
   brushes.diamond.getPatternSrc = function () {
-    const canvas = new fabric.StaticCanvas()
-    canvas.setDimensions({ width: 15, height: 15 })
+    const c = new fabric.StaticCanvas()
+    c.setDimensions({ width: 15, height: 15 })
     const rect = new fabric.Rect({
       width: 10,
       height: 10,
@@ -199,25 +208,22 @@ onMounted(() => {
       left: 7.5,
       top: 7.5,
     })
-    canvas.add(rect)
-    return canvas.getElement()
+    c.add(rect)
+    return c.getElement()
   }
 
-  // Texture Pattern
   const textureImg = new Image()
   textureImg.src = '../../assets/ladybug.png'
   brushes.dotted.source = textureImg
 
-  // 6. Brush Update Function
+  // Brush Update Function
   const updateBrush = () => {
-    const brush = canvas.value?.freeDrawingBrush
+    const brush = canvas.freeDrawingBrush
     if (!brush) return
 
-    // Common properties
     brush.color = elements.color.value
     brush.width = parseInt(elements.lineWidth.value) || 1
 
-    // Only apply shadow if supported
     if ('shadow' in brush) {
       brush.shadow = new fabric.Shadow({
         blur: parseInt(elements.shadowWidth.value) || 0,
@@ -229,21 +235,27 @@ onMounted(() => {
     }
   }
 
-  // 7. Event Handlers
+  // Event Handlers
   elements.brushSelector.onchange = function () {
     const brushName = this.value
-    canvas.value.freeDrawingBrush = brushes[brushName]
 
-    // Force re-generation of pattern source (important!)
-    if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
-      const brush = canvas.value.freeDrawingBrush
-      if (brush.getPatternSrc) {
-        brush.source = brush.getPatternSrc.call(brush)
+    if (brushName === 'Pencil') {
+      // Always create a new PencilBrush instance when switching to pencil
+      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
+    } else {
+      canvas.freeDrawingBrush = brushes[brushName]
+
+      if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
+        const brush = canvas.freeDrawingBrush
+        if (brush.getPatternSrc) {
+          brush.source = brush.getPatternSrc.call(brush)
+        }
       }
     }
 
     updateBrush()
   }
+
   elements.color.onchange = updateBrush
   elements.shadowColor.onchange = updateBrush
   elements.lineWidth.onchange = function () {
@@ -259,16 +271,15 @@ onMounted(() => {
     updateBrush()
   }
 
-  // 8. Other Controls
-  elements.clear.onclick = () => canvas.value.clear()
+  // Other Controls
+  elements.clear.onclick = () => canvas.clear()
+
   elements.drawingMode.onclick = () => {
-    canvas.value.isDrawingMode = !canvas.value.isDrawingMode
-    elements.drawingMode.textContent = canvas.value.isDrawingMode
-      ? 'Cancel drawing mode'
-      : 'Enter drawing mode'
+    canvas.isDrawingMode = !canvas.isDrawingMode
+    updateDrawingModeButtonText()
   }
 
-  // 9. Initial Update
+  // Initial brush update
   updateBrush()
 })
 </script>
