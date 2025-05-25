@@ -1,12 +1,10 @@
 <template>
   <div id="app">
-    <header>
-      <h1>Magic Quill</h1>
-    </header>
+    <header></header>
 
     <main>
-      <MagicQuillEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
-
+      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
+      <FreeCanvas @image-generated="displayGeneratedImage" />
       <ParametersPanel
         :params="generationParams"
         :models="availableModels"
@@ -28,14 +26,15 @@
 </template>
 
 <script>
-import MagicQuillEditor from './components/MagicQuillEditor.vue'
+import ImageEditor from './components/ImageEditor.vue'
 import ParametersPanel from './components/ParametersPanel.vue'
-
+import FreeCanvas from '@/components/FreeCanvas.vue'
 export default {
   name: 'App',
   components: {
-    MagicQuillEditor,
+    ImageEditor,
     ParametersPanel,
+    FreeCanvas,
   },
   data() {
     return {
