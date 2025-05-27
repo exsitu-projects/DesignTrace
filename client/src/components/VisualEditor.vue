@@ -1,61 +1,56 @@
 <template>
-  <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
-  <div id="drawing-mode-options">
-    <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
-    <button id="clear-canvas" class="btn btn-info">Clear</button>
-    <textarea
-      v-model="layerPrompt"
-      placeholder="Describe what you want to generate..."
-      rows="3"
-    ></textarea>
-    <button class="generate-button btn btn-dark" @click="generateLayer">Generate Layer</button>
-    <label for="drawing-mode-selector">
-      Mode:
-      <select id="drawing-mode-selector">
-        <option>Pencil</option>
-        <option>hline</option>
-        <option>vline</option>
-        <option>diamond</option>
-        <option>dotted</option>
-      </select>
-    </label>
+  <div class="col-6">
+    <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
+    <div id="drawing-mode-options">
+      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
+      <button id="clear-canvas" class="btn btn-info">Clear</button>
 
-    <label for="drawing-line-width">
-      Line width:
-      <span class="info">30</span>
-      <input type="range" min="0" max="150" id="drawing-line-width" />
-    </label>
+      <label for="drawing-mode-selector">
+        Mode:
+        <select id="drawing-mode-selector">
+          <option>Pencil</option>
+          <option>hline</option>
+          <option>vline</option>
+          <option>diamond</option>
+          <option>dotted</option>
+        </select>
+      </label>
 
-    <label for="drawing-color">
-      Line color:
-      <input type="color" id="drawing-color" />
-    </label>
+      <label for="drawing-line-width">
+        Line width:
+        <span class="info">30</span>
+        <input type="range" min="0" max="150" id="drawing-line-width" />
+      </label>
 
-    <label for="drawing-shadow-color">
-      Shadow color:
-      <input type="color" id="drawing-shadow-color" />
-    </label>
+      <label for="drawing-color">
+        Line color:
+        <input type="color" id="drawing-color" />
+      </label>
 
-    <label for="drawing-shadow-width">
-      Shadow width:
-      <span class="info">0</span>
-      <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
-    </label>
+      <label for="drawing-shadow-color">
+        Shadow color:
+        <input type="color" id="drawing-shadow-color" />
+      </label>
 
-    <label for="drawing-shadow-offset">
-      Shadow offset:
-      <span class="info">0</span>
-      <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
-    </label>
+      <label for="drawing-shadow-width">
+        Shadow width:
+        <span class="info">0</span>
+        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
+      </label>
+
+      <label for="drawing-shadow-offset">
+        Shadow offset:
+        <span class="info">0</span>
+        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
+      </label>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, markRaw, ref } from 'vue'
+import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
-
-const layerPrompt = ref('')
 
 const layersStore = useLayers()
 const $ = (id) => document.getElementById(id)
@@ -63,69 +58,47 @@ const $ = (id) => document.getElementById(id)
 // Change from ref(null) to just null and markRaw later
 let canvas = null
 
-const renderNewLayer = (layer) => {
-  const img = new Image()
-  img.crossOrigin = 'anonymous'
-  img.src = layer.url
+watch(
+  () => layersStore.layerPayload,
+  (newPayload) => {
+    const existingImage = canvas
+      .getObjects()
+      .find((obj) => obj.idInLayers === newPayload.idInLayers)
 
-  img.onload = () => {
-    try {
-      const fabricImage = new fabric.Image(img, {
-        left: layer.left,
-        top: layer.top,
-        selectable: true,
-        hasControls: true,
-      })
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = newPayload.url
 
-      fabricImage.scaleToWidth(250)
-      canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
-      canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
-      canvas.renderAll() // <-- changed from canvas.value.renderAll()
-    } catch (error) {
-      console.error('Failed to add image to canvas:', error)
+    img.onload = () => {
+      try {
+        const fabricImage = new fabric.Image(img, {
+          selectable: true,
+          hasControls: true,
+        })
+
+        fabricImage.scaleToWidth(250)
+        fabricImage.set('idInLayers', newPayload.idInLayers) // assign your own ID
+        if (existingImage) {
+          canvas.remove(existingImage)
+        }
+        canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
+        canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
+        canvas.renderAll() // <-- changed from canvas.value.renderAll()
+      } catch (error) {
+        console.error('Failed to add image to canvas:', error)
+      }
     }
-  }
 
-  img.onerror = () => {
-    console.error('Failed to load image:', layer.url)
-  }
-}
+    img.onerror = () => {
+      console.error('Failed to load image:', newPayload.url)
+    }
+  },
+)
 
 const updateDrawingModeButtonText = async () => {
   $('drawing-mode').textContent = canvas.isDrawingMode
     ? 'Cancel drawing mode'
     : 'Enter drawing mode'
-}
-
-const generateLayer = async () => {
-  try {
-    const response = await fetch('http://localhost:53578/api/generatelayer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: layerPrompt.value,
-      }),
-    })
-
-    const result = await response.json()
-    const imageUrl = result.images_base64
-
-    const newLayer = {
-      id: Date.now(),
-      prompt: layerPrompt.value,
-      url: imageUrl,
-      left: 100,
-      top: 100,
-      selectable: true,
-      hasControls: true,
-    }
-
-    layersStore.addLayer(newLayer)
-    renderNewLayer(newLayer)
-  } catch (error) {
-    console.error('Error generating image:', error)
-    alert('Image generation failed. Please try again.')
-  }
 }
 
 onMounted(() => {

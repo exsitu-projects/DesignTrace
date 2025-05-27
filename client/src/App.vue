@@ -3,14 +3,16 @@
     <header></header>
 
     <main>
-      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
-      <FreeCanvas @image-generated="displayGeneratedImage" />
+      <div class="row">
+        <VisualEditor />
+        <SemanticEditor />
+      </div>
       <ParametersPanel
         :params="generationParams"
         :models="availableModels"
         @update:params="updateParams"
       />
-
+      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
       <div class="preview-section" v-if="generatedImage">
         <h2>Generated Image</h2>
         <div class="image-preview">
@@ -28,10 +30,14 @@
 <script>
 import ImageEditor from './components/ImageEditor.vue'
 import ParametersPanel from './components/ParametersPanel.vue'
-import FreeCanvas from '@/components/FreeCanvas.vue'
+import FreeCanvas from '@/components/VisualEditor.vue'
+import VisualEditor from '@/components/VisualEditor.vue'
+import SemanticEditor from '@/components/SemanticEditor.vue'
 export default {
   name: 'App',
   components: {
+    SemanticEditor,
+    VisualEditor,
     ImageEditor,
     ParametersPanel,
     FreeCanvas,
@@ -90,7 +96,7 @@ export default {
     },
   },
   mounted() {
-    this.fetchModels()
+    // this.fetchModels()
   },
 }
 </script>

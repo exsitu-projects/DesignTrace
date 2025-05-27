@@ -331,26 +331,6 @@ export default {
         alert('Image generation failed. Please try again.')
       }
     },
-    async generateLayer() {
-      try {
-        const response = await fetch('http://localhost:53578/api/generatelayer', {
-          // const response = await fetch('/api/magic_quill/generate', {
-
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: this.prompt,
-            img_id: 42,
-          }),
-        })
-
-        const result = await response.json()
-        this.$emit('image-generated', result.images_base64)
-      } catch (error) {
-        console.error('Error generating image:', error)
-        alert('Image generation failed. Please try again.')
-      }
-    },
   },
 }
 </script>
