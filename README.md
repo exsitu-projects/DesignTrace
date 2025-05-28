@@ -8,7 +8,7 @@ npm install
 ```
 For development, run
 ```
-npm run install 
+npm run dev 
 ```
 ----------------------
 Backend:
