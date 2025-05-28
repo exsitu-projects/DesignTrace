@@ -1,4 +1,17 @@
-
+For Front end, please go to client folder by 
+```
+cd client
+```
+and install required dependencies 
+```
+npm install 
+```
+For development, run
+```
+npm run install 
+```
+----------------------
+Backend:
 To update the latest features, pull the latest code and re-install the gradio_magicquill:
 ```
 pip uninstall -y gradio_magicquill-0.0.1-py3-none-any.whl
