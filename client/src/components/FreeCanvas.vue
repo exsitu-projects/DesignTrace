@@ -1,6 +1,6 @@
 <template>
-  <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
-  <div id="drawing-mode-options">
+  <canvas id="freeCanvas"></canvas>
+  <div class="drawing-mode-options border border-black">
     <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
     <button id="clear-canvas" class="btn btn-info">Clear</button>
 
@@ -55,39 +55,6 @@ const $ = (id) => document.getElementById(id)
 
 // Change from ref(null) to just null and markRaw later
 let canvas = null
-watch(
-  () => layersStore.layerPayload,
-  (newPayload) => {
-    const existingImage = canvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.src = newPayload.url
-
-    img.onload = () => {
-      try {
-        const fabricImage = new fabric.Image(img, {
-          selectable: true,
-          hasControls: true,
-        })
-
-        fabricImage.scaleToWidth(250)
-        fabricImage.set('idInLayers', newPayload.id) // assign your own ID
-        if (existingImage) {
-          canvas.remove(existingImage)
-        }
-        canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
-        canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
-        canvas.renderAll() // <-- changed from canvas.value.renderAll()
-      } catch (error) {
-        console.error('Failed to add image to canvas:', error)
-      }
-    }
-
-    img.onerror = () => {
-      console.error('Failed to load image:', newPayload.url)
-    }
-  },
-)
 
 const updateDrawingModeButtonText = async () => {
   $('drawing-mode').textContent = canvas.isDrawingMode
@@ -100,14 +67,17 @@ onMounted(() => {
   canvas = markRaw(
     new fabric.Canvas($('freeCanvas'), {
       isDrawingMode: false,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      hoverCursor: 'pointer',
+      selection: false,
+      targetFindTolerance: 2,
     }),
   )
 
-  // Set Default Brush
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
 
-  // Get DOM Elements
   const elements = {
     drawingMode: $('drawing-mode'),
     clear: $('clear-canvas'),
@@ -144,6 +114,45 @@ onMounted(() => {
     ctx.stroke()
 
     return patternCanvas
+  }
+  canvas.on({
+    'object:moving': function (e) {
+      e.target.opacity = 0.5
+    },
+    'object:modified': function (e) {
+      e.target.opacity = 1
+    },
+  })
+  const loadImgFromUrl = (url) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.src = url
+
+    img.onload = () => {
+      try {
+        const fabricImage = new fabric.Image(img, {
+          selectable: true,
+          hasControls: true,
+          perPixelTargetFind: true,
+          hasBorders: false,
+        })
+
+        fabricImage.scaleToWidth(250)
+        // fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+        canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
+        canvas.renderAll() // <-- changed from canvas.value.renderAll()
+      } catch (error) {
+        console.error('Failed to add image to canvas:', error)
+      }
+    }
+
+    img.onerror = () => {
+      console.error('Failed to load image:', newPayload.url)
+    }
+  }
+
+  for (var i = 0, len = 15; i < len; i++) {
+    loadImgFromUrl('../assets/ladybug.png')
   }
 
   brushes.vline.getPatternSrc = function () {
@@ -251,4 +260,19 @@ onMounted(() => {
 })
 </script>
 
-<style scoped></style>
+<style>
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  height: 100%;
+  width: 100%;
+}
+
+canvas {
+  display: block; /* removes scrollbar from inline-block spacing */
+  width: 100vw;
+  height: 100vh;
+}
+</style>

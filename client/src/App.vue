@@ -3,27 +3,41 @@
     <header></header>
 
     <main>
-      <FreeCanvas></FreeCanvas>
-      <div class="row">
-        <VisualEditor />
-        <SemanticEditor />
-      </div>
-      <ParametersPanel
-        :params="generationParams"
-        :models="availableModels"
-        @update:params="updateParams"
-      />
-      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
-      <div class="preview-section" v-if="generatedImage">
-        <h2>Generated Image</h2>
-        <div class="image-preview">
-          <img :src="generatedImage" alt="Generated Image" />
-          <div class="image-actions">
-            <button @click="downloadImage">Download</button>
-            <button @click="useAsNewBase">Use as New Base</button>
-          </div>
+      <FreeCanvas class="free-canvas-wrapper"></FreeCanvas>
+
+      <button
+        class="btn btn-primary"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#collapseExample"
+        aria-expanded="false"
+        aria-controls="collapseExample"
+      >
+        Open Design Space
+      </button>
+
+      <div class="collapse" id="collapseExample">
+        <div class="card card-body" style="max-width: 100%">
+          <div class="row"><VisualEditor /> <SemanticEditor /></div>
         </div>
       </div>
+
+      <!--      <ParametersPanel-->
+      <!--        :params="generationParams"-->
+      <!--        :models="availableModels"-->
+      <!--        @update:params="updateParams"-->
+      <!--      />-->
+      <!--      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />-->
+      <!--      <div class="preview-section" v-if="generatedImage">-->
+      <!--        <h2>Generated Image</h2>-->
+      <!--        <div class="image-preview">-->
+      <!--          <img :src="generatedImage" alt="Generated Image" />-->
+      <!--          <div class="image-actions">-->
+      <!--            <button @click="downloadImage">Download</button>-->
+      <!--            <button @click="useAsNewBase">Use as New Base</button>-->
+      <!--          </div>-->
+      <!--        </div>-->
+      <!--      </div>-->
     </main>
   </div>
 </template>
@@ -105,29 +119,20 @@ export default {
 <style>
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  margin-top: 60px;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 2rem;
+.free-canvas-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
-main {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.result-container {
-  margin-top: 2rem;
-  text-align: center;
-}
-
-.result-container img {
-  max-width: 100%;
-  height: auto;
-  border: 1px solid #ddd;
+.editor-overlay {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.9); /* Optional: background for readability */
 }
 </style>

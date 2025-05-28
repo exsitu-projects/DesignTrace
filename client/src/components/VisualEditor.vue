@@ -1,7 +1,7 @@
 <template>
   <div class="col-6">
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
-    <div id="drawing-mode-options">
+    <div class="drawing-mode-options border border-black">
       <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
       <button id="clear-canvas" class="btn btn-info">Clear</button>
 
