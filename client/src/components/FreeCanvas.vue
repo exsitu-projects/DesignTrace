@@ -1,6 +1,15 @@
 <template>
   <canvas id="freeCanvas"></canvas>
   <div class="drawing-mode-options border border-black">
+    <button class="btn btn-info" @click="triggerFileSelect">Upload Image</button>
+    <input
+      type="file"
+      ref="fileInput"
+      multiple
+      accept="image/*"
+      @change="handleFiles"
+      style="display: none"
+    />
     <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
     <button id="clear-canvas" class="btn btn-info">Clear</button>
 
@@ -49,17 +58,77 @@
 import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
-
+let canvas = null
 const layersStore = useLayers()
 const $ = (id) => document.getElementById(id)
 
-// Change from ref(null) to just null and markRaw later
-let canvas = null
-
+const files = ref([])
+const triggerFileSelect = () => {
+  fileInput.value.click()
+}
+const fileInput = ref(null)
 const updateDrawingModeButtonText = async () => {
   $('drawing-mode').textContent = canvas.isDrawingMode
     ? 'Cancel drawing mode'
     : 'Enter drawing mode'
+}
+
+const handleFiles = async (event) => {
+  files.value = Array.from(event.target.files)
+  if (!files.value.length) {
+    alert('Please select at least one file')
+    return
+  }
+
+  for (const file of files.value) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      console.log(`Uploading`)
+      const response = await fetch('http://localhost:5555/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await response.json()
+      if (response.ok) {
+        console.log(`Uploaded ${file.name} as ${data.filepath}`)
+        loadImgFromUrl(data.filepath)
+      } else {
+        console.error(`Failed to upload ${file.name}: ${data.error}`)
+      }
+    } catch (err) {
+      console.error('Upload error:', err)
+    }
+  }
+}
+
+const loadImgFromUrl = (url) => {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.src = url
+  console.log(url)
+  img.onload = () => {
+    try {
+      const fabricImage = new fabric.Image(img, {
+        selectable: true,
+        hasControls: true,
+        perPixelTargetFind: true,
+        hasBorders: false,
+      })
+
+      fabricImage.scaleToWidth(250)
+      // fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+      canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
+      canvas.renderAll() // <-- changed from canvas.value.renderAll()
+    } catch (error) {
+      console.error('Failed to add image to canvas:', error)
+    }
+  }
+
+  img.onerror = () => {
+    console.error('Failed to load image')
+  }
 }
 
 onMounted(() => {
@@ -115,46 +184,17 @@ onMounted(() => {
 
     return patternCanvas
   }
+
   canvas.on({
     'object:moving': function (e) {
       e.target.opacity = 0.5
     },
     'object:modified': function (e) {
       e.target.opacity = 1
+      console.log('modified')
+      console.log(e.target)
     },
   })
-  const loadImgFromUrl = (url) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.src = url
-
-    img.onload = () => {
-      try {
-        const fabricImage = new fabric.Image(img, {
-          selectable: true,
-          hasControls: true,
-          perPixelTargetFind: true,
-          hasBorders: false,
-        })
-
-        fabricImage.scaleToWidth(250)
-        // fabricImage.set('idInLayers', newPayload.id) // assign your own ID
-        canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
-        canvas.renderAll() // <-- changed from canvas.value.renderAll()
-      } catch (error) {
-        console.error('Failed to add image to canvas:', error)
-      }
-    }
-
-    img.onerror = () => {
-      console.error('Failed to load image:', newPayload.url)
-    }
-  }
-
-  for (var i = 0, len = 15; i < len; i++) {
-    loadImgFromUrl('../assets/ladybug.png')
-  }
-
   brushes.vline.getPatternSrc = function () {
     const patternCanvas = document.createElement('canvas')
     patternCanvas.width = 10

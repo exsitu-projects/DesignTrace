@@ -22,22 +22,22 @@
         </div>
       </div>
 
-      <!--      <ParametersPanel-->
-      <!--        :params="generationParams"-->
-      <!--        :models="availableModels"-->
-      <!--        @update:params="updateParams"-->
-      <!--      />-->
-      <!--      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />-->
-      <!--      <div class="preview-section" v-if="generatedImage">-->
-      <!--        <h2>Generated Image</h2>-->
-      <!--        <div class="image-preview">-->
-      <!--          <img :src="generatedImage" alt="Generated Image" />-->
-      <!--          <div class="image-actions">-->
-      <!--            <button @click="downloadImage">Download</button>-->
-      <!--            <button @click="useAsNewBase">Use as New Base</button>-->
-      <!--          </div>-->
-      <!--        </div>-->
-      <!--      </div>-->
+      <ParametersPanel
+        :params="generationParams"
+        :models="availableModels"
+        @update:params="updateParams"
+      />
+      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
+      <div class="preview-section" v-if="generatedImage">
+        <h2>Generated Image</h2>
+        <div class="image-preview">
+          <img :src="generatedImage" alt="Generated Image" />
+          <div class="image-actions">
+            <button @click="downloadImage">Download</button>
+            <button @click="useAsNewBase">Use as New Base</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 </template>

@@ -11,6 +11,7 @@ from MagicQuill.llava_new import LLaVAModel
 from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 import time
 from flask_cors import CORS
+import uuid
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -181,7 +182,7 @@ def generate_image_handler():
         # Original model processing
 
         latent_samples, final_image, lineart_output, color_output = scribbleColorEditModel.process(
-            "SD1.5/realisticVisionV60B1_v51VAE.safetensors",
+            "SD1.5\\realisticVisionV60B1_v51VAE.safetensors", #"SD1.5\\realisticVisionV60B1_v51VAE.safetensors" in linux
             original_image,
             add_color_image,
             positive_prompt,
@@ -268,5 +269,5 @@ def serve_vue(path):
 
 
 if __name__ == '__main__':
-#     app.run(host='127.0.0.1', port=5000)
-	app.run(host='0.0.0.0', port=5000)
+    app.run(host='127.0.0.1', port=5000)
+	# app.run(host='0.0.0.0', port=5000)

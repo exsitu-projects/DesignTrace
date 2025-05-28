@@ -55,7 +55,6 @@ import { useLayers } from '@/stores/layersStore.js'
 const layersStore = useLayers()
 const $ = (id) => document.getElementById(id)
 
-// Change from ref(null) to just null and markRaw later
 let canvas = null
 watch(
   () => layersStore.layerPayload,
