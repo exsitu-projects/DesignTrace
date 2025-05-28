@@ -42,7 +42,6 @@ const generateNewLayer = async () => {
     const currentPrompt = layerPrompt.value
     const result = await generateLayer(currentPrompt)
     const imageUrl = result.images_base64
-    console.log(result.images_base64)
     const newLayer = {
       id: Date.now(),
       prompt: [currentPrompt],
@@ -65,11 +64,9 @@ const reGenerateLayer = async (idInLayers) => {
 
   const currentPrompt = layersStore.getPromptsOneLayer(idInLayers)
   const oneLinePrompt = currentPrompt.join(',')
-  console.log(oneLinePrompt)
   try {
     const result = await generateLayer(oneLinePrompt)
     layersStore.setLayerUrl(idInLayers, result.images_base64)
-    console.log(result.images_base64)
   } catch (error) {
     console.error('Error generating image:', error)
     alert('Image generation failed. Please try again.')

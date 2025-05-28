@@ -159,7 +159,6 @@ export default {
       const canvasRef =
         this.currentTool === 'brush' ? this.$refs.posDrawingCanvas : this.$refs.negDrawingCanvas
       const rect = canvasRef.getBoundingClientRect()
-      console.log(rect)
       this.lastX = e.clientX - rect.left
       this.lastY = e.clientY - rect.top
     },

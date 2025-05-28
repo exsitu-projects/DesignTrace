@@ -57,14 +57,10 @@ const $ = (id) => document.getElementById(id)
 
 // Change from ref(null) to just null and markRaw later
 let canvas = null
-
 watch(
   () => layersStore.layerPayload,
   (newPayload) => {
-    const existingImage = canvas
-      .getObjects()
-      .find((obj) => obj.idInLayers === newPayload.idInLayers)
-
+    const existingImage = canvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.src = newPayload.url
@@ -77,7 +73,7 @@ watch(
         })
 
         fabricImage.scaleToWidth(250)
-        fabricImage.set('idInLayers', newPayload.idInLayers) // assign your own ID
+        fabricImage.set('idInLayers', newPayload.id) // assign your own ID
         if (existingImage) {
           canvas.remove(existingImage)
         }

@@ -16,7 +16,7 @@ export const useLayers = defineStore('layers', () => {
   })
   function addLayer(layer) {
     layers.value.push(layer)
-    layerPayload.value = layer
+    layerPayload.value = { url: layer.url, id: layer.id }
   }
   function removeLayer(id) {
     layers.value = layers.value.filter((l) => l.id !== id)
@@ -38,7 +38,7 @@ export const useLayers = defineStore('layers', () => {
 
   function setLayerUrl(idInLayers, newUrl) {
     let found = findOneLayer(idInLayers)
-    layerPayload.value = { url: newUrl, idInLayers: idInLayers }
+    layerPayload.value = { url: newUrl, id: idInLayers }
   }
 
   return {
