@@ -1,6 +1,6 @@
 <template>
   <div class="col-6">
-    <canvas class="border border-black" id="freeCanvas" width="512" height="512"></canvas>
+    <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
     <div id="drawing-mode-options">
       <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
       <button id="clear-canvas" class="btn btn-info">Clear</button>
@@ -100,7 +100,7 @@ const updateDrawingModeButtonText = async () => {
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
-    new fabric.Canvas($('freeCanvas'), {
+    new fabric.Canvas($('visualEditor'), {
       isDrawingMode: false,
     }),
   )

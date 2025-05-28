@@ -3,6 +3,7 @@
     <header></header>
 
     <main>
+      <FreeCanvas></FreeCanvas>
       <div class="row">
         <VisualEditor />
         <SemanticEditor />
@@ -30,7 +31,7 @@
 <script>
 import ImageEditor from './components/ImageEditor.vue'
 import ParametersPanel from './components/ParametersPanel.vue'
-import FreeCanvas from '@/components/VisualEditor.vue'
+import FreeCanvas from '@/components/FreeCanvas.vue'
 import VisualEditor from '@/components/VisualEditor.vue'
 import SemanticEditor from '@/components/SemanticEditor.vue'
 export default {
