@@ -107,6 +107,38 @@ onMounted(() => {
   // Set Default Brush
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
+  const domCanvas = canvas.lowerCanvasEl
+
+  const canvasElement = canvas.lowerCanvasEl
+
+  window.addEventListener('mouseup', (e) => {
+    const rect = canvasElement.getBoundingClientRect()
+
+    if (
+      layersStore.sharedDragData.dragged &&
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
+    ) {
+      console.log('Mouse up inside visualEditor canvas')
+      // handle drop
+      const droppedObj = layersStore.sharedDragData.obj
+      const newLayer = {
+        id: Date.now(),
+        prompt: ['x'],
+        url: droppedObj.src,
+        left: droppedObj.left,
+        top: droppedObj.top,
+        selectable: true,
+        hasControls: true,
+      }
+
+      layersStore.addLayer(newLayer)
+      layersStore.sharedDragData.dragged = false
+    } else {
+    }
+  })
 
   // Get DOM Elements
   const elements = {

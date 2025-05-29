@@ -29,7 +29,7 @@ def upload_image():
     print(save_path)
     file.save(save_path)
 
-    return jsonify({"message": "File saved", "filepath": filepath})
+    return jsonify({"message": "File saved", "filepath": filepath, "id": unique_name})
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5555)

@@ -7,7 +7,7 @@
       ref="fileInput"
       multiple
       accept="image/*"
-      @change="handleFiles"
+      @change="uploadFiles"
       style="display: none"
     />
     <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
@@ -73,7 +73,7 @@ const updateDrawingModeButtonText = async () => {
     : 'Enter drawing mode'
 }
 
-const handleFiles = async (event) => {
+const uploadFiles = async (event) => {
   files.value = Array.from(event.target.files)
   if (!files.value.length) {
     alert('Please select at least one file')
@@ -85,15 +85,13 @@ const handleFiles = async (event) => {
     formData.append('file', file)
 
     try {
-      console.log(`Uploading`)
       const response = await fetch('http://localhost:5555/upload', {
         method: 'POST',
         body: formData,
       })
       const data = await response.json()
       if (response.ok) {
-        console.log(`Uploaded ${file.name} as ${data.filepath}`)
-        loadImgFromUrl(data.filepath)
+        loadImgFromUrl(data.filepath, data.id)
       } else {
         console.error(`Failed to upload ${file.name}: ${data.error}`)
       }
@@ -103,11 +101,10 @@ const handleFiles = async (event) => {
   }
 }
 
-const loadImgFromUrl = (url) => {
+const loadImgFromUrl = (url, id) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = url
-  console.log(url)
   img.onload = () => {
     try {
       const fabricImage = new fabric.Image(img, {
@@ -118,7 +115,7 @@ const loadImgFromUrl = (url) => {
       })
 
       fabricImage.scaleToWidth(250)
-      // fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+      fabricImage.set('idInUpload', id) // assign your own ID
       canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
       canvas.renderAll() // <-- changed from canvas.value.renderAll()
     } catch (error) {
@@ -185,14 +182,32 @@ onMounted(() => {
     return patternCanvas
   }
 
+  // canvas.on('mouse:down', (opt) => {
+  //   const event = new CustomEvent('fabric-object-dragged', {
+  //     detail: opt.target.toObject(),
+  //   })
+  //   if (opt.target) {
+  //     window.dispatchEvent(event)
+  //     console.log('i have ')
+  //     layersStore.sharedDragData.draggedObject = opt.target.toObject() // clone as JSON
+  //   }
+  // })
+
   canvas.on({
     'object:moving': function (e) {
       e.target.opacity = 0.5
     },
     'object:modified': function (e) {
       e.target.opacity = 1
-      console.log('modified')
-      console.log(e.target)
+    },
+    'mouse:down': function (e) {
+      if (e.target && !layersStore.sharedDragData.dragged) {
+        layersStore.sharedDragData.obj = e.target.toObject()
+        layersStore.sharedDragData.dragged = true
+        console.log('layersStore.sharedDragData:', layersStore.sharedDragData.obj)
+      } else {
+        console.log('Clicked on empty canvas area')
+      }
     },
   })
   brushes.vline.getPatternSrc = function () {
