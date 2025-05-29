@@ -1,26 +1,18 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
-export const useObjects = defineStore('objects', {
-  state: () => ({
-    //image
-    dropped: false,
-    searchString: '',
-    numSearchResult: 30,
-    searchPromiseState: {
-      loading: false,
-      data: [],
-      error: null,
-    },
-  }),
-  actions: {
-    addColourToCanvas(rgbArray) {
-      this.currentColor = rgbArray //dominant color
-      this.currentColorPalette = [[...rgbArray]]
-    },
-    setCurrentImageId(id) {
-      this.currentImageId = id
-    },
-
-    //process uploaded images
-  },
+export const useObject = defineStore('object', () => {
+  // 'notDragging', 'startDragging', 'finishedDragging'
+  const obj = ref(null)
+  const dragState = ref('notDragging')
+  const startDragTop = ref(0)
+  const startDragLeft = ref(0)
+  const id = ref(null)
+  return {
+    id,
+    obj,
+    dragState,
+    startDragTop,
+    startDragLeft,
+  }
 })

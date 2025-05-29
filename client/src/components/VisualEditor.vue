@@ -51,11 +51,14 @@
 import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
+import { useObject } from '@/stores/objectStore.js'
 
 const layersStore = useLayers()
+const objectStore = useObject()
 const $ = (id) => document.getElementById(id)
 
 let canvas = null
+
 watch(
   () => layersStore.layerPayload,
   (newPayload) => {
@@ -115,28 +118,31 @@ onMounted(() => {
     const rect = canvasElement.getBoundingClientRect()
 
     if (
-      layersStore.sharedDragData.dragged &&
+      objectStore.dragState === 'startDragging' &&
       e.clientX >= rect.left &&
       e.clientX <= rect.right &&
       e.clientY >= rect.top &&
       e.clientY <= rect.bottom
     ) {
-      console.log('Mouse up inside visualEditor canvas')
+      //Mouse up inside visualEditor canvas and dragging
       // handle drop
-      const droppedObj = layersStore.sharedDragData.obj
+      const droppedObj = objectStore.obj
+      objectStore.startDragTop = droppedObj.top
+      objectStore.startDragLeft = droppedObj.left
       const newLayer = {
         id: Date.now(),
-        prompt: ['x'],
+        prompt: ['x'], ////todo change here
         url: droppedObj.src,
-        left: droppedObj.left,
-        top: droppedObj.top,
+        left: e.target.left,
+        top: e.target.top,
         selectable: true,
         hasControls: true,
       }
 
       layersStore.addLayer(newLayer)
-      layersStore.sharedDragData.dragged = false
+      objectStore.dragState = 'finishedDragging'
     } else {
+      objectStore.dragState = 'notDragging'
     }
   })
 

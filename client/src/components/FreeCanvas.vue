@@ -1,56 +1,58 @@
 <template>
-  <canvas id="freeCanvas"></canvas>
-  <div class="drawing-mode-options border border-black">
-    <button class="btn btn-info" @click="triggerFileSelect">Upload Image</button>
-    <input
-      type="file"
-      ref="fileInput"
-      multiple
-      accept="image/*"
-      @change="uploadFiles"
-      style="display: none"
-    />
-    <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
-    <button id="clear-canvas" class="btn btn-info">Clear</button>
+  <div class="free-canvas-wrapper">
+    <canvas id="freeCanvas"></canvas>
+    <div class="drawing-mode-options border border-black">
+      <button class="btn btn-info" @click="triggerFileSelect">Upload Image</button>
+      <input
+        type="file"
+        ref="fileInput"
+        multiple
+        accept="image/*"
+        @change="uploadFiles"
+        style="display: none"
+      />
+      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
+      <button id="clear-canvas" class="btn btn-info">Clear</button>
 
-    <label for="drawing-mode-selector">
-      Mode:
-      <select id="drawing-mode-selector">
-        <option>Pencil</option>
-        <option>hline</option>
-        <option>vline</option>
-        <option>diamond</option>
-        <option>dotted</option>
-      </select>
-    </label>
+      <label for="drawing-mode-selector">
+        Mode:
+        <select id="drawing-mode-selector">
+          <option>Pencil</option>
+          <option>hline</option>
+          <option>vline</option>
+          <option>diamond</option>
+          <option>dotted</option>
+        </select>
+      </label>
 
-    <label for="drawing-line-width">
-      Line width:
-      <span class="info">30</span>
-      <input type="range" min="0" max="150" id="drawing-line-width" />
-    </label>
+      <label for="drawing-line-width">
+        Line width:
+        <span class="info">30</span>
+        <input type="range" min="0" max="150" id="drawing-line-width" />
+      </label>
 
-    <label for="drawing-color">
-      Line color:
-      <input type="color" id="drawing-color" />
-    </label>
+      <label for="drawing-color">
+        Line color:
+        <input type="color" id="drawing-color" />
+      </label>
 
-    <label for="drawing-shadow-color">
-      Shadow color:
-      <input type="color" id="drawing-shadow-color" />
-    </label>
+      <label for="drawing-shadow-color">
+        Shadow color:
+        <input type="color" id="drawing-shadow-color" />
+      </label>
 
-    <label for="drawing-shadow-width">
-      Shadow width:
-      <span class="info">0</span>
-      <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
-    </label>
+      <label for="drawing-shadow-width">
+        Shadow width:
+        <span class="info">0</span>
+        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
+      </label>
 
-    <label for="drawing-shadow-offset">
-      Shadow offset:
-      <span class="info">0</span>
-      <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
-    </label>
+      <label for="drawing-shadow-offset">
+        Shadow offset:
+        <span class="info">0</span>
+        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
+      </label>
+    </div>
   </div>
 </template>
 
@@ -58,9 +60,29 @@
 import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
+import { useObject } from '@/stores/objectStore.js'
+
 let canvas = null
 const layersStore = useLayers()
+const objectStore = useObject()
 const $ = (id) => document.getElementById(id)
+
+watch(
+  () => objectStore.dragState,
+  (newVal) => {
+    if (newVal === 'finishedDragging') {
+      const draggedObj = canvas.getObjects().find((obj) => obj.idInUpload === objectStore.id)
+      if (draggedObj) {
+        draggedObj.set({
+          left: objectStore.startDragLeft,
+          top: objectStore.startDragTop,
+        })
+        draggedObj.setCoords() // Very important for hit detection and rendering
+        canvas.renderAll()
+      }
+    }
+  },
+)
 
 const files = ref([])
 const triggerFileSelect = () => {
@@ -182,17 +204,6 @@ onMounted(() => {
     return patternCanvas
   }
 
-  // canvas.on('mouse:down', (opt) => {
-  //   const event = new CustomEvent('fabric-object-dragged', {
-  //     detail: opt.target.toObject(),
-  //   })
-  //   if (opt.target) {
-  //     window.dispatchEvent(event)
-  //     console.log('i have ')
-  //     layersStore.sharedDragData.draggedObject = opt.target.toObject() // clone as JSON
-  //   }
-  // })
-
   canvas.on({
     'object:moving': function (e) {
       e.target.opacity = 0.5
@@ -201,12 +212,11 @@ onMounted(() => {
       e.target.opacity = 1
     },
     'mouse:down': function (e) {
-      if (e.target && !layersStore.sharedDragData.dragged) {
-        layersStore.sharedDragData.obj = e.target.toObject()
-        layersStore.sharedDragData.dragged = true
-        console.log('layersStore.sharedDragData:', layersStore.sharedDragData.obj)
-      } else {
-        console.log('Clicked on empty canvas area')
+      // start dragging
+      if (e.target && objectStore.dragState === 'notDragging') {
+        objectStore.id = e.target.idInUpload
+        objectStore.obj = e.target.toObject()
+        objectStore.dragState = 'startDragging'
       }
     },
   })
@@ -329,5 +339,12 @@ canvas {
   display: block; /* removes scrollbar from inline-block spacing */
   width: 100vw;
   height: 100vh;
+}
+
+.free-canvas-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 </style>

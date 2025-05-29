@@ -3,7 +3,7 @@
     <header></header>
 
     <main>
-      <FreeCanvas class="free-canvas-wrapper"></FreeCanvas>
+      <FreeCanvas></FreeCanvas>
 
       <button
         class="btn btn-primary"
@@ -17,7 +17,7 @@
       </button>
 
       <div class="collapse" id="collapseExample">
-        <div class="card card-body" style="max-width: 100%">
+        <div class="card card-body" style="max-width: 80%">
           <div class="row"><VisualEditor /> <SemanticEditor /></div>
         </div>
       </div>
@@ -119,13 +119,6 @@ export default {
 <style>
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
-}
-
-.free-canvas-wrapper {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
 }
 
 .editor-overlay {

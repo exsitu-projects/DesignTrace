@@ -4,8 +4,7 @@ import { ref } from 'vue'
 export const useLayers = defineStore('layers', () => {
   const layers = ref([])
   const layerPayload = ref(null)
-  const sharedDragData = { obj: ref(null), dragged: false }
-  //for testing the layers array only
+
   layers.value.push({
     id: Date.now(),
     prompt: ['apple'],
@@ -14,7 +13,7 @@ export const useLayers = defineStore('layers', () => {
     top: 100,
     selectable: true,
     hasControls: true,
-  })
+  }) //for testing the layers array only
   function addLayer(layer) {
     layers.value.push(layer)
     layerPayload.value = { url: layer.url, id: layer.id, left: layer.left, top: layer.top }
@@ -43,7 +42,6 @@ export const useLayers = defineStore('layers', () => {
   }
 
   return {
-    sharedDragData,
     layers,
     layerPayload,
     addLayer,
