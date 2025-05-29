@@ -48,6 +48,7 @@ const generateNewLayer = async () => {
       top: 100,
       selectable: true,
       hasControls: true,
+      type: 'object',
     }
     layersStore.addLayer(newLayer)
   } catch (error) {
@@ -82,7 +83,7 @@ const reGenerateLayer = async (idInLayers) => {
     >
       <template #item="{ element, index }">
         <div class="list-group-item">
-          <div>
+          <div v-if="index > 0">
             <strong>Object {{ index }}</strong>
           </div>
 
@@ -94,7 +95,7 @@ const reGenerateLayer = async (idInLayers) => {
             :component-data="{ type: 'transition', name: 'flip-list' }"
           >
             <template #item="{ element: label, index: labelIndex }">
-              <EditableLabel v-model="element.prompt[labelIndex]" />
+              <EditableLabel v-model="element.prompt[labelIndex]" :type="element.type" />
             </template>
           </draggable>
           <i class="bx bx-plus-square m-auto btn btn-light" @click="addNewLabel(element.id)"></i>

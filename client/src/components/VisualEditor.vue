@@ -181,6 +181,7 @@ onMounted(() => {
         top: pointer.y,
         selectable: true,
         hasControls: true,
+        type: 'object',
       }
       layersStore.addLayer(newLayer)
       objectStore.dragState = 'finishedDragging'

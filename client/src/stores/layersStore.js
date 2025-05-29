@@ -7,12 +7,19 @@ export const useLayers = defineStore('layers', () => {
 
   layers.value.push({
     id: Date.now(),
+    prompt: ['A bright living room with minimalistic design'],
+    url: 'xxx',
+    type: 'context',
+  }) //for testing the layers array only
+  layers.value.push({
+    id: Date.now(),
     prompt: ['apple'],
     url: 'xxx',
     left: 100,
     top: 100,
     selectable: true,
     hasControls: true,
+    type: 'object',
   }) //for testing the layers array only
   function addLayer(layer) {
     layers.value.push(layer)
