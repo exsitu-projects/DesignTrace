@@ -38,7 +38,7 @@ export const useLayers = defineStore('layers', () => {
 
   function setLayerUrl(idInLayers, newUrl) {
     let found = findOneLayer(idInLayers)
-    layerPayload.value = { url: newUrl, id: idInLayers }
+    layerPayload.value = { url: newUrl, id: idInLayers, left: 0, top: 0 }
   }
 
   return {

@@ -72,6 +72,9 @@ watch(
         const fabricImage = new fabric.Image(img, {
           selectable: true,
           hasControls: true,
+          left: newPayload.left,
+          top: newPayload.top,
+          //newPayload.left newPayload.top
         })
 
         fabricImage.scaleToWidth(250)
@@ -129,16 +132,16 @@ onMounted(() => {
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
+      const pointer = canvas.getPointer(e)
       const newLayer = {
         id: Date.now(),
         prompt: ['x'], ////todo change here
         url: droppedObj.src,
-        left: e.target.left,
-        top: e.target.top,
+        left: pointer.x,
+        top: pointer.y,
         selectable: true,
         hasControls: true,
       }
-
       layersStore.addLayer(newLayer)
       objectStore.dragState = 'finishedDragging'
     } else {

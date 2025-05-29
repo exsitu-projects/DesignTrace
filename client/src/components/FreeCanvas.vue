@@ -158,7 +158,7 @@ onMounted(() => {
       width: window.innerWidth,
       height: window.innerHeight,
       hoverCursor: 'pointer',
-      selection: false,
+      selection: true,
       targetFindTolerance: 2,
     }),
   )
