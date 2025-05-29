@@ -16,6 +16,8 @@ export const useLayers = defineStore('layers', () => {
   }) //for testing the layers array only
   function addLayer(layer) {
     layers.value.push(layer)
+  }
+  function addDOMLayer(layer) {
     layerPayload.value = { url: layer.url, id: layer.id, left: layer.left, top: layer.top }
   }
   function removeLayer(id) {
@@ -45,6 +47,7 @@ export const useLayers = defineStore('layers', () => {
     layers,
     layerPayload,
     addLayer,
+    addDOMLayer,
     removeLayer,
     addNewLabel,
     getPromptsOneLayer,

@@ -31,5 +31,23 @@ def upload_image():
 
     return jsonify({"message": "File saved", "filepath": filepath, "id": unique_name})
 
+
+# Imports the Google Cloud client library
+# from google.cloud import vision
+# @app.route("/api/run-vision")
+# def run_quickstart():
+#     client = vision.ImageAnnotatorClient()
+#     file_uri = "gs://cloud-samples-data/vision/label/wakeupcat.jpg"
+#
+#     image = vision.Image()
+#     image.source.image_uri = file_uri
+#
+#     response = client.label_detection(image=image)
+#     labels = response.label_annotations
+#
+#     label_descriptions = [label.description for label in labels]
+#
+#     return jsonify({"labels": label_descriptions})
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5555)

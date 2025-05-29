@@ -56,8 +56,34 @@ import { useObject } from '@/stores/objectStore.js'
 const layersStore = useLayers()
 const objectStore = useObject()
 const $ = (id) => document.getElementById(id)
-
 let canvas = null
+const describeImage = async (image_path) => {
+  try {
+    objectStore.promiseLoadImageLabel = 'loading' // Moved to top
+
+    const response = await fetch('http://localhost:5000/api/image_to_text', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image_path }),
+    })
+
+    const result = await response.json()
+
+    if (response.ok) {
+      return result.result
+    } else {
+      console.log(result.error)
+      return null // Optional: explicitly return null on error
+    }
+  } catch (err) {
+    console.log(err.message)
+    return null // Optional: consistently return on error
+  } finally {
+    objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
+  }
+}
 
 watch(
   () => layersStore.layerPayload,
@@ -117,7 +143,7 @@ onMounted(() => {
 
   const canvasElement = canvas.lowerCanvasEl
 
-  window.addEventListener('mouseup', (e) => {
+  window.addEventListener('mouseup', async (e) => {
     const rect = canvasElement.getBoundingClientRect()
 
     if (
@@ -132,10 +158,24 @@ onMounted(() => {
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
-      const pointer = canvas.getPointer(e)
+      const parsedUrl = droppedObj.src.match(/assets\/.*/)[0]
+
+      const pointer = canvas.getPointer(e, true) // use `true` to skip viewportTransform
+
+      const newId = Date.now()
+      const newLayerDOMInfo = {
+        id: newId,
+        url: droppedObj.src,
+        left: pointer.x,
+        top: pointer.y,
+      }
+      layersStore.addDOMLayer(newLayerDOMInfo)
+      const extractedPrompt = await describeImage(parsedUrl)
+      // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
+      // to sent to back end it should be parsed to "assets/..."
       const newLayer = {
-        id: Date.now(),
-        prompt: ['x'], ////todo change here
+        id: newId,
+        prompt: [extractedPrompt],
         url: droppedObj.src,
         left: pointer.x,
         top: pointer.y,

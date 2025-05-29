@@ -12,7 +12,8 @@ from MagicQuill.scribble_color_edit import ScribbleColorEditModel
 import time
 from flask_cors import CORS
 import uuid
-
+import traceback
+from torchvision import transforms
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 AUTO_SAVE = False
@@ -122,6 +123,26 @@ def guess_prompt_handler():
     res = guess(original_image_tensor, add_color_image_tensor, add_edge_mask)
     return jsonify({'result': res})
 
+STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
+
+
+@app.route('/api/image_to_text', methods=['POST'])
+def image_to_text_handler():
+    data = request.json
+    image_path = data.get('image_path')  # e.g. "example.jpg"
+    full_path = os.path.join('static', image_path)
+
+    try:
+        # Convert to numpy array and then to tensor with correct shape
+        image = Image.open(full_path).convert('RGB')
+        image_np = np.array(image)  # shape (H, W, C)
+        image_tensor = torch.from_numpy(image_np).float() / 255.0  # normalize
+
+        result = llavaModel.generate_description([image_tensor], "You are an expert image analyst. Provide one concise but highly informative sentence describing the image. Include the main objects present, with clear details about their important features or appearance, the setting or background context that helps understand where or how the scene is, and the overall style, mood, or artistic impression of the image (e.g., photo-realistic, colorful, minimalistic, vintage). Avoid vague or generic descriptions. Be specific and highlight what makes the image unique or interesting. Example output: 'A vibrant pink flower with delicate dewdrops on its petals stands out sharply against a blurred green meadow background, captured in soft natural light with a shallow depth of field.'")
+        return jsonify({'result': result})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': f"{type(e).__name__}: {str(e)}"}), 500
 
 @app.route('/api/magic_quill/process_background_img', methods=['POST'])
 def process_background_img():

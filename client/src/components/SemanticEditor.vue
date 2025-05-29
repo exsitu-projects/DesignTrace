@@ -3,24 +3,13 @@ import draggable from 'vuedraggable'
 import { useLayers } from '@/stores/layersStore.js'
 import { ref } from 'vue'
 import EditableLabel from '@/components/EditableLabel.vue'
+import { useObject } from '@/stores/objectStore.js'
 
 const layerPrompt = ref('')
 const layersStore = useLayers()
+const objectStore = useObject()
 const layerArr = layersStore.layers
-const myList = ref([
-  { name: ['John', 'Joe'], id: 0 },
-  { name: ['Joao'], id: 1 },
-  { name: ['Bob'], id: 2 },
-])
 let dragging = false
-let componentData = {
-  type: 'transition',
-  name: 'flip-list',
-}
-
-function replace() {
-  myList.value = [{ name: ['Edgard'], id: 3 }]
-}
 
 const addNewLabel = (idInLayers) => {
   layersStore.addNewLabel(idInLayers)
@@ -42,8 +31,17 @@ const generateNewLayer = async () => {
     const currentPrompt = layerPrompt.value
     const result = await generateLayer(currentPrompt)
     const imageUrl = result.images_base64
+
+    const newId = Date.now()
+    const newLayerDOMInfo = {
+      id: newId,
+      url: imageUrl,
+      left: 100,
+      top: 100,
+    }
+    layersStore.addDOMLayer(newLayerDOMInfo)
     const newLayer = {
-      id: Date.now(),
+      id: newId,
       prompt: [currentPrompt],
       url: imageUrl,
       left: 100,
@@ -51,7 +49,6 @@ const generateNewLayer = async () => {
       selectable: true,
       hasControls: true,
     }
-
     layersStore.addLayer(newLayer)
   } catch (error) {
     console.error('Error generating image:', error)
@@ -109,6 +106,13 @@ const reGenerateLayer = async (idInLayers) => {
       </template>
 
       <template #footer>
+        <div
+          v-show="objectStore.promiseLoadImageLabel === 'loading'"
+          class="spinner-border"
+          role="status"
+        >
+          <span class="visually-hidden">Loading...</span>
+        </div>
         <textarea
           v-model="layerPrompt"
           placeholder="Describe what you want to generate..."
