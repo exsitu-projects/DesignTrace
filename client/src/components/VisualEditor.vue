@@ -1,49 +1,49 @@
 <template>
   <div class="col-6">
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
-    <div class="drawing-mode-options border border-black">
-      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
-      <button id="clear-canvas" class="btn btn-info">Clear</button>
+    <!--    <div class="drawing-mode-options border border-black">-->
+    <!--      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>-->
+    <!--      <button id="clear-canvas" class="btn btn-info">Clear</button>-->
 
-      <label for="drawing-mode-selector">
-        Mode:
-        <select id="drawing-mode-selector">
-          <option>Pencil</option>
-          <option>hline</option>
-          <option>vline</option>
-          <option>diamond</option>
-          <option>dotted</option>
-        </select>
-      </label>
+    <!--      <label for="drawing-mode-selector">-->
+    <!--        Mode:-->
+    <!--        <select id="drawing-mode-selector">-->
+    <!--          <option>Pencil</option>-->
+    <!--          <option>hline</option>-->
+    <!--          <option>vline</option>-->
+    <!--          <option>diamond</option>-->
+    <!--          <option>dotted</option>-->
+    <!--        </select>-->
+    <!--      </label>-->
 
-      <label for="drawing-line-width">
-        Line width:
-        <span class="info">30</span>
-        <input type="range" min="0" max="150" id="drawing-line-width" />
-      </label>
+    <!--      <label for="drawing-line-width">-->
+    <!--        Line width:-->
+    <!--        <span class="info">30</span>-->
+    <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
+    <!--      </label>-->
 
-      <label for="drawing-color">
-        Line color:
-        <input type="color" id="drawing-color" />
-      </label>
+    <!--      <label for="drawing-color">-->
+    <!--        Line color:-->
+    <!--        <input type="color" id="drawing-color" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-color">
-        Shadow color:
-        <input type="color" id="drawing-shadow-color" />
-      </label>
+    <!--      <label for="drawing-shadow-color">-->
+    <!--        Shadow color:-->
+    <!--        <input type="color" id="drawing-shadow-color" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-width">
-        Shadow width:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
-      </label>
+    <!--      <label for="drawing-shadow-width">-->
+    <!--        Shadow width:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-offset">
-        Shadow offset:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
-      </label>
-    </div>
+    <!--      <label for="drawing-shadow-offset">-->
+    <!--        Shadow offset:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
+    <!--      </label>-->
+    <!--    </div>-->
   </div>
 </template>
 
@@ -170,6 +170,7 @@ onMounted(() => {
         top: pointer.y,
       }
       layersStore.addDOMLayer(newLayerDOMInfo)
+      objectStore.dragState = 'finishedDragging'
       const extractedPrompt = await describeImage(parsedUrl)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
       // to sent to back end it should be parsed to "assets/..."
@@ -184,7 +185,6 @@ onMounted(() => {
         type: 'object',
       }
       layersStore.addLayer(newLayer)
-      objectStore.dragState = 'finishedDragging'
     } else {
       objectStore.dragState = 'notDragging'
     }

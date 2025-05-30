@@ -21,7 +21,6 @@
 import { ref, watch } from 'vue'
 import { useLayers } from '@/stores/layersStore.js'
 const model = defineModel()
-import { defineProps } from 'vue'
 
 const emit = defineEmits(['update:modelValue'])
 const props = defineProps({
