@@ -87,22 +87,26 @@ const reGenerateLayer = async (idInLayers) => {
             <strong>Object {{ index }}</strong>
           </div>
 
-          <!-- Inner draggable list for names -->
-          <draggable
-            v-model="element.prompt"
-            item-key="n => n"
-            group="inner"
-            :component-data="{ type: 'transition', name: 'flip-list' }"
-          >
-            <template #item="{ element: label, index: labelIndex }">
-              <EditableLabel v-model="element.prompt[labelIndex]" :type="element.type" />
-            </template>
-          </draggable>
-          <i class="bx bx-plus-square m-auto btn btn-light" @click="addNewLabel(element.id)"></i>
-          <i
-            class="bx bx-refresh-cw-dot m-auto btn btn-light"
-            @click="reGenerateLayer(element.id)"
-          ></i>
+          <div class="d-flex align-items-center justify-content-start">
+            <!-- Inner draggable list for names -->
+            <draggable
+              v-model="element.prompt"
+              item-key="n => n"
+              group="inner"
+              :component-data="{ type: 'transition', name: 'flip-list' }"
+            >
+              <template #item="{ element: label, index: labelIndex }">
+                <EditableLabel v-model="element.prompt[labelIndex]" :type="element.type" />
+              </template>
+            </draggable>
+            <div class="flex-shrink-0 me-1">
+              <i class="bx bx-plus-square m-auto btn btn-light" @click="addNewLabel(element.id)"></i>
+              <i
+                class="bx bx-refresh-cw-dot m-auto btn btn-light"
+                @click="reGenerateLayer(element.id)"
+              ></i>
+            </div>
+          </div>
         </div>
       </template>
 

@@ -1,11 +1,11 @@
 <!-- components/EditableLabel.vue -->
 <template>
-  <span @dblclick="startEditing" :class="`bg-${props.type}`" class="btn me-1">
+  <span @dblclick="startEditing" :class="`bg-${props.type}`" class="btn me-1 position-relative d-inline-flex" style="min-width: 70px; min-height: 38px;">
     <template v-if="isEditing">
       <input
         v-model="text"
-        class="form-control"
-        style="height: 100%"
+        class="form-control form-control-sm border-0 p-0"
+        style="min-height: auto; max-width: 50px;"
         @keyup.enter="save"
         @blur="save"
         autofocus
