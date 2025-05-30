@@ -62,12 +62,16 @@ const reGenerateLayer = async (idInLayers) => {
 
   const currentPrompt = layersStore.getPromptsOneLayer(idInLayers)
   const oneLinePrompt = currentPrompt.join(',')
+
   try {
+    layersStore.promiseLoadLayerUpdate = 'loading'
     const result = await generateLayer(oneLinePrompt)
     layersStore.setLayerUrl(idInLayers, result.images_base64)
   } catch (error) {
     console.error('Error generating image:', error)
     alert('Image generation failed. Please try again.')
+  } finally {
+    layersStore.promiseLoadLayerUpdate = 'finished' // Ensures it always updates
   }
 }
 </script>
@@ -108,7 +112,10 @@ const reGenerateLayer = async (idInLayers) => {
 
       <template #footer>
         <div
-          v-show="objectStore.promiseLoadImageLabel === 'loading'"
+          v-show="
+            objectStore.promiseLoadImageLabel === 'loading' ||
+            layersStore.promiseLoadLayerUpdate === 'loading'
+          "
           class="spinner-border"
           role="status"
         >

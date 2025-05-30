@@ -3,7 +3,13 @@ import io
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import uuid
+from backgroundremover.bg import remove
+from openai import OpenAI
+import base64
+from io import BytesIO
+import traceback
 
+client = OpenAI()
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
@@ -31,7 +37,79 @@ def upload_image():
 
     return jsonify({"message": "File saved", "filepath": filepath, "id": unique_name})
 
+def remove_bg(src_img_path, out_img_path):
+    model_choices = ["u2net", "u2net_human_seg", "u2netp"]
+    with open(src_img_path, "rb") as f:
+        data = f.read()
+    img = remove(
+        data,
+        model_name=model_choices[0],
+        alpha_matting=True,
+        alpha_matting_foreground_threshold=240,
+        alpha_matting_background_threshold=10,
+        alpha_matting_erode_structure_size=10,
+        alpha_matting_base_size=1000
+    )
+    with open(out_img_path, "wb") as f:
+        f.write(img)
 
+@app.route('/remove-bg', methods=['POST'])
+def remove_bg_endpoint():
+    json_data = request.get_json()
+    if not json_data or 'src' not in json_data or 'dst' not in json_data:
+        return jsonify({"error": "JSON must include 'src' and 'dst'"}), 400
+
+    src_path = json_data['src']
+    dst_path = json_data['dst']
+
+    try:
+        remove_bg(src_path, dst_path)
+        return jsonify({"status": "success", "output": dst_path})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/merge-everything', methods=['POST'])
+def merge_everything():
+    json_data = request.get_json()
+    if not json_data or 'image_base64' not in json_data or 'output_path' not in json_data:
+        return jsonify({"error": "JSON must include 'image_base64' and 'output_path'"}), 400
+
+    image_base64 = json_data['image_base64']
+    prompt = json_data.get('prompt', '')
+    output_path = json_data['output_path']
+    if image_base64.startswith("data:image"):
+        image_base64 = image_base64.split(",", 1)[1]
+
+    try:
+
+        image_bytes = base64.b64decode(image_base64)
+        # Wrap it in a BytesIO object and give it a filename
+        image_file = io.BytesIO(image_bytes)
+        image_file.name = "image.png"  # Required to help OpenAI guess the MIME type
+        result = client.images.edit(
+            model="gpt-image-1",
+            image=image_file,
+            prompt=prompt
+        )
+
+        result_base64 = result.data[0].b64_json
+        output_bytes = base64.b64decode(result_base64)
+
+        with open(output_path, "wb") as f:
+            f.write(output_bytes)
+
+        return jsonify({"status": "success", "output": output_path})
+
+    except Exception as e:
+        # Print traceback to the console
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+
+        # Return it as part of the error response (only do this in dev!)
+        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
+
+# remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
 # Imports the Google Cloud client library
 # from google.cloud import vision
 # @app.route("/api/run-vision")

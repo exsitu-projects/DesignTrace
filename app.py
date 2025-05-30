@@ -123,14 +123,14 @@ def guess_prompt_handler():
     res = guess(original_image_tensor, add_color_image_tensor, add_edge_mask)
     return jsonify({'result': res})
 
-STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
+# STATIC_DIR = os.path.join(os.path.dirname(__file__), 'static')
 
 
 @app.route('/api/image_to_text', methods=['POST'])
 def image_to_text_handler():
     data = request.json
     image_path = data.get('image_path')  # e.g. "example.jpg"
-    full_path = os.path.join('static', image_path)
+    full_path =  image_path
 
     try:
         # Convert to numpy array and then to tensor with correct shape

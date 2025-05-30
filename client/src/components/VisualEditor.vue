@@ -1,6 +1,7 @@
 <template>
   <div class="col-6">
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
+    <button @click="mergeEverything" class="btn btn-primary">Merge Everything</button>
     <!--    <div class="drawing-mode-options border border-black">-->
     <!--      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>-->
     <!--      <button id="clear-canvas" class="btn btn-info">Clear</button>-->
@@ -59,7 +60,7 @@ const $ = (id) => document.getElementById(id)
 let canvas = null
 const describeImage = async (image_path) => {
   try {
-    objectStore.promiseLoadImageLabel = 'loading' // Moved to top
+    objectStore.promiseLoadImageLabel = 'loading'
 
     const response = await fetch('http://localhost:5000/api/image_to_text', {
       method: 'POST',
@@ -82,6 +83,53 @@ const describeImage = async (image_path) => {
     return null // Optional: consistently return on error
   } finally {
     objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
+  }
+}
+
+const mergeEverything = async () => {
+  try {
+    const canvasImgBase64 = canvas.toDataURL('image/png')
+    const prompt = layersStore.buildStructuredPrompt()
+    const res = await fetch('http://localhost:5555/merge-everything', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_base64: canvasImgBase64,
+        prompt: prompt,
+        output_path: 'static/assets/output.png',
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      return `Success! Output: ${data.output}`
+    } else {
+      return data.error || 'Request failed'
+    }
+  } catch (err) {
+    return 'Network error or server unavailable.'
+  }
+}
+
+const removeBg = async (src, dst) => {
+  //src and dst should be both "static/assets/..."
+  try {
+    const res = await fetch('http://localhost:5555/remove-bg', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ src, dst }),
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json()
+      return errorData.error || 'Request failed'
+    }
+
+    return true
+  } catch (err) {
+    return 'Network error or server unavailable'
   }
 }
 
@@ -158,7 +206,7 @@ onMounted(() => {
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
-      const parsedUrl = droppedObj.src.match(/assets\/.*/)[0]
+      const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
 
       const pointer = canvas.getPointer(e, true) // use `true` to skip viewportTransform
 
@@ -173,7 +221,7 @@ onMounted(() => {
       objectStore.dragState = 'finishedDragging'
       const extractedPrompt = await describeImage(parsedUrl)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
-      // to sent to back end it should be parsed to "assets/..."
+      // to sent to back end it should be parsed to "static/..."
       const newLayer = {
         id: newId,
         prompt: [extractedPrompt],
