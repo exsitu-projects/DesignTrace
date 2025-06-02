@@ -17,7 +17,7 @@
       </button>
 
       <div class="collapse" id="collapseExample">
-        <div class="card card-body" style="max-width: 80%">
+        <div class="card card-body" style="max-width: 95%">
           <div class="row"><VisualEditor /> <SemanticEditor /></div>
         </div>
       </div>

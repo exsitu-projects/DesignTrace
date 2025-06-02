@@ -1,5 +1,6 @@
 import os
 import io
+from PIL import Image
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import uuid
@@ -77,36 +78,51 @@ def merge_everything():
     image_base64 = json_data['image_base64']
     prompt = json_data.get('prompt', '')
     output_path = json_data['output_path']
+
     if image_base64.startswith("data:image"):
         image_base64 = image_base64.split(",", 1)[1]
 
     try:
+        input_path = "static/assets/input.png"
+        os.makedirs(os.path.dirname(input_path), exist_ok=True)
 
-        image_bytes = base64.b64decode(image_base64)
-        # Wrap it in a BytesIO object and give it a filename
-        image_file = io.BytesIO(image_bytes)
-        image_file.name = "image.png"  # Required to help OpenAI guess the MIME type
-        result = client.images.edit(
-            model="gpt-image-1",
-            image=image_file,
-            prompt=prompt
-        )
+        # Save the uploaded image to a file
+        with open(input_path, "wb") as f:
+            f.write(base64.b64decode(image_base64))
 
+        # Call OpenAI API directly with the file
+        with open(input_path, "rb") as image_file:
+            result = client.images.edit(
+                model="gpt-image-1",
+                image=image_file,
+                prompt=prompt,
+                quality="high",
+            )
+
+        # Process result
         result_base64 = result.data[0].b64_json
         output_bytes = base64.b64decode(result_base64)
 
-        with open(output_path, "wb") as f:
-            f.write(output_bytes)
+        # Resize and save
+        image = Image.open(io.BytesIO(output_bytes))
+        resized_image = image.resize((512, 512), Image.LANCZOS)
+        resized_image.save(output_path)
 
-        return jsonify({"status": "success", "output": output_path})
+        # Convert to base64 for response
+        buffered = io.BytesIO()
+        resized_image.save(buffered, format="PNG")
+        output_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        output_base64 = f"data:image/png;base64,{output_base64}"
+        return jsonify({
+            "status": "success",
+            "output": output_base64,
+        })
 
     except Exception as e:
-        # Print traceback to the console
         traceback_str = traceback.format_exc()
         print(traceback_str)
-
-        # Return it as part of the error response (only do this in dev!)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
 
 
 # remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')

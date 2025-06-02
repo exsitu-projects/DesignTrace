@@ -138,7 +138,7 @@ def image_to_text_handler():
         image_np = np.array(image)  # shape (H, W, C)
         image_tensor = torch.from_numpy(image_np).float() / 255.0  # normalize
 
-        result = llavaModel.generate_description([image_tensor], "You are an expert image analyst. Provide one concise but highly informative sentence describing the image. Include the main objects present, with clear details about their important features or appearance, the setting or background context that helps understand where or how the scene is, and the overall style, mood, or artistic impression of the image (e.g., photo-realistic, colorful, minimalistic, vintage). Avoid vague or generic descriptions. Be specific and highlight what makes the image unique or interesting. Example output: 'A vibrant pink flower with delicate dewdrops on its petals stands out sharply against a blurred green meadow background, captured in soft natural light with a shallow depth of field.'")
+        result = llavaModel.generate_description([image_tensor], "Describe the image in one precise, concise phrase focusing on the main objects and their unique features. Be specific and avoid generic terms. Example: 'A blue half-peeled pear.'")
         return jsonify({'result': result})
     except Exception as e:
         traceback.print_exc()

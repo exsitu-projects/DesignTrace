@@ -1,7 +1,16 @@
 <template>
   <div class="col-6">
+    <!--testing groundingdino only, the path is relative to the server-->
+    <button
+      @click="detectObject('..\\static\\images\\fruit.jpg', 'orange. banana.')"
+      class="btn btn-primary"
+    >
+      Detect Object
+    </button>
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
+    <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
     <button @click="mergeEverything" class="btn btn-primary">Merge Everything</button>
+
     <!--    <div class="drawing-mode-options border border-black">-->
     <!--      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>-->
     <!--      <button id="clear-canvas" class="btn btn-info">Clear</button>-->
@@ -53,11 +62,14 @@ import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
+import { useGeneration } from '@/stores/generationStore.js'
 
 const layersStore = useLayers()
 const objectStore = useObject()
+const generationStore = useGeneration()
 const $ = (id) => document.getElementById(id)
 let canvas = null
+let previewCanvas = null
 const describeImage = async (image_path) => {
   try {
     objectStore.promiseLoadImageLabel = 'loading'
@@ -89,25 +101,59 @@ const describeImage = async (image_path) => {
 const mergeEverything = async () => {
   try {
     const canvasImgBase64 = canvas.toDataURL('image/png')
+    const output_path = 'static/assets/output.png'
     const prompt = layersStore.buildStructuredPrompt()
-    const res = await fetch('http://localhost:5555/merge-everything', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_base64: canvasImgBase64,
-        prompt: prompt,
-        output_path: 'static/assets/output.png',
-      }),
-    })
-
-    const data = await res.json()
-    if (res.ok) {
-      return `Success! Output: ${data.output}`
-    } else {
-      return data.error || 'Request failed'
-    }
+    // code below (openai api) can be commented for testing
+    // const res = await fetch('http://localhost:5555/merge-everything', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({
+    //     image_base64: canvasImgBase64,
+    //     prompt: prompt,
+    //     output_path: output_path,
+    //   }),
+    // })
+    // layersStore.mergeEverything = true
+    //
+    // const data = await res.json()
+    // if (res.ok) {
+    //   const bgImage = new Image()
+    //   bgImage.src = data.output
+    //   generationStore.mergedAllImage.src = data.output
+    //   console.log(bgImage.src)
+    //   const previewContext = previewCanvas.getContext('2d')
+    //
+    //   bgImage.onload = () => {
+    //     previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+    //   }
+    //   return `Success! Output: ${data.output}`
+    // } else {
+    //   return data.error || 'Request failed'
+    // }
   } catch (err) {
     return 'Network error or server unavailable.'
+  }
+}
+
+const detectObject = async (image_path, text_prompt) => {
+  try {
+    const res = await fetch('http://localhost:5003/detect-object', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_path, text_prompt }),
+    })
+
+    if (!res.ok) {
+      const errorData = await res.json()
+      console.log(errorData.error)
+      return errorData.error || 'Request failed'
+    }
+
+    const results = await res.json()
+    console.log(results)
+    return results // Array of { box: [x0, y0, x1, y1], text: phrase }
+  } catch (err) {
+    return 'Network error or server unavailable'
   }
 }
 
@@ -177,7 +223,10 @@ const updateDrawingModeButtonText = async () => {
 }
 
 onMounted(() => {
-  // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
+  previewCanvas = document.getElementById('previewCanvas')
+  let selectedFabricObject = null
+  let isDragging = false
+  let offsetX, offsetY
   canvas = markRaw(
     new fabric.Canvas($('visualEditor'), {
       isDrawingMode: false,
@@ -188,9 +237,100 @@ onMounted(() => {
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
   const domCanvas = canvas.lowerCanvasEl
-
+  let objectBounds
   const canvasElement = canvas.lowerCanvasEl
+  const previewContext = previewCanvas.getContext('2d')
 
+  function drawOutline(x, y, width, height) {
+    previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
+
+    previewContext.strokeStyle = 'orange'
+    previewContext.lineWidth = 2
+    previewContext.setLineDash([5, 5]) // dashed line
+    previewContext.strokeRect(x, y, width, height)
+  }
+  previewCanvas.addEventListener('mousedown', (e) => {
+    const previewRect = previewCanvas.getBoundingClientRect()
+    const fabricRect = canvas.upperCanvasEl.getBoundingClientRect()
+
+    // Mouse pos relative to previewCanvas
+    const mouseX = e.clientX - previewRect.left
+    const mouseY = e.clientY - previewRect.top
+
+    // Calculate relative position inside previewCanvas (0 to 1)
+    const relX = mouseX / previewRect.width
+    const relY = mouseY / previewRect.height
+
+    // Map to fabric canvas coordinates using its width/height
+    const fabricX = relX * canvas.width
+    const fabricY = relY * canvas.height
+
+    console.log('Mapped fabric coords:', fabricX, fabricY)
+
+    // Create fabric Point (or directly use findTarget with pointer)
+    const pointer = new fabric.Point(fabricX, fabricY)
+
+    // Fabric's findTarget wants a native event, so create fake event or
+    // use canvas.getObjects() and test manually for example
+
+    // Simplified manual object hit test (example)
+    selectedFabricObject = canvas.getObjects().find((obj) => {
+      return obj.containsPoint(pointer)
+    })
+
+    console.log('selectedFabricObject:', selectedFabricObject)
+
+    if (selectedFabricObject) {
+      isDragging = true
+      offsetX = fabricX - selectedFabricObject.left
+      offsetY = fabricY - selectedFabricObject.top
+
+      objectBounds = {
+        width: selectedFabricObject.width * selectedFabricObject.scaleX,
+        height: selectedFabricObject.height * selectedFabricObject.scaleY,
+      }
+    }
+  })
+  previewCanvas.addEventListener('mousemove', (e) => {
+    if (!isDragging || !selectedFabricObject) return
+
+    const bgImage = new Image()
+    bgImage.src = generationStore.mergedAllImage.src
+    bgImage.onload = () => {
+      previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+    }
+
+    const previewRect = previewCanvas.getBoundingClientRect()
+
+    const mouseX = e.clientX - previewRect.left
+    const mouseY = e.clientY - previewRect.top
+
+    const relX = mouseX / previewRect.width
+    const relY = mouseY / previewRect.height
+
+    const fabricX = relX * canvas.width
+    const fabricY = relY * canvas.height
+
+    // Update object's position, minus the initial offset
+    selectedFabricObject.set({
+      left: fabricX - offsetX,
+      top: fabricY - offsetY,
+    })
+
+    selectedFabricObject.setCoords() // Update fabric's internal coordinates
+    drawOutline(mouseX - offsetX, mouseY - offsetY, objectBounds.width, objectBounds.height)
+
+    canvas.requestRenderAll() // Re-render canvas
+  })
+
+  previewCanvas.addEventListener('mouseup', (e) => {
+    if (isDragging) {
+      isDragging = false
+      selectedFabricObject = null
+      previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
+      mergeEverything()
+    }
+  })
   window.addEventListener('mouseup', async (e) => {
     const rect = canvasElement.getBoundingClientRect()
 
@@ -382,4 +522,9 @@ onMounted(() => {
 })
 </script>
 
-<style scoped></style>
+<style scoped>
+#previewCanvas {
+  width: 512px;
+  height: 512px;
+}
+</style>

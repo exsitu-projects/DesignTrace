@@ -5,23 +5,23 @@ export const useLayers = defineStore('layers', () => {
   const layers = ref([])
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')
-
+  const mergeEverything = ref(false)
   layers.value.push({
     id: Date.now(),
-    prompt: ['A bright living room with minimalistic design'],
+    prompt: ['A living room with minimalistic design'],
     url: 'xxx',
     type: 'context',
   }) //for testing the layers array only
-  layers.value.push({
-    id: Date.now(),
-    prompt: ['apple', 'with green leaves'],
-    url: 'xxx',
-    left: 100,
-    top: 100,
-    selectable: true,
-    hasControls: true,
-    type: 'object',
-  }) //for testing the layers array only
+  // layers.value.push({
+  //   id: Date.now(),
+  //   prompt: ['apple', 'with green leaves'],
+  //   url: 'xxx',
+  //   left: 100,
+  //   top: 100,
+  //   selectable: true,
+  //   hasControls: true,
+  //   type: 'object',
+  // }) //for testing the layers array only
   function buildStructuredPrompt() {
     const contextParts = []
     const objectParts = []
@@ -46,25 +46,27 @@ export const useLayers = defineStore('layers', () => {
     const objectText = objectParts.join(', ')
     const styleText = styleParts.join(', ')
 
-    let prompt = 'Generate an image based on the given image'
+    let prompt =
+      'Generate a new image that keeps all the objects of the image input and strictly preserve the original object positions. The new image should be in  '
 
     if (contextText) {
-      prompt += `, the generated image should be ${contextText}`
+      prompt += `${contextText} context`
     }
     if (objectText) {
-      prompt += contextText ? `, including ${objectText}` : `, including ${objectText}`
+      prompt += contextText
+        ? `, making sure to include ${objectText} in their original locations`
+        : `Include ${objectText} in their original locations`
     }
     if (styleText) {
       prompt +=
         contextText || objectText
-          ? ` in the style of ${styleText}`
-          : `, in the style of ${styleText}`
+          ? `, and apply the style of ${styleText}`
+          : `Apply the style of ${styleText}`
     }
-
-    prompt += '.'
-
+    console.log(prompt)
     return prompt
   }
+
   function addLayer(layer) {
     layers.value.push(layer)
   }
@@ -95,6 +97,7 @@ export const useLayers = defineStore('layers', () => {
   }
 
   return {
+    mergeEverything,
     layers,
     layerPayload,
     buildStructuredPrompt,
