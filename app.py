@@ -197,7 +197,7 @@ def generate_image_handler():
         if torch.sum(remove_edge_mask).item() > 0 and torch.sum(add_edge_mask).item() == 0:
             if positive_prompt == "":
                 positive_prompt = "empty scene"
-            edge_strength = edge_strength / 3.0
+            edge_strength = edge_strength / 10 #before its 3.0
 
         # ===== 4. IMAGE GENERATION =====
         # Original model processing

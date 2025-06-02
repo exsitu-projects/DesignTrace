@@ -6,6 +6,7 @@ export const useLayers = defineStore('layers', () => {
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')
   const mergeEverything = ref(false)
+  const promptMap = ref(null)
   layers.value.push({
     id: Date.now(),
     prompt: ['A living room with minimalistic design'],
@@ -22,6 +23,26 @@ export const useLayers = defineStore('layers', () => {
   //   hasControls: true,
   //   type: 'object',
   // }) //for testing the layers array only
+  function buildPromptForDetection() {
+    promptMap.value = layers.value
+      .filter((layer) => layer.type === 'object')
+      .map((layer) => ({
+        id: layer.id,
+        sentence: layer.prompt
+          .map((p) => p.replace(/\.\s*$/, ''))
+          .join(' ')
+          .trim(), //remove . if there's any
+      }))
+
+    const fullPrompt = promptMap.value.map((p) => p.sentence).join('. ') + '.'
+    return fullPrompt
+  }
+
+  function findLayerIdByPhrase(detectedPhrase) {
+    const cleanPhrase = detectedPhrase.trim().replace(/\.$/, '') // strip any stray period
+    const match = promptMap.value.find((entry) => entry.sentence === cleanPhrase)
+    return match ? match.id : null
+  }
   function buildStructuredPrompt() {
     const contextParts = []
     const objectParts = []
@@ -97,6 +118,8 @@ export const useLayers = defineStore('layers', () => {
   }
 
   return {
+    findLayerIdByPhrase,
+    buildPromptForDetection,
     mergeEverything,
     layers,
     layerPayload,
