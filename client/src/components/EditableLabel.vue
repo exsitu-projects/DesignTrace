@@ -61,7 +61,7 @@ const save = () => {
   isEditing.value = false
 }
 </script>
-<style>
+<style scoped>
 .bg-object {
   background-color: #ffdddd; /* light red */
   transition: background-color 0.3s ease;

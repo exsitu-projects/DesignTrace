@@ -15,8 +15,14 @@ const addNewLabel = (idInLayers) => {
   layersStore.addNewLabel(idInLayers)
 }
 
-const handleDelete = (arr, index) => {
-  arr.splice(index, 1)
+const handleDelete = (ele, index) => {
+  ele.prompt.splice(index, 1)
+  if (ele.prompt.length === 0) {
+    const eleIndex = layersStore.layers.indexOf(ele)
+    if (eleIndex !== -1) {
+      layersStore.layers.splice(eleIndex, 1)
+    }
+  }
 }
 
 const generateLayer = async (currentPrompt) => {
@@ -59,6 +65,14 @@ const generateNewLayer = async () => {
     console.error('Error generating image:', error)
     alert('Image generation failed. Please try again.')
   }
+}
+
+const addEmptyStyle = () => {
+  layersStore.addLayer({
+    id: Date.now(),
+    prompt: [' '],
+    type: 'style',
+  })
 }
 
 const reGenerateLayer = async (idInLayers) => {
@@ -104,7 +118,7 @@ const reGenerateLayer = async (idInLayers) => {
                   v-model="element.prompt[labelIndex]"
                   :type="element.type"
                   :index="labelIndex"
-                  @delete-label="handleDelete(element.prompt, labelIndex)"
+                  @delete-label="handleDelete(element, labelIndex)"
                 />
               </template>
             </draggable>
@@ -140,9 +154,8 @@ const reGenerateLayer = async (idInLayers) => {
           class="my-2"
         ></textarea>
         <div class="btn-group list-group-item" role="group" key="footer">
-          <button class="btn bg-object btn-outline-dark" @click="generateNewLayer">
-            Add Object
-          </button>
+          <button class="btn btn-outline-dark" @click="generateNewLayer">Add Object</button>
+          <button class="btn btn-outline-dark" @click="addEmptyStyle">Add Style</button>
         </div>
       </template>
     </draggable>
