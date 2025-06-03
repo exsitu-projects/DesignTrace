@@ -8,13 +8,13 @@ export const useLayers = defineStore('layers', () => {
   const mergeEverything = ref(false)
   const promptMap = ref(null)
   layers.value.push({
-    id: Date.now(),
+    id: '000',
     prompt: ['An oil painting of a table'],
     url: 'xxx',
     type: 'context',
   }) //for testing the layers array only
   layers.value.push({
-    id: Date.now(),
+    id: '111',
     prompt: ['impressionism'],
     url: 'xxx',
     type: 'style',

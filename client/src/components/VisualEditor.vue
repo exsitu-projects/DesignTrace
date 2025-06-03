@@ -1,16 +1,18 @@
 <template>
-  <div class="col-6">
-    <!--testing groundingdino only, the path is relative to the server-->
-    <button
-      @click="detectObject('..\\static\\images\\fruit.jpg', 'orange. banana.')"
-      class="btn btn-primary"
-    >
-      Detect Object
-    </button>
+  <div class="col-6 position-relative" style="width: 512px; height: 1024px">
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
     <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
-    <button @click="mergeEverything" class="btn btn-primary">Merge Everything</button>
-
+    <button @click="mergeEverything" class="btn btn-primary mt-2">Merge Everything</button>
+    <!-- Centered Spinner -->
+    <div
+      v-show="generationStore.mergingPromise === 'loading'"
+      class="position-absolute top-50 start-50 translate-middle"
+      style="z-index: 3"
+    >
+      <div class="spinner-border text-primary" role="status" aria-label="Loading">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
     <!--    <div class="drawing-mode-options border border-black">-->
     <!--      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>-->
     <!--      <button id="clear-canvas" class="btn btn-info">Clear</button>-->
@@ -108,7 +110,8 @@ const mergeEverything = async () => {
   //   const canvasImgBase64 = canvas.toDataURL('image/png')
   //   const output_path = 'static/assets/output.png'
   //   const prompt = layersStore.buildStructuredPrompt()
-  //   // code below (openai api) can be commented for testing
+  //
+  // generationStore.mergingPromise = 'loading'
   //   const res = await fetch('http://localhost:5555/merge-everything', {
   //     method: 'POST',
   //     headers: { 'Content-Type': 'application/json' },
@@ -141,6 +144,8 @@ const mergeEverything = async () => {
   //   }
   // } catch (err) {
   //   return 'Network error or server unavailable.'
+  // } finally {
+  //   generationStore.mergingPromise = 'finished'
   // }
   //end of comment
 
@@ -149,7 +154,7 @@ const mergeEverything = async () => {
   bgImage.src = generationStore.testBase64
   generationStore.mergedAllImage.src = generationStore.testBase64
   const previewContext = previewCanvas.getContext('2d')
-
+  generationStore.mergingPromise = 'loading'
   bgImage.onload = () => {
     previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
   }
@@ -161,6 +166,7 @@ const mergeEverything = async () => {
   )
   generationStore.storeDetection(normBoxesWithText)
   moveOriCanvasObj(generationStore.detectedObjects)
+  generationStore.mergingPromise = 'finished'
   //end of comment
 }
 

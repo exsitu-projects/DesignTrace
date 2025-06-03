@@ -15,6 +15,10 @@ const addNewLabel = (idInLayers) => {
   layersStore.addNewLabel(idInLayers)
 }
 
+const handleDelete = (arr, index) => {
+  arr.splice(index, 1)
+}
+
 const generateLayer = async (currentPrompt) => {
   const response = await fetch('http://localhost:53577/api/generatelayer', {
     method: 'POST',
@@ -96,7 +100,12 @@ const reGenerateLayer = async (idInLayers) => {
               :component-data="{ type: 'transition', name: 'flip-list' }"
             >
               <template #item="{ element: label, index: labelIndex }">
-                <EditableLabel v-model="element.prompt[labelIndex]" :type="element.type" />
+                <EditableLabel
+                  v-model="element.prompt[labelIndex]"
+                  :type="element.type"
+                  :index="labelIndex"
+                  @delete-label="handleDelete(element.prompt, labelIndex)"
+                />
               </template>
             </draggable>
             <div class="flex-shrink-0 me-1">
@@ -131,7 +140,9 @@ const reGenerateLayer = async (idInLayers) => {
           class="my-2"
         ></textarea>
         <div class="btn-group list-group-item" role="group" key="footer">
-          <button class="btn btn-secondary" @click="generateNewLayer">Add Object</button>
+          <button class="btn bg-object btn-outline-dark" @click="generateNewLayer">
+            Add Object
+          </button>
         </div>
       </template>
     </draggable>
