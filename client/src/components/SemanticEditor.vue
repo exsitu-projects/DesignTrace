@@ -87,10 +87,6 @@ const reGenerateLayer = async (idInLayers) => {
     >
       <template #item="{ element, index }">
         <div class="list-group-item">
-          <div v-if="index > 0">
-            <strong>Object {{ index }}</strong>
-          </div>
-
           <div class="d-flex align-items-center justify-content-start">
             <!-- Inner draggable list for names -->
             <draggable
@@ -104,7 +100,10 @@ const reGenerateLayer = async (idInLayers) => {
               </template>
             </draggable>
             <div class="flex-shrink-0 me-1">
-              <i class="bx bx-plus-square m-auto btn btn-light" @click="addNewLabel(element.id)"></i>
+              <i
+                class="bx bx-plus-square m-auto btn btn-light"
+                @click="addNewLabel(element.id)"
+              ></i>
               <i
                 class="bx bx-refresh-cw-dot m-auto btn btn-light"
                 @click="reGenerateLayer(element.id)"

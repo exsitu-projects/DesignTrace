@@ -72,9 +72,9 @@ let canvas = null
 let previewStart = null
 let previewOffset = { x: 0, y: 0 }
 let hasMoved = false
-const clickedObject = ref({ width: 0, height: 0 })
+const clickedObject = ref({ oriX: 0, oriY: 0, width: 0, height: 0 })
 let previewCanvas = null
-const describeImage = async (image_path) => {
+const describeImage = async (image_path, prompt) => {
   try {
     objectStore.promiseLoadImageLabel = 'loading'
 
@@ -83,7 +83,7 @@ const describeImage = async (image_path) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ image_path }),
+      body: JSON.stringify({ image_path, prompt }),
     })
 
     const result = await response.json()
@@ -104,60 +104,77 @@ const describeImage = async (image_path) => {
 
 const mergeEverything = async () => {
   //uncomment below to test openai api
-  try {
-    const canvasImgBase64 = canvas.toDataURL('image/png')
-    const output_path = 'static/assets/output.png'
-    const prompt = layersStore.buildStructuredPrompt()
-    // code below (openai api) can be commented for testing
-    const res = await fetch('http://localhost:5555/merge-everything', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_base64: canvasImgBase64,
-        prompt: prompt,
-        output_path: output_path, //"static/assets/..."
-      }),
-    })
-    layersStore.mergeEverything = true
-
-    const data = await res.json()
-    if (res.ok) {
-      const bgImage = new Image()
-      bgImage.src = data.output //data.output is base64
-      generationStore.mergedAllImage.src = data.output
-      console.log(bgImage.src)
-      const previewContext = previewCanvas.getContext('2d')
-
-      bgImage.onload = () => {
-        previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-      }
-      const promptForDetection = layersStore.buildPromptForDetection()
-      console.log('promptForDetection', promptForDetection)
-      const detectBoxes = await detectObject(generationStore.mergedAllImage.src, promptForDetection)
-      generationStore.storeDetection(detectBoxes)
-      return `Success! Output: ${data.output}`
-    } else {
-      return data.error || 'Request failed'
-    }
-  } catch (err) {
-    return 'Network error or server unavailable.'
-  }
+  // try {
+  //   const canvasImgBase64 = canvas.toDataURL('image/png')
+  //   const output_path = 'static/assets/output.png'
+  //   const prompt = layersStore.buildStructuredPrompt()
+  //   // code below (openai api) can be commented for testing
+  //   const res = await fetch('http://localhost:5555/merge-everything', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({
+  //       image_base64: canvasImgBase64,
+  //       prompt: prompt,
+  //       output_path: output_path, //"static/assets/..."
+  //     }),
+  //   })
+  //   layersStore.mergeEverything = true
+  //
+  //   const data = await res.json()
+  //   if (res.ok) {
+  //     const bgImage = new Image()
+  //     bgImage.src = data.output //data.output is base64
+  //     generationStore.mergedAllImage.src = data.output
+  //     console.log(bgImage.src)
+  //     const previewContext = previewCanvas.getContext('2d')
+  //
+  //     bgImage.onload = () => {
+  //       previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  //     }
+  //     const promptForDetection = layersStore.buildPromptForDetection()
+  //     console.log('promptForDetection', promptForDetection)
+  //     const detectBoxes = await detectObject(generationStore.mergedAllImage.src, promptForDetection)
+  //     generationStore.storeDetection(detectBoxes)
+  //     return `Success! Output: ${data.output}`
+  //   } else {
+  //     return data.error || 'Request failed'
+  //   }
+  // } catch (err) {
+  //   return 'Network error or server unavailable.'
+  // }
   //end of comment
 
   //uncomment below to test one image
-  // const bgImage = new Image()
-  // bgImage.src = generationStore.testBase64
-  // generationStore.mergedAllImage.src = generationStore.testBase64
-  // const previewContext = previewCanvas.getContext('2d')
-  //
-  // bgImage.onload = () => {
-  //   previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  // }
-  // const promptForDetection = layersStore.buildPromptForDetection()
-  // console.log('promptForDetection', promptForDetection)
-  // const detectBoxes = await detectObject(generationStore.mergedAllImage.src, promptForDetection)
-  // generationStore.storeDetection(detectBoxes)
+  const bgImage = new Image()
+  bgImage.src = generationStore.testBase64
+  generationStore.mergedAllImage.src = generationStore.testBase64
+  const previewContext = previewCanvas.getContext('2d')
+
+  bgImage.onload = () => {
+    previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  }
+  const promptForDetection = layersStore.buildPromptForDetection()
+  console.log('promptForDetection', promptForDetection)
+  const normBoxesWithText = await detectObject(
+    generationStore.mergedAllImage.src,
+    promptForDetection,
+  )
+  generationStore.storeDetection(normBoxesWithText)
+  moveOriCanvasObj(generationStore.detectedObjects)
   //end of comment
+}
+
+function moveOriCanvasObj(boxesWithText) {
+  for (let detectedObj of boxesWithText) {
+    const layerId = layersStore.findLayerIdByPhrase(detectedObj.text)
+    if (layerId !== null) {
+      let activeCanvasObj = canvas.getObjects().find((obj) => obj.idInLayers === layerId) ////TODO if not matched
+      activeCanvasObj.left = detectedObj.box[0]
+      activeCanvasObj.top = detectedObj.box[1]
+      activeCanvasObj.setCoords()
+      canvas.requestRenderAll()
+    }
+  }
 }
 
 function drawBgImg(canvas, imgSrc) {
@@ -184,13 +201,35 @@ const detectObject = async (image_path, text_prompt) => {
     }
 
     const results = await res.json()
-    console.log(results)
     return results // Array of { box: [x0, y0, x1, y1], text: phrase }
   } catch (err) {
     return 'Network error or server unavailable'
   }
 }
+function resizeFabricObjectToBounds(obj, coords) {
+  const [x0, y0, x1, y1] = coords
+  const targetWidth = x1 - x0
+  const targetHeight = y1 - y0
 
+  // Ensure origin is top-left
+  obj.set({
+    originX: 'left',
+    originY: 'top',
+    left: x0,
+    top: y0,
+  })
+
+  // Scale the object to fit the bounding box
+  const scaleX = targetWidth / obj.width
+  const scaleY = targetHeight / obj.height
+
+  obj.set({
+    scaleX,
+    scaleY,
+  })
+
+  obj.setCoords() // Recalculate control points
+}
 const removeBg = async (src, dst) => {
   //src and dst should be both "static/assets/..."
   try {
@@ -262,12 +301,20 @@ const isPointInBox = (mouseX, mouseY, box) => {
 }
 
 const clickOnDetectionBox = (mouseX, mouseY, objList) => {
-  for (const obj of objList) {
-    if (isPointInBox(mouseX, mouseY, obj.box)) {
-      return { clickedPhrase: obj.text, clickedCoord: obj.box }
-    }
-  }
-  return null // No box matched
+  const clickedObj = objList.find((obj) => isPointInBox(mouseX, mouseY, obj.box))
+
+  if (!clickedObj) return null
+
+  const { text: clickedPhrase, box: clickedCoord } = clickedObj
+
+  // Keep only the clicked object and those with different phrases
+  const filtered = objList.filter((obj) => obj.text !== clickedPhrase || obj === clickedObj)
+
+  // Update the original list
+  objList.length = 0
+  objList.push(...filtered)
+
+  return { clickedPhrase, clickedCoord }
 }
 
 onMounted(() => {
@@ -280,6 +327,34 @@ onMounted(() => {
       isDrawingMode: false,
     }),
   )
+
+  canvas.on('object:moving', function (e) {
+    var obj = e.target
+    // if object is too big ignore
+    if (obj.currentHeight > obj.canvas.height || obj.currentWidth > obj.canvas.width) {
+      return
+    }
+    obj.setCoords()
+    // top-left  corner
+    if (obj.getBoundingRect().top < 0 || obj.getBoundingRect().left < 0) {
+      obj.top = Math.max(obj.top, obj.top - obj.getBoundingRect().top)
+      obj.left = Math.max(obj.left, obj.left - obj.getBoundingRect().left)
+    }
+    // bot-right corner
+    if (
+      obj.getBoundingRect().top + obj.getBoundingRect().height > obj.canvas.height ||
+      obj.getBoundingRect().left + obj.getBoundingRect().width > obj.canvas.width
+    ) {
+      obj.top = Math.min(
+        obj.top,
+        obj.canvas.height - obj.getBoundingRect().height + obj.top - obj.getBoundingRect().top,
+      )
+      obj.left = Math.min(
+        obj.left,
+        obj.canvas.width - obj.getBoundingRect().width + obj.left - obj.getBoundingRect().left,
+      )
+    }
+  })
 
   // Set Default Brush
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
@@ -301,21 +376,15 @@ onMounted(() => {
     previewStart = { x: mouseX, y: mouseY }
     hasMoved = false
 
-    const { clickedPhrase, clickedCoord } = clickOnDetectionBox(
-      mouseX,
-      mouseY,
-      generationStore.detectedObjects,
-    )
-
-    if (clickedPhrase) {
+    const clicked = clickOnDetectionBox(mouseX, mouseY, generationStore.detectedObjects)
+    if (clicked !== null) {
+      const { clickedPhrase, clickedCoord } = clicked
       const clickedLayerId = layersStore.findLayerIdByPhrase(clickedPhrase)
       const [x0, y0, x1, y1] = clickedCoord
       clickedObject.value.width = x1 - x0
       clickedObject.value.oriX = x0
       clickedObject.value.height = y1 - y0
       clickedObject.value.oriY = y0
-      drawOutline(x0, y0, clickedObject.value.width, clickedObject.value.height)
-
       selectedFabricObject = canvas.getObjects().find((obj) => obj.idInLayers === clickedLayerId)
       isDragging = true
     }
@@ -379,7 +448,7 @@ onMounted(() => {
           clickedObject.value.height,
         )
       }
-      previewOffset = { x: 0, y: 0 } // <- Add this!
+      previewOffset = { x: 0, y: 0 }
       selectedFabricObject = null
       previewStart = null
     }
@@ -412,7 +481,9 @@ onMounted(() => {
       }
       layersStore.addDOMLayer(newLayerDOMInfo)
       objectStore.dragState = 'finishedDragging'
-      const extractedPrompt = await describeImage(parsedUrl)
+      const describePrompt =
+        "Describe the image in one precise, concise phrase focusing solely on clearly visible objects and their unambiguous features. Never assume non-visible states (e.g., cut, peeled, opened) unless explicitly shown. Prioritize accuracy over creativity. Example: 'A whole unpeeled avocado with bumpy dark green skin.'"
+      const extractedPrompt = await describeImage(parsedUrl, describePrompt)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
       // to sent to back end it should be parsed to "static/..."
       const newLayer = {

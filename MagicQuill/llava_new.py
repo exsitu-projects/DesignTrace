@@ -72,8 +72,8 @@ class LLaVAModel:
                 input_ids,
                 images=images_tensor,
                 image_sizes=image_sizes,
-                temperature=0.2,
-                do_sample=True,
+                temperature=0.1, #original magicquill: 0.2
+                do_sample=False, #original magicquill: True
                 use_cache=True,
             )
         outputs = self.tokenizer.decode(output_ids[0]).strip()

@@ -9,10 +9,16 @@ export const useLayers = defineStore('layers', () => {
   const promptMap = ref(null)
   layers.value.push({
     id: Date.now(),
-    prompt: ['A living room with minimalistic design'],
+    prompt: ['An oil painting of a table'],
     url: 'xxx',
     type: 'context',
   }) //for testing the layers array only
+  layers.value.push({
+    id: Date.now(),
+    prompt: ['impressionism'],
+    url: 'xxx',
+    type: 'style',
+  })
   // layers.value.push({
   //   id: Date.now(),
   //   prompt: ['apple', 'with green leaves'],
@@ -51,7 +57,14 @@ export const useLayers = defineStore('layers', () => {
     for (const layer of layers.value) {
       if (!layer.prompt || !Array.isArray(layer.prompt)) continue
 
-      const joinedPrompt = layer.prompt.join(', ').trim()
+      // Clean up prompt parts: remove trailing periods for objects
+      let cleanedPrompt = layer.prompt.map((p) => {
+        return layer.type === 'object' ? p.replace(/\.+$/, '') : p
+      })
+
+      const joinedPrompt =
+        layer.type === 'object' ? cleanedPrompt.join('; ').trim() : cleanedPrompt.join(', ').trim()
+
       if (!joinedPrompt) continue
 
       if (layer.type === 'context') {
@@ -64,11 +77,11 @@ export const useLayers = defineStore('layers', () => {
     }
 
     const contextText = contextParts.join(', ')
-    const objectText = objectParts.join(', ')
+    const objectText = objectParts.join('; ') // semicolon here too
     const styleText = styleParts.join(', ')
 
     let prompt =
-      'Generate a new image that keeps all the objects of the image input and strictly preserve the original object positions. The new image should be in  '
+      'Generate a new image that keeps all the objects of the image input and strictly preserve the original object positions. The new image should be in '
 
     if (contextText) {
       prompt += `${contextText} context`

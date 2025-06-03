@@ -130,6 +130,7 @@ def guess_prompt_handler():
 def image_to_text_handler():
     data = request.json
     image_path = data.get('image_path')  # e.g. "example.jpg"
+    prompt = data.get('prompt')
     full_path =  image_path
 
     try:
@@ -138,7 +139,7 @@ def image_to_text_handler():
         image_np = np.array(image)  # shape (H, W, C)
         image_tensor = torch.from_numpy(image_np).float() / 255.0  # normalize
 
-        result = llavaModel.generate_description([image_tensor], "Describe the image in one precise, concise phrase focusing on the main objects and their unique features. Be specific and avoid generic terms. Example: 'A blue half-peeled pear.'")
+        result = llavaModel.generate_description([image_tensor], prompt)
         return jsonify({'result': result})
     except Exception as e:
         traceback.print_exc()
