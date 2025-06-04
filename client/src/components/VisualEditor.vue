@@ -263,7 +263,6 @@ const removeBg = async (src, dst) => {
 watch(
   () => layersStore.layerPayload,
   (newPayload) => {
-    console.log(newPayload)
     const existingImage = canvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -506,6 +505,7 @@ onMounted(() => {
         selectable: true,
         hasControls: true,
         type: 'object',
+        hiddenStyle: '',
       }
       layersStore.addLayer(newLayer)
     } else {

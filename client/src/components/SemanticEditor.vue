@@ -14,8 +14,25 @@ const addNewLabel = (idInLayers) => {
 }
 
 const handleChange = (e) => {
-  console.log(e)
+  console.log(e.moved)
+  if (e.moved.element.hiddenStyle === '' && e.moved.element.type === 'object') {
+    for (let i = 0; i < e.moved.newIndex; i++) {
+      if (layersStore.layers[i].type === 'style') {
+        e.moved.element.hiddenStyle += layersStore.layers[i].prompt[0]
+        reGenerateLayer(e.moved.element.id)
+      }
+    }
+  }
+  if (e.moved.element.type === 'style') {
+    for (let i = e.moved.newIndex + 1; i < layersStore.layers.length; i++) {
+      if (layersStore.layers[i].type === 'object' && layersStore.layers[i].hiddenStyle === '') {
+        layersStore.layers[i].hiddenStyle += e.moved.element.prompt[0]
+        reGenerateLayer(layersStore.layers[i].id)
+      }
+    }
+  }
 }
+////TODO: This code only runs once layersStore.layers[i].hiddenStyle === ''
 
 const handleDelete = (ele, index) => {
   ele.prompt.splice(index, 1)
@@ -57,6 +74,7 @@ const addNewLayer = async () => {
       selectable: true,
       hasControls: true,
       type: 'object',
+      hiddenStyle: '',
     }
     layersStore.addLayer(newLayer)
   } catch (error) {
@@ -76,8 +94,7 @@ const addEmptyStyle = () => {
 const reGenerateLayer = async (idInLayers) => {
   //how to deal with prompts, now just connecting them with ,
 
-  const currentPrompt = layersStore.getPromptsOneLayer(idInLayers)
-  const oneLinePrompt = currentPrompt.join(',')
+  const oneLinePrompt = layersStore.getPromptsOneLayer(idInLayers)
 
   try {
     layersStore.promiseLoadLayerUpdate = 'loading'
@@ -103,6 +120,7 @@ const reGenerateLayer = async (idInLayers) => {
       v-model="layersStore.layers"
       item-key="id"
       group="outer"
+      @change="handleChange"
       @start="dragging = true"
       @end="dragging = false"
     >

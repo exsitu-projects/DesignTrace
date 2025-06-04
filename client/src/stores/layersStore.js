@@ -123,7 +123,7 @@ export const useLayers = defineStore('layers', () => {
 
   function getPromptsOneLayer(idInLayers) {
     const found = findOneLayer(idInLayers)
-    return found.prompt
+    return found.prompt.join(',') + 'in the style of ' + found.hiddenStyle
   }
 
   function setLayerUrl(idInLayers, newUrl) {
