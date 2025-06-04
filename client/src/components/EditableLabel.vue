@@ -15,7 +15,6 @@
         style="min-height: auto; max-width: 200px"
         @keyup.enter="save"
         @blur="save"
-        autofocus
       />
     </template>
     <template v-else>

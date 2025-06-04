@@ -7,7 +7,6 @@ import { useObject } from '@/stores/objectStore.js'
 
 const layersStore = useLayers()
 const objectStore = useObject()
-const layerArr = layersStore.layers
 let dragging = false
 
 const addNewLabel = (idInLayers) => {
@@ -101,7 +100,7 @@ const reGenerateLayer = async (idInLayers) => {
     ></EditableLabel>
     <!--////TODO DELETE CONTEXT LABEL-->
     <draggable
-      v-model="layerArr"
+      v-model="layersStore.layers"
       item-key="id"
       group="outer"
       @start="dragging = true"
@@ -113,7 +112,6 @@ const reGenerateLayer = async (idInLayers) => {
             <!-- Inner draggable list for names -->
             <draggable
               v-model="element.prompt"
-              @end="handleChange($event)"
               item-key="n => n"
               group="inner"
               :component-data="{ type: 'transition', name: 'flip-list' }"

@@ -263,36 +263,39 @@ const removeBg = async (src, dst) => {
 watch(
   () => layersStore.layerPayload,
   (newPayload) => {
+    console.log(newPayload)
     const existingImage = canvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    img.src = newPayload.url
+    if (newPayload.url !== ' ') {
+      img.src = newPayload.url
 
-    img.onload = () => {
-      try {
-        const fabricImage = new fabric.Image(img, {
-          selectable: true,
-          hasControls: true,
-          left: newPayload.left,
-          top: newPayload.top,
-          //newPayload.left newPayload.top
-        })
+      img.onload = () => {
+        try {
+          const fabricImage = new fabric.Image(img, {
+            selectable: true,
+            hasControls: true,
+            left: newPayload.left,
+            top: newPayload.top,
+            //newPayload.left newPayload.top
+          })
 
-        fabricImage.scaleToWidth(250)
-        fabricImage.set('idInLayers', newPayload.id) // assign your own ID
-        if (existingImage) {
-          canvas.remove(existingImage)
+          fabricImage.scaleToWidth(250)
+          fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+          if (existingImage) {
+            canvas.remove(existingImage)
+          }
+          canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
+          canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
+          canvas.renderAll() // <-- changed from canvas.value.renderAll()
+        } catch (error) {
+          console.error('Failed to add image to canvas:', error)
         }
-        canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
-        canvas.isDrawingMode = false // <-- changed from canvas.value.isDrawingMode
-        canvas.renderAll() // <-- changed from canvas.value.renderAll()
-      } catch (error) {
-        console.error('Failed to add image to canvas:', error)
       }
-    }
 
-    img.onerror = () => {
-      console.error('Failed to load image:', newPayload.url)
+      img.onerror = () => {
+        console.error('Failed to load image:', newPayload.url)
+      }
     }
   },
 )
