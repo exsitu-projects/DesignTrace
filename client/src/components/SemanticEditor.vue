@@ -5,7 +5,6 @@ import { ref } from 'vue'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 
-const layerPrompt = ref('')
 const layersStore = useLayers()
 const objectStore = useObject()
 const layerArr = layersStore.layers
@@ -13,6 +12,10 @@ let dragging = false
 
 const addNewLabel = (idInLayers) => {
   layersStore.addNewLabel(idInLayers)
+}
+
+const handleChange = (e) => {
+  console.log(e)
 }
 
 const handleDelete = (ele, index) => {
@@ -36,26 +39,22 @@ const generateLayer = async (currentPrompt) => {
   return await response.json()
 }
 
-const generateNewLayer = async () => {
+const addNewLayer = async () => {
   try {
-    const currentPrompt = layerPrompt.value
-    const result = await generateLayer(currentPrompt)
-    const imageUrl = result.images_base64
-
     const newId = Date.now()
     const newLayerDOMInfo = {
       id: newId,
-      url: imageUrl,
-      left: 100,
-      top: 100,
+      url: ' ',
+      left: 0,
+      top: 0,
     }
     layersStore.addDOMLayer(newLayerDOMInfo)
     const newLayer = {
       id: newId,
-      prompt: [currentPrompt],
-      url: imageUrl,
-      left: 100,
-      top: 100,
+      prompt: [' '],
+      url: ' ',
+      left: 0,
+      top: 0,
       selectable: true,
       hasControls: true,
       type: 'object',
@@ -68,7 +67,7 @@ const generateNewLayer = async () => {
 }
 
 const addEmptyStyle = () => {
-  layersStore.addLayer({
+  layersStore.addStyle({
     id: Date.now(),
     prompt: [' '],
     type: 'style',
@@ -96,6 +95,11 @@ const reGenerateLayer = async (idInLayers) => {
 
 <template>
   <div class="col-6">
+    <EditableLabel
+      v-model="layersStore.context.semantics"
+      :type="layersStore.context.type"
+    ></EditableLabel>
+    <!--////TODO DELETE CONTEXT LABEL-->
     <draggable
       v-model="layerArr"
       item-key="id"
@@ -109,6 +113,7 @@ const reGenerateLayer = async (idInLayers) => {
             <!-- Inner draggable list for names -->
             <draggable
               v-model="element.prompt"
+              @end="handleChange($event)"
               item-key="n => n"
               group="inner"
               :component-data="{ type: 'transition', name: 'flip-list' }"
@@ -147,14 +152,8 @@ const reGenerateLayer = async (idInLayers) => {
         >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <textarea
-          v-model="layerPrompt"
-          placeholder="Describe what you want to generate..."
-          rows="3"
-          class="my-2"
-        ></textarea>
         <div class="btn-group list-group-item" role="group" key="footer">
-          <button class="btn btn-outline-dark" @click="generateNewLayer">Add Object</button>
+          <button class="btn btn-outline-dark" @click="addNewLayer">Add Object</button>
           <button class="btn btn-outline-dark" @click="addEmptyStyle">Add Style</button>
         </div>
       </template>

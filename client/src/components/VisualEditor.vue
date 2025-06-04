@@ -1,8 +1,10 @@
 <template>
   <div class="col-6 position-relative" style="width: 512px; height: 1024px">
-    <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
-    <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
     <button @click="mergeEverything" class="btn btn-primary mt-2">Merge Everything</button>
+    <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
+
+    <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
+
     <!-- Centered Spinner -->
     <div
       v-show="generationStore.mergingPromise === 'loading'"

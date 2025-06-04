@@ -3,22 +3,18 @@ import { ref } from 'vue'
 
 export const useLayers = defineStore('layers', () => {
   const layers = ref([])
+  const context = ref({ visual: null, semantics: 'An oil painting of a table', type: 'context' })
+  const styles = ref([])
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')
   const mergeEverything = ref(false)
   const promptMap = ref(null)
-  layers.value.push({
-    id: '000',
-    prompt: ['An oil painting of a table'],
-    url: 'xxx',
-    type: 'context',
-  }) //for testing the layers array only
-  layers.value.push({
-    id: '111',
-    prompt: ['impressionism'],
-    url: 'xxx',
-    type: 'style',
-  })
+  // layers.value.push({
+  //   id: '111',
+  //   prompt: ['impressionism'],
+  //   url: 'xxx',
+  //   type: 'style',
+  // })
   // layers.value.push({
   //   id: Date.now(),
   //   prompt: ['apple', 'with green leaves'],
@@ -41,6 +37,7 @@ export const useLayers = defineStore('layers', () => {
       }))
 
     const fullPrompt = promptMap.value.map((p) => p.sentence).join('. ') + '.'
+    console.log(fullPrompt)
     return fullPrompt
   }
 
@@ -102,6 +99,10 @@ export const useLayers = defineStore('layers', () => {
   }
 
   function addLayer(layer) {
+    layers.value.unshift(layer)
+  }
+
+  function addStyle(layer) {
     layers.value.push(layer)
   }
   function addDOMLayer(layer) {
@@ -127,10 +128,14 @@ export const useLayers = defineStore('layers', () => {
 
   function setLayerUrl(idInLayers, newUrl) {
     let found = findOneLayer(idInLayers)
+    found.url = newUrl
     layerPayload.value = { url: newUrl, id: idInLayers, left: 0, top: 0 }
   }
 
   return {
+    styles,
+    context,
+    addStyle,
     findLayerIdByPhrase,
     buildPromptForDetection,
     mergeEverything,
