@@ -5,22 +5,26 @@
     <main>
       <FreeCanvas></FreeCanvas>
 
-      <button
-        class="btn btn-primary"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#collapseExample"
-        aria-expanded="false"
-        aria-controls="collapseExample"
+      <VueDraggableResizable
+        :x="position.x"
+        :y="position.y"
+        :w="'auto'"
+        :h="'auto'"
+        :draggable="true"
+        class-name="design-space-container"
+        @dragging="onDrag"
       >
-        Open Design Space
-      </button>
-
-      <div class="collapse" id="collapseExample">
-        <div class="card card-body" style="max-width: 95%">
-          <div class="row"><VisualEditor /> <SemanticEditor /></div>
+        <div class="header"> 
+          Open Design Space
+          <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
+            <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+          </button>
         </div>
-      </div>
+        <div class="row content" v-show="isDesignSpaceVisible">          
+          <div class="col"><VisualEditor /></div>
+          <div class="col"><SemanticEditor /></div>       
+        </div>
+      </VueDraggableResizable>
 
       <ParametersPanel
         :params="generationParams"
@@ -48,6 +52,8 @@ import ParametersPanel from './components/ParametersPanel.vue'
 import FreeCanvas from '@/components/FreeCanvas.vue'
 import VisualEditor from '@/components/VisualEditor.vue'
 import SemanticEditor from '@/components/SemanticEditor.vue'
+import VueDraggableResizable from 'vue-draggable-resizable'
+
 export default {
   name: 'App',
   components: {
@@ -56,6 +62,7 @@ export default {
     ImageEditor,
     ParametersPanel,
     FreeCanvas,
+    VueDraggableResizable
   },
   data() {
     return {
@@ -78,6 +85,8 @@ export default {
       },
       generatedImage: null,
       prompt: '',
+      isDesignSpaceVisible: false,
+      position: { x: 20, y: 20 }
     }
   },
   methods: {
@@ -109,6 +118,12 @@ export default {
         console.error('Error fetching models:', error)
       }
     },
+    toggleDesignSpace() {
+      this.isDesignSpaceVisible = !this.isDesignSpaceVisible
+    },
+    onDrag(x, y) {
+      this.position = { x, y }
+    }
   },
   mounted() {
     // this.fetchModels()
@@ -127,5 +142,34 @@ export default {
   height: 100vh;
   z-index: 10;
   background-color: rgba(255, 255, 255, 0.9); /* Optional: background for readability */
+}
+
+.design-space-container {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  transform: none;
+}
+
+.content {
+  padding: 16px;
+  min-width: 1000px;
+}
+
+.header { 
+  background: #f8f9fa;
+  cursor: move;
+  padding: 8px 12px;
+  /* border-bottom: 1px solid #ddd; */
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
 }
 </style>
