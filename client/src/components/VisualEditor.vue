@@ -1,10 +1,15 @@
 <template>
   <div class="col-6 position-relative" style="width: 512px; height: 1024px">
-    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
+    <VisualTool
+      @switchLasso="switchLasso"
+      @forwardLayer="forwardOneLayer"
+      @backwardLayer="backwardOneLayer"
+    ></VisualTool>
+    <button @click="mergeEverything" class="btn btn-primary mt-2">Transform</button>
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
 
     <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
-    <button @click="mergeEverything" class="btn btn-primary mt-2">Transform</button>
+
     <!-- Centered Spinner -->
     <div
       v-show="generatePromise === 'loading'"
@@ -80,7 +85,19 @@ let hasMoved = false
 const clickedObject = ref({ oriX: 0, oriY: 0, width: 0, height: 0 })
 let previewCanvas = null
 const { generatePromise, setGeneratePromise } = useGeneration()
+let isLasso = false
+let points = []
+let path = null
+let lassoStart = false
+let startPointer = null
 
+const switchLasso = () => {
+  lassoStart = !lassoStart
+  canvas.selection = !canvas.selection ////TODO: May need to change to switch
+  canvas.forEachObject((obj) => {
+    obj.selectable = false
+  })
+}
 watch(
   () => generationStore.shouldTriggerT2I,
   (val) => {
@@ -179,66 +196,63 @@ const generateContext = async (prompt) => {
 }
 const mergeEverything = async () => {
   //uncomment below to test openai api
-  try {
-    const canvasImgBase64 = canvas.toDataURL('image/png')
-    const output_path = 'static/assets/img2img.png'
-    const prompt = layersStore.buildStructuredPrompt()
-
-    setGeneratePromise('loading')
-    const res = await fetch('http://localhost:5555/merge-everything', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_base64: canvasImgBase64,
-        prompt: prompt,
-        output_path: output_path, //"static/assets/..."
-      }),
-    })
-
-    const data = await res.json()
-    if (res.ok) {
-      const bgImage = new Image()
-      bgImage.src = data.output //data.output is base64
-      generationStore.img2imgOut.src = data.output
-      console.log(bgImage.src)
-      const previewContext = previewCanvas.getContext('2d')
-
-      bgImage.onload = () => {
-        previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-      }
-      const promptForDetection = layersStore.buildPromptForDetection()
-      console.log('promptForDetection', promptForDetection)
-      const detectBoxes = await detectObject(generationStore.img2imgOut.src, promptForDetection)
-      generationStore.storeDetection(detectBoxes)
-      return `Success! Output: ${data.output}`
-    } else {
-      return data.error || 'Request failed'
-    }
-  } catch (err) {
-    return 'Network error or server unavailable.'
-  } finally {
-    setGeneratePromise('finished')
-  }
+  // try {
+  //   const canvasImgBase64 = canvas.toDataURL('image/png')
+  //   const output_path = 'static/assets/img2img.png'
+  //   const prompt = layersStore.buildStructuredPrompt()
+  //
+  //   setGeneratePromise('loading')
+  //   const res = await fetch('http://localhost:5555/merge-everything', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({
+  //       image_base64: canvasImgBase64,
+  //       prompt: prompt,
+  //       output_path: output_path, //"static/assets/..."
+  //     }),
+  //   })
+  //
+  //   const data = await res.json()
+  //   if (res.ok) {
+  //     const bgImage = new Image()
+  //     bgImage.src = data.output //data.output is base64
+  //     generationStore.img2imgOut.src = data.output
+  //     console.log(bgImage.src)
+  //     const previewContext = previewCanvas.getContext('2d')
+  //
+  //     bgImage.onload = () => {
+  //       previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  //     }
+  //     const promptForDetection = layersStore.buildPromptForDetection()
+  //     console.log('promptForDetection', promptForDetection)
+  //     const detectBoxes = await detectObject(generationStore.img2imgOut.src, promptForDetection)
+  //     generationStore.storeDetection(detectBoxes)
+  //     return `Success! Output: ${data.output}`
+  //   } else {
+  //     return data.error || 'Request failed'
+  //   }
+  // } catch (err) {
+  //   return 'Network error or server unavailable.'
+  // } finally {
+  //   setGeneratePromise('finished')
+  // }
   //end of comment
 
   //uncomment below to test one image
-  // const bgImage = new Image()
-  // bgImage.src = generationStore.testBase64
-  // generationStore.img2imgOut.src = generationStore.testBase64
-  // const previewContext = previewCanvas.getContext('2d')
-  // setGeneratePromise('loading')
-  // bgImage.onload = () => {
-  //   previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  // }
-  // const promptForDetection = layersStore.buildPromptForDetection()
-  // console.log('promptForDetection', promptForDetection)
-  // const normBoxesWithText = await detectObject(
-  //   generationStore.img2imgOut.src,
-  //   promptForDetection,
-  // )
-  // generationStore.storeDetection(normBoxesWithText)
-  // moveOriCanvasObj(generationStore.detectedObjects)
-  // setGeneratePromise('finished')
+  const bgImage = new Image()
+  bgImage.src = generationStore.testBase64
+  generationStore.img2imgOut.src = generationStore.testBase64
+  const previewContext = previewCanvas.getContext('2d')
+  setGeneratePromise('loading')
+  bgImage.onload = () => {
+    previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  }
+  const promptForDetection = layersStore.buildPromptForDetection()
+  console.log('promptForDetection', promptForDetection)
+  const normBoxesWithText = await detectObject(generationStore.img2imgOut.src, promptForDetection)
+  generationStore.storeDetection(normBoxesWithText)
+  moveOriCanvasObj(generationStore.detectedObjects)
+  setGeneratePromise('finished')
 
   //end of comment
 }
@@ -409,6 +423,56 @@ onMounted(() => {
       isDrawingMode: false,
     }),
   )
+
+  canvas.on('mouse:down', function (opt) {
+    if (lassoStart === true) {
+      isLasso = true
+      startPointer = opt.pointer
+      points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+    }
+  })
+
+  canvas.on('mouse:move', function (opt) {
+    if (!isLasso || !lassoStart) return
+    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+
+    if (path) canvas.remove(path)
+
+    const pathStr = points.join(' ') + ' Z' // Close the path
+    path = new fabric.Path(pathStr, {
+      stroke: 'black',
+      strokeWidth: 1,
+      fill: 'rgba(0, 0, 0, 0.1)',
+      selectable: false,
+      evented: false,
+      strokeDashArray: [5, 5],
+    })
+
+    canvas.add(path)
+    canvas.requestRenderAll()
+  })
+
+  canvas.on('mouse:up', function (opt) {
+    if (!isLasso) return
+
+    isLasso = false
+    const dx = opt.pointer.x - startPointer.x
+    const dy = opt.pointer.y - startPointer.y
+    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+
+    if (!moved) {
+      if (path) canvas.remove(path)
+      path = null
+      points = []
+      canvas.requestRenderAll()
+      return
+    }
+
+    if (path) {
+      path.setCoords()
+      // Optionally: check which objects are within the path here
+    }
+  })
 
   canvas.on('object:moving', function (e) {
     var obj = e.target

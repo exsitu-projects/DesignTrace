@@ -5,25 +5,16 @@
     <main>
       <FreeCanvas></FreeCanvas>
 
-      <VueDraggableResizable
-        :x="position.x"
-        :y="position.y"
-        :w="'auto'"
-        :h="'auto'"
-        :draggable="false"
-        class-name="design-space-container"
-      >
-        <div class="header">
-          Open Design Space
-          <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
-            <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-          </button>
-        </div>
-        <div class="row content" v-show="isDesignSpaceVisible">
-          <div class="col"><VisualEditor /></div>
-          <div class="col"><SemanticEditor /></div>
-        </div>
-      </VueDraggableResizable>
+      <div class="header">
+        Open Design Space
+        <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
+          <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+        </button>
+      </div>
+      <div class="row content" v-show="isDesignSpaceVisible">
+        <div class="col"><VisualEditor /></div>
+        <div class="col"><SemanticEditor /></div>
+      </div>
 
       <ParametersPanel
         v-if="false"
