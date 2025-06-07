@@ -4,11 +4,13 @@ import { useLayers } from '@/stores/layersStore.js'
 import { ref } from 'vue'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
+import { useGeneration } from '@/stores/generationStore.js'
 
 const layersStore = useLayers()
 const objectStore = useObject()
+const generationStore = useGeneration()
 let dragging = false
-
+const { triggerT2I } = useGeneration()
 const addNewLabel = (idInLayers) => {
   layersStore.addNewLabel(idInLayers)
 }
@@ -33,7 +35,7 @@ const handleChange = (e) => {
   }
 }
 ////TODO: This code only runs once layersStore.layers[i].hiddenStyle === ''
-
+////TODO: Delete semantics doesnt delete DOM element for now
 const handleDelete = (ele, index) => {
   ele.prompt.splice(index, 1)
   if (ele.prompt.length === 0) {
@@ -115,6 +117,7 @@ const reGenerateLayer = async (idInLayers) => {
       v-model="layersStore.context.semantics"
       :type="layersStore.context.type"
     ></EditableLabel>
+    <i class="bx bx-refresh-cw-dot m-auto btn btn-light" @click="triggerT2I"></i>
     <!--////TODO DELETE CONTEXT LABEL-->
     <draggable
       v-model="layersStore.layers"

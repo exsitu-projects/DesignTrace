@@ -10,29 +10,33 @@
         :y="position.y"
         :w="'auto'"
         :h="'auto'"
-        :draggable="true"
+        :draggable="false"
         class-name="design-space-container"
-        @dragging="onDrag"
       >
-        <div class="header"> 
+        <div class="header">
           Open Design Space
           <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>
         </div>
-        <div class="row content" v-show="isDesignSpaceVisible">          
+        <div class="row content" v-show="isDesignSpaceVisible">
           <div class="col"><VisualEditor /></div>
-          <div class="col"><SemanticEditor /></div>       
+          <div class="col"><SemanticEditor /></div>
         </div>
       </VueDraggableResizable>
 
       <ParametersPanel
+        v-if="false"
         :params="generationParams"
         :models="availableModels"
         @update:params="updateParams"
       />
-      <ImageEditor @prompt-guessed="updatePrompt" @image-generated="displayGeneratedImage" />
-      <div class="preview-section" v-if="generatedImage">
+      <ImageEditor
+        v-if="false"
+        @prompt-guessed="updatePrompt"
+        @image-generated="displayGeneratedImage"
+      />
+      <div v-if="false" class="preview-section" v-show="generatedImage">
         <h2>Generated Image</h2>
         <div class="image-preview">
           <img :src="generatedImage" alt="Generated Image" />
@@ -62,7 +66,7 @@ export default {
     ImageEditor,
     ParametersPanel,
     FreeCanvas,
-    VueDraggableResizable
+    VueDraggableResizable,
   },
   data() {
     return {
@@ -86,7 +90,7 @@ export default {
       generatedImage: null,
       prompt: '',
       isDesignSpaceVisible: false,
-      position: { x: 20, y: 20 }
+      position: { x: 20, y: 20 },
     }
   },
   methods: {
@@ -123,7 +127,7 @@ export default {
     },
     onDrag(x, y) {
       this.position = { x, y }
-    }
+    },
   },
   mounted() {
     // this.fetchModels()
@@ -161,7 +165,7 @@ export default {
   min-width: 1000px;
 }
 
-.header { 
+.header {
   background: #f8f9fa;
   cursor: move;
   padding: 8px 12px;

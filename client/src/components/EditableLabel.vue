@@ -50,7 +50,7 @@ const startEditing = () => {
 }
 
 const onKeyDown = (e) => {
-  if (e.key === 'Delete' || e.key === 'Backspace') {
+  if (e.key === 'Delete') {
     emit('delete-label')
   }
 }

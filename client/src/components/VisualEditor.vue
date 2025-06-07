@@ -1,13 +1,13 @@
 <template>
   <div class="col-6 position-relative" style="width: 512px; height: 1024px">
-    <button @click="mergeEverything" class="btn btn-primary mt-2">Merge Everything</button>
+    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
 
     <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
-
+    <button @click="mergeEverything" class="btn btn-primary mt-2">Transform</button>
     <!-- Centered Spinner -->
     <div
-      v-show="generationStore.mergingPromise === 'loading'"
+      v-show="generatePromise === 'loading'"
       class="position-absolute top-50 start-50 translate-middle"
       style="z-index: 3"
     >
@@ -67,7 +67,8 @@ import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
 import { useGeneration } from '@/stores/generationStore.js'
-
+import VisualTool from '@/components/VisualTool.vue'
+const canvasBgImage = new Image()
 const layersStore = useLayers()
 const objectStore = useObject()
 const generationStore = useGeneration()
@@ -78,6 +79,33 @@ let previewOffset = { x: 0, y: 0 }
 let hasMoved = false
 const clickedObject = ref({ oriX: 0, oriY: 0, width: 0, height: 0 })
 let previewCanvas = null
+const { generatePromise, setGeneratePromise } = useGeneration()
+
+watch(
+  () => generationStore.shouldTriggerT2I,
+  (val) => {
+    if (val) {
+      generateContext(layersStore.context.semantics)
+      setTimeout(() => {
+        generationStore.resetT2I()
+      }, 1000)
+    }
+  },
+)
+const forwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.bringObjectForward(activeObject, true)
+    canvas.renderAll()
+  }
+}
+const backwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.sendObjectToBack(activeObject, true)
+    canvas.renderAll()
+  }
+}
 const describeImage = async (image_path, prompt) => {
   try {
     objectStore.promiseLoadImageLabel = 'loading'
@@ -105,70 +133,113 @@ const describeImage = async (image_path, prompt) => {
     objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
   }
 }
+const generateContext = async (prompt) => {
+  //uncomment below to test openai api
+  try {
+    const output_path = 'static/assets/txt2img.png'
+    setGeneratePromise('loading')
+    const res = await fetch('http://localhost:5555/text-to-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: prompt,
+        output_path: output_path, //"static/assets/..."
+      }),
+    })
 
+    const data = await res.json()
+    if (res.ok) {
+      const img = new Image()
+      img.onload = function () {
+        const f_img = new fabric.Image(img)
+        canvas.set('backgroundImage', f_img)
+        canvas.renderAll()
+      }
+      img.src = data.output
+
+      return `Success! Output: ${data.output}`
+    } else {
+      return data.error
+    }
+  } catch (err) {
+    return err
+  } finally {
+    setGeneratePromise('finished')
+    generationStore.resetT2I()
+  }
+  //end of comment
+
+  // const img = new Image()
+  // img.onload = function () {
+  //   const f_img = new fabric.Image(img)
+  //   canvas.set('backgroundImage', f_img)
+  //   canvas.renderAll()
+  // }
+  // img.src = generationStore.testBase64
+}
 const mergeEverything = async () => {
   //uncomment below to test openai api
-  // try {
-  //   const canvasImgBase64 = canvas.toDataURL('image/png')
-  //   const output_path = 'static/assets/output.png'
-  //   const prompt = layersStore.buildStructuredPrompt()
-  //
-  // generationStore.mergingPromise = 'loading'
-  //   const res = await fetch('http://localhost:5555/merge-everything', {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({
-  //       image_base64: canvasImgBase64,
-  //       prompt: prompt,
-  //       output_path: output_path, //"static/assets/..."
-  //     }),
-  //   })
-  //   layersStore.mergeEverything = true
-  //
-  //   const data = await res.json()
-  //   if (res.ok) {
-  //     const bgImage = new Image()
-  //     bgImage.src = data.output //data.output is base64
-  //     generationStore.mergedAllImage.src = data.output
-  //     console.log(bgImage.src)
-  //     const previewContext = previewCanvas.getContext('2d')
-  //
-  //     bgImage.onload = () => {
-  //       previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  //     }
-  //     const promptForDetection = layersStore.buildPromptForDetection()
-  //     console.log('promptForDetection', promptForDetection)
-  //     const detectBoxes = await detectObject(generationStore.mergedAllImage.src, promptForDetection)
-  //     generationStore.storeDetection(detectBoxes)
-  //     return `Success! Output: ${data.output}`
-  //   } else {
-  //     return data.error || 'Request failed'
-  //   }
-  // } catch (err) {
-  //   return 'Network error or server unavailable.'
-  // } finally {
-  //   generationStore.mergingPromise = 'finished'
-  // }
+  try {
+    const canvasImgBase64 = canvas.toDataURL('image/png')
+    const output_path = 'static/assets/img2img.png'
+    const prompt = layersStore.buildStructuredPrompt()
+
+    setGeneratePromise('loading')
+    const res = await fetch('http://localhost:5555/merge-everything', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_base64: canvasImgBase64,
+        prompt: prompt,
+        output_path: output_path, //"static/assets/..."
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      const bgImage = new Image()
+      bgImage.src = data.output //data.output is base64
+      generationStore.img2imgOut.src = data.output
+      console.log(bgImage.src)
+      const previewContext = previewCanvas.getContext('2d')
+
+      bgImage.onload = () => {
+        previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+      }
+      const promptForDetection = layersStore.buildPromptForDetection()
+      console.log('promptForDetection', promptForDetection)
+      const detectBoxes = await detectObject(generationStore.img2imgOut.src, promptForDetection)
+      generationStore.storeDetection(detectBoxes)
+      return `Success! Output: ${data.output}`
+    } else {
+      return data.error || 'Request failed'
+    }
+  } catch (err) {
+    return 'Network error or server unavailable.'
+  } finally {
+    setGeneratePromise('finished')
+  }
   //end of comment
 
   //uncomment below to test one image
-  const bgImage = new Image()
-  bgImage.src = generationStore.testBase64
-  generationStore.mergedAllImage.src = generationStore.testBase64
-  const previewContext = previewCanvas.getContext('2d')
-  generationStore.mergingPromise = 'loading'
-  bgImage.onload = () => {
-    previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  }
-  const promptForDetection = layersStore.buildPromptForDetection()
-  console.log('promptForDetection', promptForDetection)
-  const normBoxesWithText = await detectObject(
-    generationStore.mergedAllImage.src,
-    promptForDetection,
-  )
-  generationStore.storeDetection(normBoxesWithText)
-  moveOriCanvasObj(generationStore.detectedObjects)
-  generationStore.mergingPromise = 'finished'
+  // const bgImage = new Image()
+  // bgImage.src = generationStore.testBase64
+  // generationStore.img2imgOut.src = generationStore.testBase64
+  // const previewContext = previewCanvas.getContext('2d')
+  // setGeneratePromise('loading')
+  // bgImage.onload = () => {
+  //   previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  // }
+  // const promptForDetection = layersStore.buildPromptForDetection()
+  // console.log('promptForDetection', promptForDetection)
+  // const normBoxesWithText = await detectObject(
+  //   generationStore.img2imgOut.src,
+  //   promptForDetection,
+  // )
+  // generationStore.storeDetection(normBoxesWithText)
+  // moveOriCanvasObj(generationStore.detectedObjects)
+  // setGeneratePromise('finished')
+
   //end of comment
 }
 
@@ -180,6 +251,7 @@ function moveOriCanvasObj(boxesWithText) {
       activeCanvasObj.left = detectedObj.box[0]
       activeCanvasObj.top = detectedObj.box[1]
       activeCanvasObj.setCoords()
+
       canvas.requestRenderAll()
     }
   }
@@ -373,7 +445,7 @@ onMounted(() => {
 
   function drawOutline(x, y, width, height) {
     // previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
-    drawBgImg(previewCanvas, generationStore.mergedAllImage.src) //base 64 link for test
+    drawBgImg(previewCanvas, generationStore.img2imgOut.src) //base 64 link for test
     previewContext.strokeStyle = 'orange'
     previewContext.lineWidth = 2
     previewContext.setLineDash([5, 5]) // dashed line
@@ -444,7 +516,6 @@ onMounted(() => {
         selectedFabricObject.left += dxFabric
         selectedFabricObject.top += dyFabric
         selectedFabricObject.setCoords()
-
         canvas.requestRenderAll()
         mergeEverything()
       } else {
@@ -493,12 +564,13 @@ onMounted(() => {
       objectStore.dragState = 'finishedDragging'
       const describePrompt =
         "Describe the image in one precise, concise phrase focusing solely on clearly visible objects and their unambiguous features. Never assume non-visible states (e.g., cut, peeled, opened) unless explicitly shown. Prioritize accuracy over creativity. Example: 'A whole unpeeled avocado with bumpy dark green skin.'"
-      const extractedPrompt = await describeImage(parsedUrl, describePrompt)
+      // const extractedPrompt = await describeImage(parsedUrl, describePrompt)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
       // to sent to back end it should be parsed to "static/..."
       const newLayer = {
         id: newId,
-        prompt: [extractedPrompt],
+        //prompt: [extractedPrompt],
+        prompt: [''],
         url: droppedObj.src,
         left: pointer.x,
         top: pointer.y,

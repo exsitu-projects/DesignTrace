@@ -3,11 +3,10 @@ import { ref } from 'vue'
 
 export const useLayers = defineStore('layers', () => {
   const layers = ref([])
-  const context = ref({ visual: null, semantics: 'An oil painting of a table', type: 'context' })
+  const context = ref({ visual: null, semantics: 'A living room with a table', type: 'context' })
   const styles = ref([])
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')
-  const mergeEverything = ref(false)
   const promptMap = ref(null)
   // layers.value.push({
   //   id: '111',
@@ -48,45 +47,26 @@ export const useLayers = defineStore('layers', () => {
   }
   function buildStructuredPrompt() {
     const contextParts = []
-    const objectParts = []
     const styleParts = []
 
     for (const layer of layers.value) {
       if (!layer.prompt || !Array.isArray(layer.prompt)) continue
 
-      // Clean up prompt parts: remove trailing periods for objects
-      let cleanedPrompt = layer.prompt.map((p) => {
-        return layer.type === 'object' ? p.replace(/\.+$/, '') : p
-      })
-
-      const joinedPrompt =
-        layer.type === 'object' ? cleanedPrompt.join('; ').trim() : cleanedPrompt.join(', ').trim()
-
-      if (!joinedPrompt) continue
-
       if (layer.type === 'context') {
         contextParts.push(joinedPrompt)
-      } else if (layer.type === 'object') {
-        objectParts.push(joinedPrompt)
       } else if (layer.type === 'style') {
         styleParts.push(joinedPrompt)
       }
     }
 
     const contextText = contextParts.join(', ')
-    const objectText = objectParts.join('; ') // semicolon here too
     const styleText = styleParts.join(', ')
 
     let prompt =
       'Generate a new image that keeps all the objects of the image input and strictly preserve the original object positions. The new image should be in '
 
     if (contextText) {
-      prompt += `${contextText} context`
-    }
-    if (objectText) {
-      prompt += contextText
-        ? `, making sure to include ${objectText} in their original locations`
-        : `Include ${objectText} in their original locations`
+      prompt += context.semantcis`context`
     }
     if (styleText) {
       prompt +=
@@ -138,7 +118,6 @@ export const useLayers = defineStore('layers', () => {
     addStyle,
     findLayerIdByPhrase,
     buildPromptForDetection,
-    mergeEverything,
     layers,
     layerPayload,
     buildStructuredPrompt,
