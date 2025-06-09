@@ -8,6 +8,7 @@ export const useLayers = defineStore('layers', () => {
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')
   const promptMap = ref(null)
+  const currentSemantics = ref('')
   // layers.value.push({
   //   id: '111',
   //   prompt: ['impressionism'],
@@ -38,6 +39,10 @@ export const useLayers = defineStore('layers', () => {
     const fullPrompt = promptMap.value.map((p) => p.sentence).join('. ') + '.'
     console.log(fullPrompt)
     return fullPrompt
+  }
+
+  function setCurrentSemantics(semantics) {
+    currentSemantics.value = semantics
   }
 
   function findLayerIdByPhrase(detectedPhrase) {
@@ -128,5 +133,7 @@ export const useLayers = defineStore('layers', () => {
     addNewLabel,
     getPromptsOneLayer,
     setLayerUrl,
+    currentSemantics,
+    setCurrentSemantics,
   }
 })

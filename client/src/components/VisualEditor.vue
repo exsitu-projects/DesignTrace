@@ -452,7 +452,7 @@ onMounted(() => {
     canvas.requestRenderAll()
   })
 
-  canvas.on('mouse:up', function (opt) {
+  canvas.on('mouse:up', async function (opt) {
     if (!isLasso) return
 
     isLasso = false
@@ -470,7 +470,26 @@ onMounted(() => {
 
     if (path) {
       path.setCoords()
-      // Optionally: check which objects are within the path here
+      const bounds = path.getBoundingRect()
+      canvas.remove(path)
+      // Render first to make sure everything is drawn
+      canvas.renderAll()
+
+      // Extract just the area covered by the path + content inside it
+      const dataUrl = canvas.toDataURL({
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        format: 'png',
+        multiplier: 1, // can set to 2 for higher resolution
+      })
+
+      const prompt =
+        'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
+      const semantics = await describeImage(dataUrl, prompt)
+      layersStore.setCurrentSemantics(semantics)
+      console.log(semantics)
     }
   })
 
@@ -630,7 +649,7 @@ onMounted(() => {
         "Describe the image in one precise, concise phrase focusing solely on clearly visible objects and their unambiguous features. Never assume non-visible states (e.g., cut, peeled, opened) unless explicitly shown. Prioritize accuracy over creativity. Example: 'A whole unpeeled avocado with bumpy dark green skin.'"
       // const extractedPrompt = await describeImage(parsedUrl, describePrompt)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
-      // to sent to back end it should be parsed to "static/..."
+      // to sent to back end it should be parsed to "static/assets/..."
       const newLayer = {
         id: newId,
         //prompt: [extractedPrompt],

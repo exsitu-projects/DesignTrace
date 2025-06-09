@@ -119,6 +119,7 @@ const reGenerateLayer = async (idInLayers) => {
     ></EditableLabel>
     <i class="bx bx-refresh-cw-dot m-auto btn btn-light" @click="triggerT2I"></i>
     <!--////TODO DELETE CONTEXT LABEL-->
+    <EditableLabel v-model="layersStore.currentSemantics" type="object"></EditableLabel>
     <draggable
       v-model="layersStore.layers"
       item-key="id"

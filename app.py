@@ -129,9 +129,15 @@ def guess_prompt_handler():
 @app.route('/api/image_to_text', methods=['POST'])
 def image_to_text_handler():
     data = request.json
-    image_path = data.get('image_path')  # e.g. "example.jpg"
+    image_path = data.get('image_path')  # either staitc/... or base64
+    if (image_path.startswith("data:image")):
+        image_data = image_path.split(',')[1]  # remove "data:image/png;base64," part
+        with open('static/assets/lassoImage.png', 'wb') as f:
+            f.write(base64.b64decode(image_data))
+            full_path = 'static/assets/lassoImage.png'
+    else:
+        full_path =  image_path
     prompt = data.get('prompt')
-    full_path =  image_path
 
     try:
         # Convert to numpy array and then to tensor with correct shape
