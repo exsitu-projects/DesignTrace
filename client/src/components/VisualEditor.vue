@@ -5,7 +5,7 @@
       @forwardLayer="forwardOneLayer"
       @backwardLayer="backwardOneLayer"
     ></VisualTool>
-    <button @click="mergeEverything" class="btn btn-primary mt-2">Transform</button>
+    <button @click="mergeEverything" class="btn btn-primary mt-2">Contextualize</button>
     <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
 
     <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
@@ -90,13 +90,14 @@ let points = []
 let path = null
 let lassoStart = false
 let startPointer = null
-
+const lassoStatus = ref(false)
 const switchLasso = () => {
   lassoStart = !lassoStart
-  canvas.selection = !canvas.selection ////TODO: May need to change to switch
+
   canvas.forEachObject((obj) => {
-    obj.selectable = false
+    obj.selectable = !lassoStart
   })
+  canvas.selection = !lassoStart
 }
 watch(
   () => generationStore.shouldTriggerT2I,
@@ -127,18 +128,18 @@ const describeImage = async (image_path, prompt) => {
   try {
     objectStore.promiseLoadImageLabel = 'loading'
 
-    const response = await fetch('http://localhost:5000/api/image_to_text', {
+    const response = await fetch('http://localhost:5555/image-to-labels', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ image_path, prompt }),
     })
-
     const result = await response.json()
 
     if (response.ok) {
-      return result.result
+      // return result.result
+      return result.output
     } else {
       console.log(result.error)
       return null // Optional: explicitly return null on error
@@ -426,6 +427,10 @@ onMounted(() => {
 
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
+      canvas.forEachObject((obj) => {
+        obj.selectable = false
+      })
+      canvas.selection = false
       isLasso = true
       startPointer = opt.pointer
       points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
@@ -474,7 +479,7 @@ onMounted(() => {
       canvas.remove(path)
       // Render first to make sure everything is drawn
       canvas.renderAll()
-
+      canvas.add(path)
       // Extract just the area covered by the path + content inside it
       const dataUrl = canvas.toDataURL({
         left: bounds.left,
@@ -485,8 +490,10 @@ onMounted(() => {
         multiplier: 1, // can set to 2 for higher resolution
       })
 
-      const prompt =
-        'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
+      // const prompt =
+      //   'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
+      // const prompt =
+      //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
       const semantics = await describeImage(dataUrl, prompt)
       layersStore.setCurrentSemantics(semantics)
       console.log(semantics)
@@ -650,19 +657,19 @@ onMounted(() => {
       // const extractedPrompt = await describeImage(parsedUrl, describePrompt)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
       // to sent to back end it should be parsed to "static/assets/..."
-      const newLayer = {
-        id: newId,
-        //prompt: [extractedPrompt],
-        prompt: [''],
-        url: droppedObj.src,
-        left: pointer.x,
-        top: pointer.y,
-        selectable: true,
-        hasControls: true,
-        type: 'object',
-        hiddenStyle: '',
-      }
-      layersStore.addLayer(newLayer)
+      // const newLayer = {
+      //   id: newId,
+      //   //prompt: [extractedPrompt],
+      //   prompt: [''],
+      //   url: droppedObj.src,
+      //   left: pointer.x,
+      //   top: pointer.y,
+      //   selectable: true,
+      //   hasControls: true,
+      //   type: 'object',
+      //   hiddenStyle: '',
+      // }
+      // layersStore.addLayer(newLayer)
     } else {
       objectStore.dragState = 'notDragging'
     }

@@ -165,6 +165,73 @@ def text_to_image():
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
+@app.route('/image-to-labels', methods=['POST'])
+def image_to_labels():
+
+    data = request.json
+    image_path = data.get('image_path')  # either staitc/... or base64
+    if (image_path.startswith("data:image")):
+        full_path =  image_path
+#         image_data = image_path.split(',')[1]  # remove "data:image/png;base64," part
+#         with open('static/assets/lassoImage.png', 'wb') as f:
+#             f.write(base64.b64decode(image_data))
+#             full_path = 'static/assets/lassoImage.png'
+    else:
+         full_path =  image_path
+    prompt = data.get('prompt')
+    system_prompt = '''
+        You are an agent specialized in tagging images of different objects with relevant keywords that could be used to search for these items or regenerate a relevant image.
+
+        You will be provided with an image and the title of the item that is depicted in the image, and your goal is to extract keywords for only the item specified.
+
+        Keywords should be concise and in lower case.
+
+        Keywords can describe things like:
+        - Item type e.g. 'sofa bed', 'chair', 'desk', 'plant'
+        - Item material e.g. 'wood', 'metal', 'fabric'
+        - Item style e.g. 'scandinavian', 'vintage', 'industrial'
+        - Item color e.g. 'red', 'blue', 'white'
+
+        Only deduce material, style or color keywords when it is obvious that they make the item depicted in the image stand out.
+
+        Return keywords in the format of an array of strings, like this:
+        ['desk', 'industrial', 'metal']
+
+    '''
+    try:
+#         with open(full_path, "rb") as image_file:
+        response = client.responses.create(
+            model="gpt-4o-mini",
+
+            input=[
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": [
+#                     {"type": "input_text", "text": "what's in this image?"},
+                    {
+                        "type": "input_image",
+                        "image_url": full_path,
+                    },
+                ],
+            }],
+
+        )
+
+        print(response.output[0].content[0].text)
+        return jsonify({
+            "status": "success",
+            "output": response.output[0].content[0].text,
+        })
+
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
 # remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
 # Imports the Google Cloud client library
 # from google.cloud import vision

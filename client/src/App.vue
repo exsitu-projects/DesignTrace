@@ -21,9 +21,9 @@
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>
         </div>
-        <div class="row content" v-show="isDesignSpaceVisible">
-          <div class="col"><VisualEditor /></div>
-          <div class="col handle"><SemanticEditor /></div>
+        <div class="row content" style="width: 60%" v-show="isDesignSpaceVisible">
+          <VisualEditor />
+          <SemanticEditor />
         </div>
       </VueDraggableResizable>
 
