@@ -422,6 +422,7 @@ onMounted(() => {
   canvas = markRaw(
     new fabric.Canvas($('visualEditor'), {
       isDrawingMode: false,
+      preserveObjectStacking: true,
     }),
   )
 
