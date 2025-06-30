@@ -173,10 +173,10 @@ const reGenerateLayer = async (idInLayers) => {
         >
           <span class="visually-hidden">Loading...</span>
         </div>
-        <div class="btn-group list-group-item" role="group" key="footer">
-          <button class="btn btn-outline-dark" @click="addNewLayer">Add Object</button>
-          <button class="btn btn-outline-dark" @click="addEmptyStyle">Add Style</button>
-        </div>
+        <!--        <div class="btn-group list-group-item" role="group" key="footer">-->
+        <!--          <button class="btn btn-outline-dark" @click="addNewLayer">Add Object</button>-->
+        <!--          <button class="btn btn-outline-dark" @click="addEmptyStyle">Add Style</button>-->
+        <!--        </div>-->
       </template>
     </draggable>
   </div>

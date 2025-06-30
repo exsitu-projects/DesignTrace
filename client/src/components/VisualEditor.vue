@@ -1,14 +1,13 @@
 <template>
-  <div class="col-6 position-relative" style="width: 512px; height: 1024px">
+  <div class="col-6 position-relative" style="width: 512px; height: 555px">
+    <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
     <VisualTool
       @switchLasso="switchLasso"
       @forwardLayer="forwardOneLayer"
       @backwardLayer="backwardOneLayer"
     ></VisualTool>
-    <button @click="mergeEverything" class="btn btn-primary mt-2">Contextualize</button>
-    <canvas class="border border-black" id="visualEditor" width="512" height="512"></canvas>
-
-    <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>
+    <button @click="mergeEverything" class="btn btn-light mt-2">Merge</button>
+    <!--    <canvas class="border border-danger" id="previewCanvas" width="512" height="512"></canvas>-->
 
     <!-- Centered Spinner -->
     <div
@@ -77,14 +76,14 @@ const canvasBgImage = new Image()
 const layersStore = useLayers()
 const objectStore = useObject()
 const generationStore = useGeneration()
+const { generatePromise, setGeneratePromise } = useGeneration()
 const $ = (id) => document.getElementById(id)
 let canvas = null
 let previewStart = null
 let previewOffset = { x: 0, y: 0 }
 let hasMoved = false
 const clickedObject = ref({ oriX: 0, oriY: 0, width: 0, height: 0 })
-let previewCanvas = null
-const { generatePromise, setGeneratePromise } = useGeneration()
+
 let isLasso = false
 let points = []
 let path = null
@@ -197,79 +196,63 @@ const generateContext = async (prompt) => {
 }
 const mergeEverything = async () => {
   //uncomment below to test openai api
-  // try {
-  //   const canvasImgBase64 = canvas.toDataURL('image/png')
-  //   const output_path = 'static/assets/img2img.png'
-  //   const prompt = layersStore.buildStructuredPrompt()
-  //
-  //   setGeneratePromise('loading')
-  //   const res = await fetch('http://localhost:5555/merge-everything', {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({
-  //       image_base64: canvasImgBase64,
-  //       prompt: prompt,
-  //       output_path: output_path, //"static/assets/..."
-  //     }),
-  //   })
-  //
-  //   const data = await res.json()
-  //   if (res.ok) {
-  //     const bgImage = new Image()
-  //     bgImage.src = data.output //data.output is base64
-  //     generationStore.img2imgOut.src = data.output
-  //     console.log(bgImage.src)
-  //     const previewContext = previewCanvas.getContext('2d')
-  //
-  //     bgImage.onload = () => {
-  //       previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  //     }
-  //     const promptForDetection = layersStore.buildPromptForDetection()
-  //     console.log('promptForDetection', promptForDetection)
-  //     const detectBoxes = await detectObject(generationStore.img2imgOut.src, promptForDetection)
-  //     generationStore.storeDetection(detectBoxes)
-  //     return `Success! Output: ${data.output}`
-  //   } else {
-  //     return data.error || 'Request failed'
-  //   }
-  // } catch (err) {
-  //   return 'Network error or server unavailable.'
-  // } finally {
-  //   setGeneratePromise('finished')
-  // }
+  try {
+    // const canvasImgBase64 = canvas.toDataURL({
+    //   left: bounds.left,
+    //   top: bounds.top,
+    //   width: bounds.width,
+    //   height: bounds.height,
+    //   format: 'png',
+    //   multiplier: 1, // can set to 2 for higher resolution
+    // })
+    const canvasImgBase64 = canvas.toDataURL('image/png')
+    const output_path = 'static/assets/img2img.png'
+    const prompt = layersStore.buildStructuredPrompt()
+
+    setGeneratePromise('loading')
+    const res = await fetch('http://localhost:5555/merge-everything', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_base64: canvasImgBase64,
+        prompt: prompt,
+        output_path: output_path, //"static/assets/..."
+      }),
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      const bgImage = new Image()
+      bgImage.src = data.output //data.output is base64
+      generationStore.img2imgOut.src = data.output
+      console.log(bgImage.src)
+      const canvasContext = canvas.getContext('2d')
+      bgImage.onload = () => {
+        canvasContext.drawImage(bgImage, 0, 0, canvas.width, canvas.height)
+      }
+      return `Success! Output: ${data.output}`
+    } else {
+      return data.error || 'Request failed'
+    }
+  } catch (err) {
+    return 'Network error or server unavailable.'
+  } finally {
+    setGeneratePromise('finished')
+  }
   //end of comment
 
   //uncomment below to test one image
-  const bgImage = new Image()
-  bgImage.src = generationStore.testBase64
-  generationStore.img2imgOut.src = generationStore.testBase64
-  const previewContext = previewCanvas.getContext('2d')
-  setGeneratePromise('loading')
-  bgImage.onload = () => {
-    previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
-  }
-  const promptForDetection = layersStore.buildPromptForDetection()
-  console.log('promptForDetection', promptForDetection)
-  const normBoxesWithText = await detectObject(generationStore.img2imgOut.src, promptForDetection)
-  generationStore.storeDetection(normBoxesWithText)
-  moveOriCanvasObj(generationStore.detectedObjects)
-  setGeneratePromise('finished')
-
+  // const bgImage = new Image()
+  // bgImage.src = generationStore.testBase64
+  // generationStore.img2imgOut.src = generationStore.testBase64
+  // const previewCanvas = document.getElementById('previewCanvas')
+  // const previewContext = previewCanvas.getContext('2d')
+  // setGeneratePromise('loading')
+  // bgImage.onload = () => {
+  //   previewContext.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height)
+  // }
+  // setGeneratePromise('finished')
   //end of comment
-}
-
-function moveOriCanvasObj(boxesWithText) {
-  for (let detectedObj of boxesWithText) {
-    const layerId = layersStore.findLayerIdByPhrase(detectedObj.text)
-    if (layerId !== null) {
-      let activeCanvasObj = canvas.getObjects().find((obj) => obj.idInLayers === layerId) ////TODO if not matched
-      activeCanvasObj.left = detectedObj.box[0]
-      activeCanvasObj.top = detectedObj.box[1]
-      activeCanvasObj.setCoords()
-
-      canvas.requestRenderAll()
-    }
-  }
 }
 
 function drawBgImg(canvas, imgSrc) {
@@ -363,6 +346,8 @@ watch(
             hasControls: true,
             left: newPayload.left,
             top: newPayload.top,
+            // scaleX: newPayload.scaleX,
+            // scaleY: newPayload.scaleY,
             //newPayload.left newPayload.top
           })
 
@@ -415,8 +400,8 @@ const clickOnDetectionBox = (mouseX, mouseY, objList) => {
 }
 
 onMounted(() => {
-  previewCanvas = document.getElementById('previewCanvas')
-  const previewContext = previewCanvas.getContext('2d')
+  // previewCanvas = document.getElementById('previewCanvas')
+  // const previewContext = previewCanvas.getContext('2d')
   let selectedFabricObject = null
   let isDragging = false
   canvas = markRaw(
@@ -534,97 +519,97 @@ onMounted(() => {
   fabric.Object.prototype.transparentCorners = false
   const canvasElement = canvas.lowerCanvasEl
 
-  function drawOutline(x, y, width, height) {
-    // previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
-    drawBgImg(previewCanvas, generationStore.img2imgOut.src) //base 64 link for test
-    previewContext.strokeStyle = 'orange'
-    previewContext.lineWidth = 2
-    previewContext.setLineDash([5, 5]) // dashed line
-    previewContext.strokeRect(x - width / 2, y - height / 2, width, height)
-  }
-  previewCanvas.addEventListener('mousedown', (e) => {
-    const previewRect = previewCanvas.getBoundingClientRect()
-    const mouseX = e.clientX - previewRect.left
-    const mouseY = e.clientY - previewRect.top
-    previewStart = { x: mouseX, y: mouseY }
-    hasMoved = false
+  // function drawOutline(x, y, width, height) {
+  //   // previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height)
+  //   drawBgImg(previewCanvas, generationStore.img2imgOut.src) //base 64 link for test
+  //   previewContext.strokeStyle = 'orange'
+  //   previewContext.lineWidth = 2
+  //   previewContext.setLineDash([5, 5]) // dashed line
+  //   previewContext.strokeRect(x - width / 2, y - height / 2, width, height)
+  // }
+  // previewCanvas.addEventListener('mousedown', (e) => {
+  //   const previewRect = previewCanvas.getBoundingClientRect()
+  //   const mouseX = e.clientX - previewRect.left
+  //   const mouseY = e.clientY - previewRect.top
+  //   previewStart = { x: mouseX, y: mouseY }
+  //   hasMoved = false
+  //
+  //   const clicked = clickOnDetectionBox(mouseX, mouseY, generationStore.detectedObjects)
+  //   if (clicked !== null) {
+  //     const { clickedPhrase, clickedCoord } = clicked
+  //     const clickedLayerId = layersStore.findLayerIdByPhrase(clickedPhrase)
+  //     const [x0, y0, x1, y1] = clickedCoord
+  //     clickedObject.value.width = x1 - x0
+  //     clickedObject.value.oriX = x0
+  //     clickedObject.value.height = y1 - y0
+  //     clickedObject.value.oriY = y0
+  //     selectedFabricObject = canvas.getObjects().find((obj) => obj.idInLayers === clickedLayerId)
+  //     isDragging = true
+  //   }
+  // })
 
-    const clicked = clickOnDetectionBox(mouseX, mouseY, generationStore.detectedObjects)
-    if (clicked !== null) {
-      const { clickedPhrase, clickedCoord } = clicked
-      const clickedLayerId = layersStore.findLayerIdByPhrase(clickedPhrase)
-      const [x0, y0, x1, y1] = clickedCoord
-      clickedObject.value.width = x1 - x0
-      clickedObject.value.oriX = x0
-      clickedObject.value.height = y1 - y0
-      clickedObject.value.oriY = y0
-      selectedFabricObject = canvas.getObjects().find((obj) => obj.idInLayers === clickedLayerId)
-      isDragging = true
-    }
-  })
-
-  previewCanvas.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-      const previewRect = previewCanvas.getBoundingClientRect()
-      const mouseX = e.clientX - previewRect.left
-      const mouseY = e.clientY - previewRect.top
-
-      previewOffset = {
-        x: mouseX - previewStart.x,
-        y: mouseY - previewStart.y,
-      }
-
-      // Detect real movement
-      if (Math.abs(previewOffset.x) > 1 || Math.abs(previewOffset.y) > 1) {
-        hasMoved = true
-        drawOutline(
-          previewStart.x + previewOffset.x,
-          previewStart.y + previewOffset.y,
-          clickedObject.value.width,
-          clickedObject.value.height,
-        )
-      }
-    }
-  })
-
-  previewCanvas.addEventListener('mouseup', (e) => {
-    if (isDragging) {
-      isDragging = false
-
-      if (!previewStart || !selectedFabricObject) return
-
-      if (hasMoved) {
-        const previewRect = previewCanvas.getBoundingClientRect()
-        const dxPreview = previewOffset.x
-        const dyPreview = previewOffset.y
-
-        const scaleX = canvas.width / previewRect.width
-        const scaleY = canvas.height / previewRect.height
-
-        const dxFabric = dxPreview * scaleX
-        const dyFabric = dyPreview * scaleY
-
-        selectedFabricObject.left += dxFabric
-        selectedFabricObject.top += dyFabric
-        selectedFabricObject.setCoords()
-        canvas.requestRenderAll()
-        mergeEverything()
-      } else {
-        previewContext.strokeStyle = 'orange'
-        previewContext.lineWidth = 2
-        previewContext.setLineDash([5, 5]) // dashed line
-        previewContext.strokeRect(
-          clickedObject.value.oriX,
-          clickedObject.value.oriY,
-          clickedObject.value.width,
-          clickedObject.value.height,
-        )
-      }
-      previewOffset = { x: 0, y: 0 }
-      selectedFabricObject = null
-      previewStart = null
-    }
-  })
+  // previewCanvas.addEventListener('mousemove', (e) => {
+  //   if (isDragging) {
+  //     const previewRect = previewCanvas.getBoundingClientRect()
+  //     const mouseX = e.clientX - previewRect.left
+  //     const mouseY = e.clientY - previewRect.top
+  //
+  //     previewOffset = {
+  //       x: mouseX - previewStart.x,
+  //       y: mouseY - previewStart.y,
+  //     }
+  //
+  //     // Detect real movement
+  //     if (Math.abs(previewOffset.x) > 1 || Math.abs(previewOffset.y) > 1) {
+  //       hasMoved = true
+  //       drawOutline(
+  //         previewStart.x + previewOffset.x,
+  //         previewStart.y + previewOffset.y,
+  //         clickedObject.value.width,
+  //         clickedObject.value.height,
+  //       )
+  //     }
+  //   }
+  // })
+  //
+  // previewCanvas.addEventListener('mouseup', (e) => {
+  //   if (isDragging) {
+  //     isDragging = false
+  //
+  //     if (!previewStart || !selectedFabricObject) return
+  //
+  //     if (hasMoved) {
+  //       const previewRect = previewCanvas.getBoundingClientRect()
+  //       const dxPreview = previewOffset.x
+  //       const dyPreview = previewOffset.y
+  //
+  //       const scaleX = canvas.width / previewRect.width
+  //       const scaleY = canvas.height / previewRect.height
+  //
+  //       const dxFabric = dxPreview * scaleX
+  //       const dyFabric = dyPreview * scaleY
+  //
+  //       selectedFabricObject.left += dxFabric
+  //       selectedFabricObject.top += dyFabric
+  //       selectedFabricObject.setCoords()
+  //       canvas.requestRenderAll()
+  //       mergeEverything()
+  //     } else {
+  //       previewContext.strokeStyle = 'orange'
+  //       previewContext.lineWidth = 2
+  //       previewContext.setLineDash([5, 5]) // dashed line
+  //       previewContext.strokeRect(
+  //         clickedObject.value.oriX,
+  //         clickedObject.value.oriY,
+  //         clickedObject.value.width,
+  //         clickedObject.value.height,
+  //       )
+  //     }
+  //     previewOffset = { x: 0, y: 0 }
+  //     selectedFabricObject = null
+  //     previewStart = null
+  //   }
+  // })
   window.addEventListener('mouseup', async (e) => {
     const rect = canvasElement.getBoundingClientRect()
 
@@ -641,7 +626,7 @@ onMounted(() => {
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
       const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
-
+      console.log(droppedObj)
       const pointer = canvas.getPointer(e, true) // use `true` to skip viewportTransform
 
       const newId = Date.now()
@@ -652,9 +637,22 @@ onMounted(() => {
         top: pointer.y,
       }
       layersStore.addDOMLayer(newLayerDOMInfo)
+
+      // for (let dragObject of objectStore.dragObjects) {
+      //   const newLayerDOMInfo = {
+      //     id: newId,
+      //     url: dragObject.src,
+      //     left: dragObject.left,
+      //     top: dragObject.top,
+      //     scaleX: dragObject.scaleX,
+      //     scaleY: dragObject.scaleY,
+      //   }
+      //   layersStore.addDOMLayer(newLayerDOMInfo)
+      // }
       objectStore.dragState = 'finishedDragging'
-      const describePrompt =
-        "Describe the image in one precise, concise phrase focusing solely on clearly visible objects and their unambiguous features. Never assume non-visible states (e.g., cut, peeled, opened) unless explicitly shown. Prioritize accuracy over creativity. Example: 'A whole unpeeled avocado with bumpy dark green skin.'"
+
+      // const describePrompt =
+      //   "Describe the image in one precise, concise phrase focusing solely on clearly visible objects and their unambiguous features. Never assume non-visible states (e.g., cut, peeled, opened) unless explicitly shown. Prioritize accuracy over creativity. Example: 'A whole unpeeled avocado with bumpy dark green skin.'"
       // const extractedPrompt = await describeImage(parsedUrl, describePrompt)
       // droppedObj.src is in the format of "http://localhost:5555/static/assets/ce80ded4-5c2a-4c2a-aa2a-4df6b0f3223a.png"
       // to sent to back end it should be parsed to "static/assets/..."

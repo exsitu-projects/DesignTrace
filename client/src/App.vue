@@ -12,16 +12,17 @@
         :h="'auto'"
         :draggable="true"
         :drag-handle="'.handle'"
+        @dblclick="typeContext()"
         class-name="design-space-container"
         @dragging="onDrag"
       >
         <div class="header handle">
-          Open Design Space
+          {{ layersStore.context.semantics }}
           <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>
         </div>
-        <div class="row content" style="width: 60%" v-show="isDesignSpaceVisible">
+        <div class="row p-2" style="width: 65vw" v-show="isDesignSpaceVisible">
           <VisualEditor />
           <SemanticEditor />
         </div>
@@ -59,7 +60,7 @@ import FreeCanvas from '@/components/FreeCanvas.vue'
 import VisualEditor from '@/components/VisualEditor.vue'
 import SemanticEditor from '@/components/SemanticEditor.vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
-
+import { useLayers } from './stores/layersStore.js'
 export default {
   name: 'App',
   components: {
@@ -72,6 +73,7 @@ export default {
   },
   data() {
     return {
+      layersStore: useLayers(),
       availableModels: [],
       generationParams: {
         ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
@@ -104,6 +106,9 @@ export default {
     },
     useAsNewBase() {
       this.$refs.editor.loadGeneratedImage(this.generatedImage)
+    },
+    typeContext() {
+      console.log('test')
     },
     updatePrompt(prompt) {
       this.prompt = prompt
@@ -160,11 +165,6 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   transform: none;
-}
-
-.content {
-  padding: 16px;
-  min-width: 1000px;
 }
 
 .header {

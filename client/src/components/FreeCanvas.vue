@@ -2,7 +2,12 @@
   <div class="free-canvas-wrapper">
     <canvas id="freeCanvas"></canvas>
     <div class="drawing-mode-options border border-black">
-      <button class="btn btn-info" @click="triggerFileSelect">Upload Image</button>
+      <VisualTool
+        @switchLasso="switchLasso"
+        @forwardLayer="forwardOneLayer"
+        @backwardLayer="backwardOneLayer"
+      ></VisualTool>
+      <button class="btn btn-light" @click="triggerFileSelect">Upload Image</button>
       <input
         type="file"
         ref="fileInput"
@@ -11,8 +16,8 @@
         @change="uploadFiles"
         style="display: none"
       />
-      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
-      <button id="clear-canvas" class="btn btn-info">Clear</button>
+      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>
+      <button id="clear-canvas" class="btn btn-light">Clear</button>
 
       <label for="drawing-mode-selector">
         Mode:
@@ -61,12 +66,19 @@ import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
-
+import VisualTool from '@/components/VisualTool.vue'
+import { useGeneration } from '@/stores/generationStore.js'
+const generationStore = useGeneration()
+const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
 const layersStore = useLayers()
 const objectStore = useObject()
 const $ = (id) => document.getElementById(id)
-
+let isLasso = false
+let points = []
+let path = null
+let lassoStart = false
+let startPointer = null
 watch(
   () => objectStore.dragState,
   (newVal) => {
@@ -95,6 +107,33 @@ const updateDrawingModeButtonText = async () => {
     : 'Enter drawing mode'
 }
 
+const describeImage = async (image_path, prompt) => {
+  try {
+    objectStore.promiseLoadImageLabel = 'loading'
+
+    const response = await fetch('http://localhost:5555/image-to-labels', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image_path, prompt }),
+    })
+    const result = await response.json()
+
+    if (response.ok) {
+      // return result.result
+      return result.output
+    } else {
+      console.log(result.error)
+      return null // Optional: explicitly return null on error
+    }
+  } catch (err) {
+    console.log(err.message)
+    return null // Optional: consistently return on error
+  } finally {
+    objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
+  }
+}
 const uploadFiles = async (event) => {
   files.value = Array.from(event.target.files)
   if (!files.value.length) {
@@ -150,6 +189,30 @@ const loadImgFromUrl = (url, id) => {
   }
 }
 
+const switchLasso = () => {
+  lassoStart = !lassoStart
+
+  canvas.forEachObject((obj) => {
+    obj.selectable = !lassoStart
+  })
+  canvas.selection = !lassoStart
+}
+
+const forwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.bringObjectForward(activeObject, true)
+    canvas.renderAll()
+  }
+}
+const backwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.sendObjectToBack(activeObject, true)
+    canvas.renderAll()
+  }
+}
+
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
@@ -160,8 +223,84 @@ onMounted(() => {
       hoverCursor: 'pointer',
       selection: true,
       targetFindTolerance: 2,
+      preserveObjectStacking: true,
     }),
   )
+
+  canvas.on('mouse:down', function (opt) {
+    if (lassoStart === true) {
+      canvas.forEachObject((obj) => {
+        obj.selectable = false
+      })
+      canvas.selection = false
+      isLasso = true
+      startPointer = opt.pointer
+      points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+    }
+  })
+
+  canvas.on('mouse:move', function (opt) {
+    if (!isLasso || !lassoStart) return
+    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+
+    if (path) canvas.remove(path)
+
+    const pathStr = points.join(' ') + ' Z' // Close the path
+    path = new fabric.Path(pathStr, {
+      stroke: 'black',
+      strokeWidth: 1,
+      fill: 'rgba(0, 0, 0, 0.1)',
+      selectable: false,
+      evented: false,
+      strokeDashArray: [5, 5],
+    })
+
+    canvas.add(path)
+    canvas.requestRenderAll()
+  })
+
+  canvas.on('mouse:up', async function (opt) {
+    if (!isLasso) return
+
+    isLasso = false
+    const dx = opt.pointer.x - startPointer.x
+    const dy = opt.pointer.y - startPointer.y
+    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+
+    if (!moved) {
+      if (path) canvas.remove(path)
+      path = null
+      points = []
+      canvas.requestRenderAll()
+      return
+    }
+
+    if (path) {
+      path.setCoords()
+      const bounds = path.getBoundingRect()
+      canvas.remove(path)
+      // Render first to make sure everything is drawn
+      canvas.renderAll()
+      canvas.add(path)
+      // Extract just the area covered by the path + content inside it
+      const dataUrl = canvas.toDataURL({
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        format: 'png',
+        multiplier: 1, // can set to 2 for higher resolution
+      })
+
+      // const prompt =
+      //   'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
+      // const prompt =
+      //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
+      const semantics = await describeImage(dataUrl, prompt)
+      layersStore.setCurrentSemantics(semantics)
+      console.log(semantics)
+    }
+  })
 
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
@@ -218,6 +357,38 @@ onMounted(() => {
         objectStore.obj = e.target.toObject()
         objectStore.dragState = 'startDragging'
       }
+
+      const activeObjects = canvas.getActiveObjects() // Gets current multi-selection
+      const activeObject = canvas.getActiveObject()
+      const targetSize = 512
+
+      // if (activeObjects.length > 0) {
+      //   const bounds = activeObject.getBoundingRect(true) // `true` includes stroke
+      //   const scale = targetSize / Math.max(bounds.width, bounds.height)
+      //   // Multi-selection exists (Shift/Cmd + Click)
+      //   objectStore.dragObjects = activeObjects.map((obj) => ({
+      //     id: obj.idInUpload,
+      //     fabricObj: obj, // Reference to the Fabric object
+      //     originalPos: { ...obj.oCoords }, // Save initial position
+      //     left: (obj.oCoords.tl.x - bounds.left) * scale,
+      //     top: (obj.oCoords.tl.y - bounds.top) * scale,
+      //     scaleX: (obj.scaleX ?? 1) * scale,
+      //     scaleY: (obj.scaleY ?? 1) * scale,
+      //   }))
+      // } else if (e.target) {
+      //   // Single object selected
+      //   objectStore.dragObjects = [
+      //     {
+      //       id: e.target.idInUpload,
+      //       fabricObj: e.target,
+      //       originalPos: { ...e.target.oCoords },
+      //     },
+      //   ]
+      // } else {
+      //   // Clicked on empty space → clear selection
+      //   objectStore.dragObjects = []
+      // }
+      // console.log(objectStore.dragObjects)
     },
   })
   brushes.vline.getPatternSrc = function () {

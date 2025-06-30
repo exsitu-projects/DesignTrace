@@ -7,12 +7,14 @@ export const useObject = defineStore('object', () => {
   const dragState = ref('notDragging')
   const startDragTop = ref(0)
   const startDragLeft = ref(0)
-  const id = ref(null)
+  const dragObjects = ref([])
+  const id = ref(0)
   const promiseLoadImageLabel = ref('')
   return {
     id,
     obj,
     dragState,
+    dragObjects,
     startDragTop,
     startDragLeft,
     promiseLoadImageLabel,
