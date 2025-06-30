@@ -22,9 +22,8 @@
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>
         </div>
-        <div class="row p-2" style="width: 65vw" v-show="isDesignSpaceVisible">
-          <VisualEditor />
-          <SemanticEditor />
+        <div class="row p-2" style="width: 40vw" v-show="isDesignSpaceVisible">
+          <InfoPalette />
         </div>
       </VueDraggableResizable>
 
@@ -58,13 +57,13 @@ import ImageEditor from './components/ImageEditor.vue'
 import ParametersPanel from './components/ParametersPanel.vue'
 import FreeCanvas from '@/components/FreeCanvas.vue'
 import VisualEditor from '@/components/VisualEditor.vue'
-import SemanticEditor from '@/components/SemanticEditor.vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 import { useLayers } from './stores/layersStore.js'
+import InfoPalette from '@/components/InfoPalette.vue'
 export default {
   name: 'App',
   components: {
-    SemanticEditor,
+    InfoPalette,
     VisualEditor,
     ImageEditor,
     ParametersPanel,
@@ -143,16 +142,13 @@ export default {
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-}
-
 .editor-overlay {
   position: absolute;
   width: 100vw;
   height: 100vh;
   z-index: 10;
-  background-color: rgba(255, 255, 255, 0.9); /* Optional: background for readability */
+  background-color: rgba(255, 255, 255, 0.9);
+  /* Optional: background for readability */
 }
 
 .design-space-container {
