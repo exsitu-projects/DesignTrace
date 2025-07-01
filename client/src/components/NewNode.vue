@@ -18,6 +18,7 @@ import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
+import { useAllUtil } from '@/stores/allUtilStore.js'
 
 const $ = (id) => document.getElementById(id)
 const nodeName = ref('New Node')
@@ -26,7 +27,12 @@ const canvasContainer = ref(null)
 let fabricCanvas = null
 const objectStore = useObject()
 const nodeStore = useNode()
-
+const allUtilStore = useAllUtil()
+let isLasso = false
+let points = []
+let path = null
+let lassoStart = false
+let startPointer = null
 const eventInOneDOM = (clientX, clientY, rect) => {
   return (
     clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
@@ -82,6 +88,75 @@ onMounted(() => {
       }
     }
   })
+
+  fabricCanvas.on('mouse:down', function (opt) {
+    if (lassoStart === true) {
+      fabricCanvas.forEachObject((obj) => {
+        obj.selectable = false
+      })
+      fabricCanvas.selection = false
+      isLasso = true
+      startPointer = opt.pointer
+      points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+    }
+  })
+
+  fabricCanvas.on('mouse:move', function (opt) {
+    if (!isLasso || !lassoStart) return
+    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+
+    if (path) fabricCanvas.remove(path)
+
+    const pathStr = points.join(' ') + ' Z' // Close the path
+    path = new fabric.Path(pathStr, {
+      stroke: 'black',
+      strokeWidth: 1,
+      fill: 'rgba(0, 0, 0, 0.1)',
+      selectable: false,
+      evented: false,
+      strokeDashArray: [5, 5],
+    })
+
+    fabricCanvas.add(path)
+    fabricCanvas.requestRenderAll()
+  })
+
+  fabricCanvas.on('mouse:up', async function (opt) {
+    if (!isLasso) return
+
+    isLasso = false
+    const dx = opt.pointer.x - startPointer.x
+    const dy = opt.pointer.y - startPointer.y
+    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+
+    if (!moved) {
+      if (path) fabricCanvas.remove(path)
+      path = null
+      points = []
+      fabricCanvas.requestRenderAll()
+      return
+    }
+
+    if (path) {
+      path.setCoords()
+      const bounds = path.getBoundingRect()
+      fabricCanvas.remove(path)
+      // Render first to make sure everything is drawn
+      fabricCanvas.renderAll()
+      fabricCanvas.add(path)
+      // Extract just the area covered by the path + content inside it
+      const dataUrl = fabricCanvas.toDataURL({
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        format: 'png',
+        multiplier: 1, // can set to 2 for higher resolution
+      })
+      console.log(dataUrl)
+      //TODO: the dataurl is the extracted image; Maybe can also use bound coords
+    }
+  })
 })
 
 watch(
@@ -119,6 +194,16 @@ watch(
         console.error('Failed to load image:', newPayload.url)
       }
     }
+  },
+)
+watch(
+  () => allUtilStore.isLassoMode,
+  (newVal) => {
+    lassoStart = !lassoStart
+    fabricCanvas.forEachObject((obj) => {
+      obj.selectable = !lassoStart
+    })
+    fabricCanvas.selection = !lassoStart
   },
 )
 </script>

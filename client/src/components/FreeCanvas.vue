@@ -3,11 +3,7 @@
     <canvas id="freeCanvas"></canvas>
     <div class="drawing-mode-options border border-black rounded-1 p-1">
       <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
-      <VisualTool
-        @switchLasso="switchLasso"
-        @forwardLayer="forwardOneLayer"
-        @backwardLayer="backwardOneLayer"
-      ></VisualTool>
+      <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
       <button class="btn btn-sm btn-light" @click="triggerFileSelect">
         <ImageUp color="black" :size="15" />
       </button>
@@ -73,11 +69,13 @@ import { useNode } from '@/stores/nodeStore.js'
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso } from 'lucide-vue-next'
+import { useAllUtil } from '@/stores/allUtilStore.js'
 const generationStore = useGeneration()
 const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
 const layersStore = useLayers()
 const objectStore = useObject()
+const allUtilStore = useAllUtil()
 const nodeStore = useNode()
 const $ = (id) => document.getElementById(id)
 let isLasso = false
@@ -99,6 +97,17 @@ watch(
         canvas.renderAll()
       }
     }
+  },
+)
+
+watch(
+  () => allUtilStore.isLassoMode,
+  (newVal) => {
+    lassoStart = !lassoStart
+    canvas.forEachObject((obj) => {
+      obj.selectable = !lassoStart
+    })
+    canvas.selection = !lassoStart
   },
 )
 
@@ -193,15 +202,6 @@ const loadImgFromUrl = (url, id) => {
   img.onerror = () => {
     console.error('Failed to load image')
   }
-}
-
-const switchLasso = () => {
-  lassoStart = !lassoStart
-
-  canvas.forEachObject((obj) => {
-    obj.selectable = !lassoStart
-  })
-  canvas.selection = !lassoStart
 }
 
 const addBranchNodeAlt = () => {
