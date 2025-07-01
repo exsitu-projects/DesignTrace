@@ -1,14 +1,16 @@
 <template>
   <div class="free-canvas-wrapper">
     <canvas id="freeCanvas"></canvas>
-    <div class="drawing-mode-options border border-black">
-      <button class="btn btn-light" @click="addBranchNodeAlt">+ Node</button>
+    <div class="drawing-mode-options border border-black rounded-1 p-1">
+      <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
       <VisualTool
         @switchLasso="switchLasso"
         @forwardLayer="forwardOneLayer"
         @backwardLayer="backwardOneLayer"
       ></VisualTool>
-      <button class="btn btn-light" @click="triggerFileSelect">Upload Image</button>
+      <button class="btn btn-sm btn-light" @click="triggerFileSelect">
+        <ImageUp color="black" :size="15" />
+      </button>
       <input
         type="file"
         ref="fileInput"
@@ -70,6 +72,7 @@ import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
+import { ImageUp, Lasso } from 'lucide-vue-next'
 const generationStore = useGeneration()
 const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null

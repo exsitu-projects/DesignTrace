@@ -71,8 +71,10 @@ onMounted(() => {
         if (objectStore.obj !== null) {
           if (objectStore.obj.type === 'tag') {
             console.log(objectStore.obj.text)
+            ////TODO: opens one alternative under the same node
           } else if (objectStore.obj.type === 'property') {
             console.log(objectStore.obj.tags)
+            ////TODO: opens x number of alternatives under the same node
           }
         }
       } else {

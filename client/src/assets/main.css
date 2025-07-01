@@ -1,13 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
-.drawing-mode-options {
-  width: 50%;
-  position: absolute;
+.drawing-mode-options{
+  width: 30%;
+  position: fixed;
   bottom: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 10px;
-  border-radius: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
 }
 
@@ -15,7 +13,7 @@
 
 /* 2. Font‑family variables for easy reuse */
 :root {
-  --font-sans-primary: 'Helvetica Neue', 'Roboto', 'Inter', -apple-system,
+  --font-sans-primary:  'Roboto', 'Inter', 'Helvetica Neue',-apple-system,
     BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell,
     'Open Sans', 'Noto Sans', sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -23,9 +21,8 @@
 
 /* 3. Reset Bootstrap's default font to our stack */
 body {
-  font-family: var(--font-sans-primary) !important;
+  font-family: 'Noto Sans', sans-serif !important;
   font-weight: 500 !important;
-  line-height: 1.55;
   color: #212529;
   background-color: #f8f9fa;
 }
@@ -36,26 +33,11 @@ h3,
 h4,
 h5,
 h6 {
-  font-weight: 600;
+  font-weight: 500;
   /* medium‑bold for headings */
-  line-height: 1.25;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+  line-height: 1.15;
 }
 
-/* 4. Optional—tighten Bootstrap card look a bit */
-.card {
-  border-radius: 0.75rem;
-  /* friendlier corners */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  font-size: 0.95rem;
-  /* slight down‑scale so cards look compact */
-}
-
-.card-header {
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
 
 .btn {
   font-weight: 500;
@@ -69,10 +51,7 @@ select {
   /* keep UI controls consistent */
 }
 
-/* Force font family across all elements to override Bootstrap */
-* {
-  font-family: var(--font-sans-primary) !important;
-}
+
 
 /* Specifically target common Bootstrap elements */
 .container,
@@ -97,5 +76,5 @@ p,
 span,
 div,
 a {
-  font-family: var(--font-sans-primary) !important;
+  font-family: 'Noto Sans', sans-serif !important;
 }

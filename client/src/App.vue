@@ -32,8 +32,8 @@
         class-name="design-space-container"
         @dragging="onDrag"
       >
-        <div class="header handle">
-          {{ layersStore.context.semantics }}
+        <div class="header handle small fw-bolder">
+          Palette
           <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>

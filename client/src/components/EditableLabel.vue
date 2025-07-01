@@ -4,19 +4,19 @@
     tabindex="0"
     @dblclick="startEditing"
     @keydown="onKeyDown($event)"
-    class="btn me-1 position-relative d-inline-flex"
-    style="min-width: 70px; min-height: 38px"
+    class="btn btn-sm position-relative d-inline-flex"
+    style="min-width: 50px; min-height: 20px"
   >
     <template v-if="isEditing">
       <input
         v-model="text"
-        class="form-control form-control-sm border-0 p-0"
+        class="form-control form-control-sm m-auto border-0 p-0"
         style="min-height: auto"
         @keyup.enter="save"
         @blur="save"
       />
     </template>
-    <template v-else>
+    <template v-else class="m-auto">
       {{ modelValue }}
     </template>
   </span>
