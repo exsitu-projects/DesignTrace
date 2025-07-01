@@ -2,6 +2,7 @@
   <div class="free-canvas-wrapper">
     <canvas id="freeCanvas"></canvas>
     <div class="drawing-mode-options border border-black">
+      <button class="btn btn-light" @click="addBranchNodeAlt">+ Node</button>
       <VisualTool
         @switchLasso="switchLasso"
         @forwardLayer="forwardOneLayer"
@@ -66,6 +67,7 @@ import { onMounted, markRaw, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import { useLayers } from '@/stores/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
+import { useNode } from '@/stores/nodeStore.js'
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 const generationStore = useGeneration()
@@ -73,6 +75,7 @@ const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
 const layersStore = useLayers()
 const objectStore = useObject()
+const nodeStore = useNode()
 const $ = (id) => document.getElementById(id)
 let isLasso = false
 let points = []
@@ -196,6 +199,15 @@ const switchLasso = () => {
     obj.selectable = !lassoStart
   })
   canvas.selection = !lassoStart
+}
+
+const addBranchNodeAlt = () => {
+  // it opens a new node and add a new alt
+  nodeStore.addNodeBranch()
+  nodeStore.addNode(nodeStore.currentBranchId)
+  console.log(nodeStore.currentBranchId)
+  nodeStore.addAlt({}, nodeStore.currentBranchId, nodeStore.currentNodeId)
+  console.log(nodeStore.currentNodeId)
 }
 
 const forwardOneLayer = () => {

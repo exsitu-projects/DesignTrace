@@ -7,11 +7,8 @@
       class="d-flex flex-column flex-md-row align-items-start mb-2"
     >
       <!-- Editable property name tag (not draggable) -->
-      <input
-        v-model="row.name"
-        :style="{ backgroundColor: row.color }"
-        class="btn form-control-sm text-white me-2 mb-2 mb-md-0 text-center"
-      />
+
+      <EditableLabel v-model="row.name" />
 
       <!-- Draggable area for tags -->
       <draggable
@@ -56,6 +53,7 @@
 import { storeToRefs } from 'pinia'
 import draggable from 'vuedraggable'
 import { useInfoStore } from '@/stores/infoStore'
+import EditableLabel from '@/components/EditableLabel.vue'
 
 const infoStore = useInfoStore()
 const { rows } = storeToRefs(infoStore)

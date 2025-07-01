@@ -4,20 +4,25 @@
 
     <main>
       <FreeCanvas></FreeCanvas>
-
-      <VueDraggableResizable
-        :x="position.x"
-        :y="position.y"
-        :w="'auto'"
-        :h="'auto'"
-        :draggable="true"
-        :drag-handle="'.nodeHandle'"
-        @dragging="onDrag"
-      >
-        <div class="nodeHandle">
-          <NewNode></NewNode>
-        </div>
-      </VueDraggableResizable>
+      <template v-for="(branch, bIdx) in nodeStore.nodeBranchList" :key="branch.id">
+        <template v-for="(node, nIdx) in branch.nodes" :key="node.id">
+          <VueDraggableResizable
+            v-for="alt in node.alts"
+            :key="alt.id"
+            :x="alt.position.x"
+            :y="alt.position.y"
+            :w="'auto'"
+            :h="'auto'"
+            :draggable="true"
+            :drag-handle="'.nodeHandle'"
+            @dragging="(x, y) => onDrag(alt, x, y)"
+          >
+            <div class="nodeHandle">
+              <NewNode :alt="alt"></NewNode>
+            </div>
+          </VueDraggableResizable>
+        </template>
+      </template>
 
       <VueDraggableResizable
         :x="position.x"
@@ -35,18 +40,16 @@
             <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
           </button>
         </div>
-        <div class="row p-2" style="width: 65vw" v-show="isDesignSpaceVisible">
+        <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
           <InfoPalette />
         </div>
       </VueDraggableResizable>
-      <Node />
-      <NewNode />
-      <ParametersPanel
-        v-if="false"
-        :params="generationParams"
-        :models="availableModels"
-        @update:params="updateParams"
-      />
+      <!--      <ParametersPanel-->
+      <!--        v-if="false"-->
+      <!--        :params="generationParams"-->
+      <!--        :models="availableModels"-->
+      <!--        @update:params="updateParams"-->
+      <!--      />-->
       <ImageEditor
         v-if="false"
         @prompt-guessed="updatePrompt"
@@ -75,6 +78,7 @@ import InfoPalette from '@/components/InfoPalette.vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 import VisualEditor from '@/components/VisualEditor.vue'
 import { useLayers } from './stores/layersStore.js'
+import { useNode } from './stores/nodeStore.js'
 import NewNode from '@/components/NewNode.vue'
 export default {
   name: 'App',
@@ -91,6 +95,7 @@ export default {
   data() {
     return {
       layersStore: useLayers(),
+      nodeStore: useNode(),
       availableModels: [],
       generationParams: {
         ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
@@ -114,6 +119,7 @@ export default {
       position: { x: 20, y: 20 },
     }
   },
+  computed: {},
   methods: {
     downloadImage() {
       const link = document.createElement('a')
@@ -149,13 +155,15 @@ export default {
     toggleDesignSpace() {
       this.isDesignSpaceVisible = !this.isDesignSpaceVisible
     },
-    onDrag(x, y) {
-      this.position = { x, y }
+    onDrag(alt, x, y) {
+      if (y !== undefined) {
+        alt.position = { x, y }
+      } else {
+        this.position = { x: alt, y: x }
+      }
     },
   },
-  mounted() {
-    // this.fetchModels()
-  },
+  mounted() {},
 }
 </script>
 
