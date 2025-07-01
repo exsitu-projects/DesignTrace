@@ -1,46 +1,53 @@
 import { defineStore } from 'pinia'
+import { ref } from 'vue'
 
+/* simple uid helper */
 function uid() {
-  return Date.now()
+  return Date.now() + Math.random().toString(16).slice(2) // millis + random
 }
 
-export const useInfoStore = defineStore('infoStore', {
-  state: () => ({
-    rows: [
-      {
-        name: 'Color',
-        color: 'purple',
-        tags: [
-          { uid: uid(), text: 'Red' },
-          { uid: uid(), text: 'Green' },
-        ],
-      },
-      {
-        name: 'Texture',
-        color: '#6c757d',
-        tags: [
-          { uid: uid(), text: 'Rough' },
-          { uid: uid(), text: 'Smooth' },
-        ],
-      },
-    ],
-  }),
-
-  actions: {
-    addRow() {
-      this.rows.push({
-        name: 'Property',
-        color: '#6c757d',
-        tags: [{ uid: uid(), text: 'Tag' }],
-      })
+export const useInfoStore = defineStore('infoStore', () => {
+  const rows = ref([
+    {
+      name: 'Color',
+      color: '#000',
+      tags: [
+        { uid: uid(), text: 'Red' },
+        { uid: uid(), text: 'Green' },
+      ],
     },
-
-    addTag(rowIdx, label = 'New') {
-      this.rows[rowIdx]?.tags.push({ uid: uid(), text: label })
+    {
+      name: 'Texture',
+      color: '#000',
+      tags: [
+        { uid: uid(), text: 'Rough' },
+        { uid: uid(), text: 'Smooth' },
+      ],
     },
+  ])
 
-    removeTag(rowIdx, tagIdx) {
-      this.rows[rowIdx]?.tags.splice(tagIdx, 1)
-    },
-  },
+  const addRow = () => {
+    rows.value.push({
+      name: 'Property',
+      color: '#6c757d',
+      tags: [{ uid: uid(), text: 'Tag' }],
+    })
+  }
+
+  const addTag = (rowIdx, label = 'New') => {
+    const row = rows.value[rowIdx]
+    if (row) row.tags.push({ uid: uid(), text: label })
+  }
+
+  const removeTag = (rowIdx, tagIdx) => {
+    const row = rows.value[rowIdx]
+    if (row) row.tags.splice(tagIdx, 1)
+  }
+
+  return {
+    rows,
+    addRow,
+    addTag,
+    removeTag,
+  }
 })

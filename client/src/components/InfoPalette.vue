@@ -56,7 +56,6 @@
 import { storeToRefs } from 'pinia'
 import draggable from 'vuedraggable'
 import { useInfoStore } from '@/stores/infoStore'
-import { Palette } from 'lucide-vue-next'
 
 const infoStore = useInfoStore()
 const { rows } = storeToRefs(infoStore)

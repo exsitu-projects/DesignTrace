@@ -16,47 +16,47 @@
         @change="uploadFiles"
         style="display: none"
       />
-      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>
-      <button id="clear-canvas" class="btn btn-light">Clear</button>
+      <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
+      <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
 
-      <label for="drawing-mode-selector">
-        Mode:
-        <select id="drawing-mode-selector">
-          <option>Pencil</option>
-          <option>hline</option>
-          <option>vline</option>
-          <option>diamond</option>
-          <option>dotted</option>
-        </select>
-      </label>
+      <!--      <label for="drawing-mode-selector">-->
+      <!--        Mode:-->
+      <!--        <select id="drawing-mode-selector">-->
+      <!--          <option>Pencil</option>-->
+      <!--          <option>hline</option>-->
+      <!--          <option>vline</option>-->
+      <!--          <option>diamond</option>-->
+      <!--          <option>dotted</option>-->
+      <!--        </select>-->
+      <!--      </label>-->
 
-      <label for="drawing-line-width">
-        Line width:
-        <span class="info">30</span>
-        <input type="range" min="0" max="150" id="drawing-line-width" />
-      </label>
+      <!--      <label for="drawing-line-width">-->
+      <!--        Line width:-->
+      <!--        <span class="info">30</span>-->
+      <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
+      <!--      </label>-->
 
-      <label for="drawing-color">
-        Line color:
-        <input type="color" id="drawing-color" />
-      </label>
+      <!--      <label for="drawing-color">-->
+      <!--        Line color:-->
+      <!--        <input type="color" id="drawing-color" />-->
+      <!--      </label>-->
 
-      <label for="drawing-shadow-color">
-        Shadow color:
-        <input type="color" id="drawing-shadow-color" />
-      </label>
+      <!--      <label for="drawing-shadow-color">-->
+      <!--        Shadow color:-->
+      <!--        <input type="color" id="drawing-shadow-color" />-->
+      <!--      </label>-->
 
-      <label for="drawing-shadow-width">
-        Shadow width:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
-      </label>
+      <!--      <label for="drawing-shadow-width">-->
+      <!--        Shadow width:-->
+      <!--        <span class="info">0</span>-->
+      <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
+      <!--      </label>-->
 
-      <label for="drawing-shadow-offset">
-        Shadow offset:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
-      </label>
+      <!--      <label for="drawing-shadow-offset">-->
+      <!--        Shadow offset:-->
+      <!--        <span class="info">0</span>-->
+      <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
+      <!--      </label>-->
     </div>
   </div>
 </template>
@@ -429,70 +429,70 @@ onMounted(() => {
   brushes.dotted.source = textureImg
 
   // Brush Update Function
-  const updateBrush = () => {
-    const brush = canvas.freeDrawingBrush
-    if (!brush) return
-
-    brush.color = elements.color.value
-    brush.width = parseInt(elements.lineWidth.value) || 1
-
-    if ('shadow' in brush) {
-      brush.shadow = new fabric.Shadow({
-        blur: parseInt(elements.shadowWidth.value) || 0,
-        color: elements.shadowColor.value,
-        offsetX: parseInt(elements.shadowOffset.value) || 0,
-        offsetY: parseInt(elements.shadowOffset.value) || 0,
-        affectStroke: true,
-      })
-    }
-  }
-
-  // Event Handlers
-  elements.brushSelector.onchange = function () {
-    const brushName = this.value
-
-    if (brushName === 'Pencil') {
-      // Always create a new PencilBrush instance when switching to pencil
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
-    } else {
-      canvas.freeDrawingBrush = brushes[brushName]
-
-      if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
-        const brush = canvas.freeDrawingBrush
-        if (brush.getPatternSrc) {
-          brush.source = brush.getPatternSrc.call(brush)
-        }
-      }
-    }
-
-    updateBrush()
-  }
-
-  elements.color.onchange = updateBrush
-  elements.shadowColor.onchange = updateBrush
-  elements.lineWidth.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-  elements.shadowWidth.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-  elements.shadowOffset.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-
-  // Other Controls
-  elements.clear.onclick = () => canvas.clear()
-
-  elements.drawingMode.onclick = () => {
-    canvas.isDrawingMode = !canvas.isDrawingMode
-    updateDrawingModeButtonText()
-  }
-
-  // Initial brush update
-  updateBrush()
+  // const updateBrush = () => {
+  //   const brush = canvas.freeDrawingBrush
+  //   if (!brush) return
+  //
+  //   brush.color = elements.color.value
+  //   brush.width = parseInt(elements.lineWidth.value) || 1
+  //
+  //   if ('shadow' in brush) {
+  //     brush.shadow = new fabric.Shadow({
+  //       blur: parseInt(elements.shadowWidth.value) || 0,
+  //       color: elements.shadowColor.value,
+  //       offsetX: parseInt(elements.shadowOffset.value) || 0,
+  //       offsetY: parseInt(elements.shadowOffset.value) || 0,
+  //       affectStroke: true,
+  //     })
+  //   }
+  // }
+  //
+  // // Event Handlers
+  // elements.brushSelector.onchange = function () {
+  //   const brushName = this.value
+  //
+  //   if (brushName === 'Pencil') {
+  //     // Always create a new PencilBrush instance when switching to pencil
+  //     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
+  //   } else {
+  //     canvas.freeDrawingBrush = brushes[brushName]
+  //
+  //     if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
+  //       const brush = canvas.freeDrawingBrush
+  //       if (brush.getPatternSrc) {
+  //         brush.source = brush.getPatternSrc.call(brush)
+  //       }
+  //     }
+  //   }
+  //
+  //   updateBrush()
+  // }
+  //
+  // elements.color.onchange = updateBrush
+  // elements.shadowColor.onchange = updateBrush
+  // elements.lineWidth.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  // elements.shadowWidth.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  // elements.shadowOffset.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  //
+  // // Other Controls
+  // elements.clear.onclick = () => canvas.clear()
+  //
+  // elements.drawingMode.onclick = () => {
+  //   canvas.isDrawingMode = !canvas.isDrawingMode
+  //   updateDrawingModeButtonText()
+  // }
+  //
+  // // Initial brush update
+  // updateBrush()
 })
 </script>
 
