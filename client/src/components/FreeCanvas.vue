@@ -367,6 +367,7 @@ onMounted(() => {
       if (e.target && objectStore.dragState === 'notDragging') {
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
+        objectStore.obj.type = 'image'
         objectStore.dragState = 'startDragging'
       }
 

@@ -1,91 +1,130 @@
 <template>
-  <div class="new-node">
-    <div class="node-header">
+  <div id="new-node">
+    <div class="nodeHandle rounded-top p-1" style="background: #ededed">
       <EditableLabel v-model="nodeName" />
     </div>
-    <div class="node-tags" @dragover.prevent @drop="handleTagDrop">
-      <span v-for="(tag, index) in tags" :key="index" class="badge bg-secondary me-1 mb-1">{{
-        tag
-      }}</span>
+    <div class="node-tags">
+      <span v-for="tag in tags" :key="tag" class="badge …" @dragover.prevent>{{ tag }}</span>
     </div>
-    <div class="node-canvas-container" ref="canvasContainer">
-      <canvas ref="canvasEl"></canvas>
+    <div class="m-auto" ref="canvasContainer">
+      <canvas id="canvasEl" class="inset-border" width="280" height="280"></canvas>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, markRaw, watch } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
+import { useNode } from '@/stores/nodeStore.js'
 
+const $ = (id) => document.getElementById(id)
 const nodeName = ref('New Node')
 const tags = ref([])
-const canvasEl = ref(null)
 const canvasContainer = ref(null)
 let fabricCanvas = null
 const objectStore = useObject()
+const nodeStore = useNode()
 
-const handleTagDrop = (e) => {
-  e.preventDefault()
-  const tagData = e.dataTransfer.getData('text/plain')
-  if (tagData) {
-    tags.value.push(tagData)
-  }
+const eventInOneDOM = (clientX, clientY, rect) => {
+  return (
+    clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
+  )
 }
-
 onMounted(() => {
-  fabricCanvas = new fabric.Canvas(canvasEl.value, {
-    width: canvasContainer.value.clientWidth,
-    height: canvasContainer.value.clientHeight,
-    backgroundColor: '#fff',
-  })
-
-  const handleDrop = (e) => {
-    e.preventDefault()
+  fabricCanvas = markRaw(
+    new fabric.Canvas($('canvasEl'), {
+      isDrawingMode: false,
+      preserveObjectStacking: true,
+    }),
+  )
+  const canvasElement = fabricCanvas.lowerCanvasEl
+  const nodeElement = document.getElementById('new-node')
+  window.addEventListener('mouseup', async (e) => {
+    const rectCanvas = canvasElement.getBoundingClientRect()
+    const rectNode = nodeElement.getBoundingClientRect()
+    //manually written dropping event detection
     if (objectStore.dragState === 'startDragging') {
-      const droppedObj = objectStore.obj
-      const pointer = fabricCanvas.getPointer(e, true)
+      if (eventInOneDOM(e.clientX, e.clientY, rectCanvas)) {
+        //Mouse up inside canvas
+        if (objectStore.obj !== null && objectStore.obj.type === 'image') {
+          //the dropped thing is an image and is dropped to the canvas area
+          const droppedObj = objectStore.obj
+          objectStore.startDragTop = droppedObj.top
+          objectStore.startDragLeft = droppedObj.left
+          const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
 
-      fabric.Image.fromURL(
-        droppedObj.src,
-        (img) => {
-          img.set({
+          const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
+
+          const newId = Date.now()
+          const newLayerDOMInfo = {
+            id: newId,
+            url: droppedObj.src,
             left: pointer.x,
             top: pointer.y,
-            scaleX: 0.5,
-            scaleY: 0.5,
-          })
-          fabricCanvas.add(img)
-          fabricCanvas.renderAll()
-        },
-        { crossOrigin: 'anonymous' },
-      )
-
-      objectStore.dragState = 'finishedDragging'
+          }
+          nodeStore.addDOMLayer(newLayerDOMInfo)
+          objectStore.dragState = 'finishedDragging'
+        }
+      } else if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
+        if (objectStore.obj !== null) {
+          if (objectStore.obj.type === 'tag') {
+            console.log(objectStore.obj.text)
+          } else if (objectStore.obj.type === 'property') {
+            console.log(objectStore.obj.tags)
+          }
+        }
+      } else {
+        objectStore.dragState = 'notDragging'
+      }
     }
-  }
-
-  const handleDragOver = (e) => {
-    e.preventDefault()
-  }
-
-  canvasContainer.value.addEventListener('drop', handleDrop)
-  canvasContainer.value.addEventListener('dragover', handleDragOver)
-
-  onBeforeUnmount(() => {
-    canvasContainer.value.removeEventListener('drop', handleDrop)
-    canvasContainer.value.removeEventListener('dragover', handleDragOver)
-    fabricCanvas.dispose()
   })
 })
+
+watch(
+  () => nodeStore.layerPayload,
+  (newPayload) => {
+    const existingImage = fabricCanvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    if (newPayload.url !== ' ') {
+      img.src = newPayload.url
+
+      img.onload = () => {
+        try {
+          const fabricImage = new fabric.Image(img, {
+            selectable: true,
+            hasControls: true,
+            left: newPayload.left,
+            top: newPayload.top,
+          })
+
+          fabricImage.scaleToWidth(250)
+          fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+          if (existingImage) {
+            fabricCanvas.remove(existingImage)
+          }
+          fabricCanvas.add(fabricImage)
+          fabricCanvas.isDrawingMode = false
+          fabricCanvas.renderAll()
+        } catch (error) {
+          console.error('Failed to add image to canvas:', error)
+        }
+      }
+
+      img.onerror = () => {
+        console.error('Failed to load image:', newPayload.url)
+      }
+    }
+  },
+)
 </script>
 
 <style scoped>
-.new-node {
-  width: 320px;
-  height: 420px;
+#new-node {
+  width: 300px;
+  height: 400px;
   background-color: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -95,13 +134,17 @@ onMounted(() => {
   position: relative;
 }
 
-.node-header {
-  padding: 10px;
-  background-color: #f1f1f1;
-  border-bottom: 1px solid #ddd;
-  cursor: grab;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
+.drag-active {
+  background-color: #e6f7ff;
+  border: 2px dashed #1890ff;
+}
+
+.inset-border {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 3px rgba(255, 255, 255, 0.82);
 }
 
 .node-tags {
@@ -112,17 +155,5 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
-}
-
-.node-canvas-container {
-  flex-grow: 1;
-  padding: 10px;
-  position: relative;
-}
-
-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 </style>

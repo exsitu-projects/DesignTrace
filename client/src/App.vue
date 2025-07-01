@@ -17,9 +17,7 @@
             :drag-handle="'.nodeHandle'"
             @dragging="(x, y) => onDrag(alt, x, y)"
           >
-            <div class="nodeHandle">
-              <NewNode :alt="alt"></NewNode>
-            </div>
+            <NewNode :alt="alt"></NewNode>
           </VueDraggableResizable>
         </template>
       </template>

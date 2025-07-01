@@ -28,6 +28,8 @@ export const useNode = defineStore('nodes', () => {
   const nodeBranchList = ref([])
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
+  const layerPayload = ref(null)
+
   function addNodeBranch() {
     const newBranch = {
       id: `branch_${Date.now()}`,
@@ -35,6 +37,10 @@ export const useNode = defineStore('nodes', () => {
     }
     currentBranchId.value = newBranch.id
     nodeBranchList.value.push(newBranch)
+  }
+
+  function addDOMLayer(layer) {
+    layerPayload.value = { url: layer.url, id: layer.id, left: layer.left, top: layer.top }
   }
 
   function addNode(nodeBranchId) {
@@ -64,5 +70,14 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
-  return { nodeBranchList, currentNodeId, currentBranchId, addNodeBranch, addNode, addAlt }
+  return {
+    layerPayload,
+    nodeBranchList,
+    currentNodeId,
+    currentBranchId,
+    addDOMLayer,
+    addNodeBranch,
+    addNode,
+    addAlt,
+  }
 })

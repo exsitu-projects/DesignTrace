@@ -8,7 +8,12 @@
     >
       <!-- Editable property name tag (not draggable) -->
 
-      <EditableLabel v-model="row.name" />
+      <EditableLabel
+        v-model="row.name"
+        class="my-auto"
+        :draggable="true"
+        @dragstart="(e) => handleDragStart(e, row)"
+      />
 
       <!-- Draggable area for tags -->
       <draggable
@@ -19,11 +24,13 @@
       >
         <!-- each tag -->
         <template #item="{ element, index: tagIdx }">
-          <span class="badge bg-light text-dark d-flex align-items-center me-1 mb-1">
-            <input
+          <span class="badge bg-light text-dark">
+            <EditableLabel
+              :draggable="true"
+              @dragstart="(e) => handleDragStart(e, element)"
+              class="fw-normal"
               v-model="element.text"
-              class="form-control form-control-sm border-0 bg-transparent p-0 me-1"
-            />
+            ></EditableLabel>
             <!-- remove button -->
             <button
               class="btn btn-sm btn-outline-danger border-0 p-0 lh-1"
@@ -45,7 +52,7 @@
     </div>
 
     <!-- Add new property row -->
-    <button class="btn btn-sm btn-outline-dark" @click="addRow">+ Add property</button>
+    <button class="btn btn-sm btn-light" @click="addRow">+ Add property</button>
   </div>
 </template>
 
@@ -53,15 +60,28 @@
 import { storeToRefs } from 'pinia'
 import draggable from 'vuedraggable'
 import { useInfoStore } from '@/stores/infoStore'
+import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 
 const infoStore = useInfoStore()
+const objectStore = useObject()
 const { rows } = storeToRefs(infoStore)
 
 /* Thin wrappers that call store actions */
 const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
 const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
+
+const handleDragStart = (e, tagObj) => {
+  objectStore.dragState = 'startDragging'
+
+  if ('uid' in tagObj) {
+    //meaning this is one tag being dragged
+    objectStore.obj = { type: 'tag', text: tagObj.text }
+  } else {
+    objectStore.obj = { type: 'property', tags: tagObj.tags }
+  }
+}
 </script>
 
 <style scoped>
