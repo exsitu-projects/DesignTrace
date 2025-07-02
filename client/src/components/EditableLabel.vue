@@ -24,7 +24,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useLayers } from '@/stores/layersStore.js'
+import { useLayers } from '@/unused/layersStore.js'
 const model = defineModel()
 
 const emit = defineEmits(['update:modelValue', 'delete-label'])

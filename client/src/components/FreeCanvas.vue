@@ -1,5 +1,5 @@
 <template>
-  <div class="free-canvas-wrapper">
+  <div ref="wrapper" class="free-canvas-wrapper">
     <canvas id="freeCanvas"></canvas>
     <div class="drawing-mode-options border border-black rounded-1 p-1">
       <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
@@ -61,11 +61,13 @@
 </template>
 
 <script setup>
-import { onMounted, markRaw, ref, watch } from 'vue'
+import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
-import { useLayers } from '@/stores/layersStore.js'
+import { useLayers } from '@/unused/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
+import { useLayout } from '@/stores/layoutStore'
+
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso } from 'lucide-vue-next'
@@ -77,12 +79,28 @@ const layersStore = useLayers()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const nodeStore = useNode()
+const layoutStore = useLayout()
+const wrapper = ref(null)
 const $ = (id) => document.getElementById(id)
 let isLasso = false
 let points = []
 let path = null
 let lassoStart = false
 let startPointer = null
+function syncCanvasToLayout() {
+  if (!canvas) return
+  canvas.setWidth(layoutStore.width)
+  canvas.setHeight(layoutStore.height)
+  canvas.renderAll()
+}
+
+function measureWrapper() {
+  if (!wrapper.value) return
+  const { clientWidth: w, clientHeight: h } = wrapper.value
+  layoutStore.setWrapperSize(w, h) // pushes into store → watcher resizes bitmap
+}
+
+/* watch layout.width/height -> resize fabric */
 watch(
   () => objectStore.dragState,
   (newVal) => {
@@ -227,7 +245,21 @@ const backwardOneLayer = () => {
     canvas.renderAll()
   }
 }
+function resizeFabric() {
+  if (!wrapper.value) return
 
+  const { minX, minY, maxX, maxY } = layoutStore
+  const { clientWidth, clientHeight } = wrapper.value
+
+  // Calculate required canvas size
+  const requiredWidth = Math.max(clientWidth, maxX) + 50 // Add some padding
+  const requiredHeight = Math.max(clientHeight, maxY) + 50 // Add some padding
+
+  canvas.setWidth(requiredWidth)
+  canvas.setHeight(requiredHeight)
+  canvas.renderAll()
+  layoutStore.setWrapperSize(requiredWidth, requiredHeight)
+}
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
@@ -241,7 +273,22 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
+  measureWrapper()
+  syncCanvasToLayout()
 
+  /* watch: when store width/height change (ensureFits) -> grow bitmap */
+  watch(() => [layoutStore.width, layoutStore.height], syncCanvasToLayout)
+
+  /* ResizeObserver: when wrapper grows (window resize, flex, etc.)  */
+  const ro = new ResizeObserver(measureWrapper)
+  ro.observe(wrapper.value)
+
+  window.addEventListener('resize', measureWrapper)
+
+  onBeforeUnmount(() => {
+    ro.disconnect()
+    window.removeEventListener('resize', measureWrapper)
+  })
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       canvas.forEachObject((obj) => {
@@ -311,9 +358,9 @@ onMounted(() => {
       //   'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
       // const prompt =
       //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
-      const semantics = await describeImage(dataUrl, prompt)
-      layersStore.setCurrentSemantics(semantics)
-      console.log(semantics)
+      // const semantics = await describeImage(dataUrl, prompt)
+      // layersStore.setCurrentSemantics(semantics)
+      // console.log(semantics)
     }
   })
 
@@ -439,11 +486,6 @@ onMounted(() => {
     c.add(rect)
     return c.getElement()
   }
-
-  const textureImg = new Image()
-  textureImg.src = '../../assets/ladybug.png'
-  brushes.dotted.source = textureImg
-
   // Brush Update Function
   // const updateBrush = () => {
   //   const brush = canvas.freeDrawingBrush
@@ -522,16 +564,8 @@ body {
   width: 100%;
 }
 
-canvas {
-  display: block; /* removes scrollbar from inline-block spacing */
-  width: 100vw;
-  height: 100vh;
-}
-
 .free-canvas-wrapper {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  overflow: visible;
 }
 </style>

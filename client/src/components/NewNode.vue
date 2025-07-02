@@ -7,7 +7,7 @@
       <span v-for="tag in tags" :key="tag" class="badge …" @dragover.prevent>{{ tag }}</span>
     </div>
     <div class="m-auto" ref="canvasContainer">
-      <canvas id="canvasEl" class="inset-border" width="280" height="280"></canvas>
+      <canvas ref="canvasEl" class="inset-border" width="280" height="280"></canvas>
     </div>
   </div>
 </template>
@@ -20,11 +20,19 @@ import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 
+const props = defineProps({
+  alt: {
+    type: Object,
+    required: true,
+  },
+})
+const canvasEl = ref(null) // local to this instance
+let fabricCanvas = null
+const { alt } = props
 const $ = (id) => document.getElementById(id)
 const nodeName = ref('New Node')
 const tags = ref([])
 const canvasContainer = ref(null)
-let fabricCanvas = null
 const objectStore = useObject()
 const nodeStore = useNode()
 const allUtilStore = useAllUtil()
@@ -38,9 +46,10 @@ const eventInOneDOM = (clientX, clientY, rect) => {
     clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
   )
 }
+
 onMounted(() => {
   fabricCanvas = markRaw(
-    new fabric.Canvas($('canvasEl'), {
+    new fabric.Canvas(canvasEl.value, {
       isDrawingMode: false,
       preserveObjectStacking: true,
     }),
@@ -52,6 +61,24 @@ onMounted(() => {
     const rectNode = nodeElement.getBoundingClientRect()
     //manually written dropping event detection
     if (objectStore.dragState === 'startDragging') {
+      if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
+        if (objectStore.obj !== null) {
+          if (objectStore.obj.type === 'tag') {
+            console.log(objectStore.obj.text)
+            ////TODO: opens one alternative under the same node
+          } else if (objectStore.obj.type === 'property') {
+            console.log(objectStore.obj.tags)
+            for (let i = 0; i < objectStore.obj.tags.length; i++) {
+              nodeStore.addAlt(
+                { properties: objectStore.obj.tags[i] },
+                nodeStore.currentBranchId,
+                nodeStore.currentNodeId,
+              )
+            }
+          }
+        }
+      }
+      ////TODO: What about dragging multiple attributes?
       if (eventInOneDOM(e.clientX, e.clientY, rectCanvas)) {
         //Mouse up inside canvas
         if (objectStore.obj !== null && objectStore.obj.type === 'image') {
@@ -72,16 +99,6 @@ onMounted(() => {
           }
           nodeStore.addDOMLayer(newLayerDOMInfo)
           objectStore.dragState = 'finishedDragging'
-        }
-      } else if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
-        if (objectStore.obj !== null) {
-          if (objectStore.obj.type === 'tag') {
-            console.log(objectStore.obj.text)
-            ////TODO: opens one alternative under the same node
-          } else if (objectStore.obj.type === 'property') {
-            console.log(objectStore.obj.tags)
-            ////TODO: opens x number of alternatives under the same node
-          }
         }
       } else {
         objectStore.dragState = 'notDragging'
