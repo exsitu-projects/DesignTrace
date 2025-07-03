@@ -1,5 +1,5 @@
 <template>
-  <div id="new-node">
+  <div ref="nodeEl" class="node">
     <div class="nodeHandle rounded-top p-1" style="background: #ededed">
       <EditableLabel v-model="nodeName" />
     </div>
@@ -26,7 +26,8 @@ const props = defineProps({
     required: true,
   },
 })
-const canvasEl = ref(null) // local to this instance
+const canvasEl = ref(null)
+const nodeEl = ref(null)
 let fabricCanvas = null
 const { alt } = props
 const $ = (id) => document.getElementById(id)
@@ -56,54 +57,31 @@ onMounted(() => {
     }),
   )
   const canvasElement = fabricCanvas.lowerCanvasEl
-  const nodeElement = document.getElementById('new-node')
   window.addEventListener('mouseup', async (e) => {
     const rectCanvas = canvasElement.getBoundingClientRect()
-    const rectNode = nodeElement.getBoundingClientRect()
-    //manually written dropping event detection
-    if (objectStore.dragState === 'startDragging') {
-      if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
-        if (objectStore.obj !== null) {
-          if (objectStore.obj.type === 'tag') {
-            console.log(objectStore.obj.text)
-            ////TODO: opens one alternative under the same node
-          } else if (objectStore.obj.type === 'property') {
-            console.log(objectStore.obj.tags)
-            for (let i = 0; i < objectStore.obj.tags.length; i++) {
-              nodeStore.addAlt(
-                { properties: objectStore.obj.tags[i] },
-                nodeStore.currentBranchId,
-                nodeStore.currentNodeId,
-              )
-            }
-          }
-        }
-      }
-      ////TODO: What about dragging multiple attributes?
-      if (eventInOneDOM(e.clientX, e.clientY, rectCanvas)) {
-        //Mouse up inside canvas
-        if (objectStore.obj !== null && objectStore.obj.type === 'image') {
-          //the dropped thing is an image and is dropped to the canvas area
-          const droppedObj = objectStore.obj
-          objectStore.startDragTop = droppedObj.top
-          objectStore.startDragLeft = droppedObj.left
-          const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
+    if (eventInOneDOM(e.clientX, e.clientY, rectCanvas)) {
+      //Mouse up inside canvas
+      if (objectStore.obj !== null && objectStore.obj.type === 'image') {
+        //the dropped thing is an image and is dropped to the canvas area
+        const droppedObj = objectStore.obj
+        objectStore.startDragTop = droppedObj.top
+        objectStore.startDragLeft = droppedObj.left
+        const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
 
-          const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
+        const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
 
-          const newId = Date.now()
-          const newLayerDOMInfo = {
-            id: newId,
-            url: droppedObj.src,
-            left: pointer.x,
-            top: pointer.y,
-          }
-          nodeStore.addDOMLayer(newLayerDOMInfo)
-          objectStore.dragState = 'finishedDragging'
+        const newId = Date.now()
+        const newLayerDOMInfo = {
+          id: newId,
+          url: droppedObj.src,
+          left: pointer.x,
+          top: pointer.y,
         }
-      } else {
+        nodeStore.addDOMLayer(newLayerDOMInfo)
         objectStore.dragState = 'notDragging'
       }
+    } else {
+      objectStore.dragState = 'notDragging'
     }
   })
 
@@ -227,7 +205,7 @@ watch(
 </script>
 
 <style scoped>
-#new-node {
+.node {
   width: v-bind(nodeW);
   height: v-bind(nodeH);
   background-color: #f9f9f9;

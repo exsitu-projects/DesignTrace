@@ -13,13 +13,16 @@
           :y="alt.position.y"
           :w="'auto'"
           :h="'auto'"
-          @mousemove="moveNativeDrag($event)"
+          @mouseup="mouseUpNode(alt.position.x, alt.position.y, $event)"
           :draggable="true"
           :drag-handle="'.nodeHandle'"
           class="design-space-container"
           @dragging="(x, y) => onDrag(x, y, alt)"
+          :data-branch-id="branch.id"
+          :data-node-id="node.id"
+          :data-alt-id="alt.id"
         >
-          <NewNode :alt="alt" />
+          <NewNode :alt="alt" :id="alt.id" />
         </VueDraggableResizable>
       </template>
     </template>
@@ -51,7 +54,7 @@
 
 <script setup>
 /* external libs / helpers */
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 
 /* components */
@@ -61,13 +64,13 @@ import InfoPalette from '@/components/InfoPalette.vue'
 
 /* Pinia stores */
 import { useNode } from '@/stores/nodeStore.js'
-
 import { useLayout } from '@/stores/layoutStore.js'
-
+import { useObject } from '@/stores/objectStore.js'
 /* --- store instances --- */
 
 const layoutStore = useLayout()
 const nodeStore = useNode()
+const objectStore = useObject()
 /* --- plain state --- */
 const availableModels = ref([])
 
@@ -106,14 +109,32 @@ async function fetchModels() {
     console.error('Error fetching models:', err)
   }
 }
-
+function getAltWrapperAt(x, y) {
+  const el = document.elementFromPoint(x, y)
+  return el?.closest('.node-wrapper') || null
+}
 function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-function moveNativeDrag(e) {
-  // console.log('client position', e.clientX, e.clientY)
-  // console.log('page position', e.pageX, e.pageY)
+function mouseUpNode(altPosX, altPosY, e) {
+  if (objectStore.dragState !== 'startDragging') return
+  if (objectStore.obj !== null) {
+    if (objectStore.obj.type === 'tag') {
+      console.log(objectStore.obj.text)
+      ////TODO: opens one alternative under the same node
+    } else if (objectStore.obj.type === 'property') {
+      // nodeStore.addAlts(objectStore.obj.tags, nodeStore.currentBranchId,
+      //   nodeStore.currentNodeId, posX = initialNodeX, posY = initialNodeY)
+      nodeStore.addMultAlt(
+        objectStore.obj.tags,
+        nodeStore.currentBranchId,
+        nodeStore.currentNodeId,
+        altPosX,
+        altPosY,
+      )
+    }
+  }
 }
 
 function onDrag(x, y, alt) {
@@ -133,6 +154,32 @@ function ensureNodeInView(nodeXL, nodeYT) {
   nodeStore.setNodeXR(nodeXL + nodeStore.nodeW)
   nodeStore.setNodeYB(nodeYT + nodeStore.nodeH)
 }
+
+onMounted('mouseup', async (e) => {
+  // window.addEventListener('mouseup', async (e) => {
+  //   //manually written dropping event detection
+  //   console.log('global mouseup', e)
+  //
+  //   const wrapper = getAltWrapperAt(e.clientX, e.clientY)
+  //   if (!wrapper) {
+  //     console.log('Dropped on empty space')
+  //     return
+  //   }
+  //
+  //   // Pull identifying info straight from the wrapper
+  //   const branchId = wrapper.dataset.branchId
+  //   const nodeId = wrapper.dataset.nodeId
+  //   const altId = wrapper.dataset.altId
+  //
+  //   console.log('Dropped on alt:', { branchId, nodeId, altId })
+  //   const rectNode = nodeEl.value.getBoundingClientRect()
+  //   console.log(e.clientX, e.clientY, rectNode)
+  //   if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
+  //     //tag or tags being dragged
+  //     console.log('tag or tags being dragged')
+  //   }
+  // })
+})
 </script>
 
 <style scoped>

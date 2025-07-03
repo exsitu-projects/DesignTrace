@@ -31,8 +31,12 @@ export const useNode = defineStore('nodes', () => {
   const layerPayload = ref(null)
   const nodeW = 300
   const nodeH = 400
+  const initialNodeX = 150
+  const initialNodeY = 150
   const nodeXR = ref(0)
   const nodeYB = ref(0)
+  const nodeYT = ref(0)
+  const offsetY = ref(0)
   function addNodeBranch() {
     const newBranch = {
       id: `branch_${Date.now()}`,
@@ -66,14 +70,16 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
-  function addAlt(altObj, nodeBranchId, nodeId) {
+  function addAlt(altObj, nodeBranchId, nodeId, posX = initialNodeX, posY = initialNodeY) {
+    ////TODO: Maybe optimize here, duplicated code as addMultAlt
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
+
     if (branch) {
       const node = branch.nodes.find((n) => n.id === nodeId)
       if (node) {
         const newAlt = {
           id: `alt_${Date.now()}`,
-          position: { x: node.alts.length * 30, y: node.alts.length * 30 },
+          position: { x: posX, y: posY },
           ...altObj,
         }
         node.alts.push(newAlt)
@@ -81,9 +87,38 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
+  function addMultAlt(altObjs, nodeBranchId, nodeId, currentNodeX, currentNodeY) {
+    const num = altObjs.length
+    const maxY = currentNodeY + (nodeH / 2) * (num - 1)
+    const minY = currentNodeY - (nodeH / 2) * (num - 1)
+
+    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
+
+    if (minY < 0) {
+      offsetY.value = -minY
+      for (let node of branch.nodes) {
+        for (let alt of node.alts) {
+          alt.position.y += offsetY.value
+        }
+      }
+    }
+    nodeYT.value = minY + offsetY.value
+    nodeYB.value = Math.max(maxY + nodeH, nodeYB.value) + offsetY.value
+    console.log(nodeYT.value, nodeYB.value)
+    let x = currentNodeX + nodeW
+    let y
+
+    nodeXR.value = Math.max(nodeXR.value, x + nodeW)
+    for (let i = 0; i < num; i++) {
+      y = maxY - nodeH * i + offsetY.value
+      addAlt({ properties: altObjs[i] }, nodeBranchId, nodeId, x, y)
+    }
+  }
+
   return {
     nodeXR,
     nodeYB,
+    nodeYT,
     nodeW,
     nodeH,
     layerPayload,
@@ -96,5 +131,6 @@ export const useNode = defineStore('nodes', () => {
     addNodeBranch,
     addNode,
     addAlt,
+    addMultAlt,
   }
 })

@@ -2,7 +2,6 @@
   <canvas id="freeCanvas"></canvas>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
     <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
-    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
     <button class="btn btn-sm btn-light" @click="triggerFileSelect">
       <ImageUp color="black" :size="15" />
     </button>
@@ -14,6 +13,8 @@
       @change="uploadFiles"
       style="display: none"
     />
+    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
+
     <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
     <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
 
@@ -130,6 +131,8 @@ watch(
 watch(
   () => [nodeStore.nodeXR, nodeStore.nodeYB],
   ([nodeXR, nodeYB]) => {
+    console.log('canvas', canvas.width, canvas.height)
+    console.log('node', nodeXR, nodeYB)
     if (nodeXR > canvas.width || nodeYB > canvas.height) {
       console.log('exceed!')
       resizeFabric(Math.max(canvas.width, nodeXR), Math.max(canvas.height, nodeYB))
