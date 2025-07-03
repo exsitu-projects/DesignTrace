@@ -29,7 +29,10 @@ export const useNode = defineStore('nodes', () => {
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
-
+  const nodeW = 300
+  const nodeH = 400
+  const nodeXR = ref(0)
+  const nodeYB = ref(0)
   function addNodeBranch() {
     const newBranch = {
       id: `branch_${Date.now()}`,
@@ -37,6 +40,14 @@ export const useNode = defineStore('nodes', () => {
     }
     currentBranchId.value = newBranch.id
     nodeBranchList.value.push(newBranch)
+  }
+
+  function setNodeXR(newVal) {
+    nodeXR.value = newVal
+  }
+
+  function setNodeYB(newVal) {
+    nodeYB.value = newVal
   }
 
   function addDOMLayer(layer) {
@@ -62,7 +73,7 @@ export const useNode = defineStore('nodes', () => {
       if (node) {
         const newAlt = {
           id: `alt_${Date.now()}`,
-          position: { x: 20 + node.alts.length * 30, y: 20 + node.alts.length * 30 },
+          position: { x: node.alts.length * 30, y: node.alts.length * 30 },
           ...altObj,
         }
         node.alts.push(newAlt)
@@ -71,10 +82,16 @@ export const useNode = defineStore('nodes', () => {
   }
 
   return {
+    nodeXR,
+    nodeYB,
+    nodeW,
+    nodeH,
     layerPayload,
     nodeBranchList,
     currentNodeId,
     currentBranchId,
+    setNodeXR,
+    setNodeYB,
     addDOMLayer,
     addNodeBranch,
     addNode,

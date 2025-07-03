@@ -1,62 +1,60 @@
 <template>
-  <div ref="wrapper" class="free-canvas-wrapper">
-    <canvas id="freeCanvas"></canvas>
-    <div class="drawing-mode-options border border-black rounded-1 p-1">
-      <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
-      <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
-      <button class="btn btn-sm btn-light" @click="triggerFileSelect">
-        <ImageUp color="black" :size="15" />
-      </button>
-      <input
-        type="file"
-        ref="fileInput"
-        multiple
-        accept="image/*"
-        @change="uploadFiles"
-        style="display: none"
-      />
-      <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
-      <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
+  <canvas id="freeCanvas"></canvas>
+  <div class="drawing-mode-options border border-black rounded-1 p-1">
+    <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
+    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
+    <button class="btn btn-sm btn-light" @click="triggerFileSelect">
+      <ImageUp color="black" :size="15" />
+    </button>
+    <input
+      type="file"
+      ref="fileInput"
+      multiple
+      accept="image/*"
+      @change="uploadFiles"
+      style="display: none"
+    />
+    <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
+    <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
 
-      <!--      <label for="drawing-mode-selector">-->
-      <!--        Mode:-->
-      <!--        <select id="drawing-mode-selector">-->
-      <!--          <option>Pencil</option>-->
-      <!--          <option>hline</option>-->
-      <!--          <option>vline</option>-->
-      <!--          <option>diamond</option>-->
-      <!--          <option>dotted</option>-->
-      <!--        </select>-->
-      <!--      </label>-->
+    <!--      <label for="drawing-mode-selector">-->
+    <!--        Mode:-->
+    <!--        <select id="drawing-mode-selector">-->
+    <!--          <option>Pencil</option>-->
+    <!--          <option>hline</option>-->
+    <!--          <option>vline</option>-->
+    <!--          <option>diamond</option>-->
+    <!--          <option>dotted</option>-->
+    <!--        </select>-->
+    <!--      </label>-->
 
-      <!--      <label for="drawing-line-width">-->
-      <!--        Line width:-->
-      <!--        <span class="info">30</span>-->
-      <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
-      <!--      </label>-->
+    <!--      <label for="drawing-line-width">-->
+    <!--        Line width:-->
+    <!--        <span class="info">30</span>-->
+    <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
+    <!--      </label>-->
 
-      <!--      <label for="drawing-color">-->
-      <!--        Line color:-->
-      <!--        <input type="color" id="drawing-color" />-->
-      <!--      </label>-->
+    <!--      <label for="drawing-color">-->
+    <!--        Line color:-->
+    <!--        <input type="color" id="drawing-color" />-->
+    <!--      </label>-->
 
-      <!--      <label for="drawing-shadow-color">-->
-      <!--        Shadow color:-->
-      <!--        <input type="color" id="drawing-shadow-color" />-->
-      <!--      </label>-->
+    <!--      <label for="drawing-shadow-color">-->
+    <!--        Shadow color:-->
+    <!--        <input type="color" id="drawing-shadow-color" />-->
+    <!--      </label>-->
 
-      <!--      <label for="drawing-shadow-width">-->
-      <!--        Shadow width:-->
-      <!--        <span class="info">0</span>-->
-      <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
-      <!--      </label>-->
+    <!--      <label for="drawing-shadow-width">-->
+    <!--        Shadow width:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
+    <!--      </label>-->
 
-      <!--      <label for="drawing-shadow-offset">-->
-      <!--        Shadow offset:-->
-      <!--        <span class="info">0</span>-->
-      <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
-      <!--      </label>-->
-    </div>
+    <!--      <label for="drawing-shadow-offset">-->
+    <!--        Shadow offset:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
+    <!--      </label>-->
   </div>
 </template>
 
@@ -126,6 +124,16 @@ watch(
       obj.selectable = !lassoStart
     })
     canvas.selection = !lassoStart
+  },
+)
+
+watch(
+  () => [nodeStore.nodeXR, nodeStore.nodeYB],
+  ([nodeXR, nodeYB]) => {
+    if (nodeXR > canvas.width || nodeYB > canvas.height) {
+      console.log('exceed!')
+      resizeFabric(Math.max(canvas.width, nodeXR), Math.max(canvas.height, nodeYB))
+    }
   },
 )
 
@@ -245,21 +253,16 @@ const backwardOneLayer = () => {
     canvas.renderAll()
   }
 }
-function resizeFabric() {
-  if (!wrapper.value) return
 
-  const { minX, minY, maxX, maxY } = layoutStore
-  const { clientWidth, clientHeight } = wrapper.value
+function resizeFabric(newW, newH) {
+  canvas.setDimensions({ width: newW, height: newH })
 
-  // Calculate required canvas size
-  const requiredWidth = Math.max(clientWidth, maxX) + 50 // Add some padding
-  const requiredHeight = Math.max(clientHeight, maxY) + 50 // Add some padding
+  canvas.getElement().style.width = newW + 'px'
+  canvas.getElement().style.height = newH + 'px'
 
-  canvas.setWidth(requiredWidth)
-  canvas.setHeight(requiredHeight)
   canvas.renderAll()
-  layoutStore.setWrapperSize(requiredWidth, requiredHeight)
 }
+
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
@@ -273,22 +276,22 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
-  measureWrapper()
-  syncCanvasToLayout()
-
-  /* watch: when store width/height change (ensureFits) -> grow bitmap */
-  watch(() => [layoutStore.width, layoutStore.height], syncCanvasToLayout)
+  // measureWrapper()
+  // syncCanvasToLayout()
+  //
+  // /* watch: when store width/height change (ensureFits) -> grow bitmap */
+  // watch(() => [layoutStore.width, layoutStore.height], syncCanvasToLayout)
 
   /* ResizeObserver: when wrapper grows (window resize, flex, etc.)  */
-  const ro = new ResizeObserver(measureWrapper)
-  ro.observe(wrapper.value)
-
-  window.addEventListener('resize', measureWrapper)
-
-  onBeforeUnmount(() => {
-    ro.disconnect()
-    window.removeEventListener('resize', measureWrapper)
-  })
+  // const ro = new ResizeObserver(measureWrapper)
+  // ro.observe(wrapper.value)
+  //
+  // window.addEventListener('resize', measureWrapper)
+  //
+  // onBeforeUnmount(() => {
+  //   ro.disconnect()
+  //   window.removeEventListener('resize', measureWrapper)
+  // })
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       canvas.forEachObject((obj) => {
@@ -559,13 +562,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
   height: 100%;
   width: 100%;
-}
-
-.free-canvas-wrapper {
-  position: relative;
-  overflow: visible;
 }
 </style>

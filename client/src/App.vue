@@ -1,55 +1,51 @@
 <template>
   <div id="app">
-    <header></header>
+    <!-- wrapper provides the relative positioning context -->
+    <FreeCanvas />
 
-    <main>
-      <!-- wrapper provides the relative positioning context -->
-      <div ref="wrapper" class="canvas-wrapper">
-        <FreeCanvas />
-
-        <!-- nodes & alts overlay -->
-        <template v-for="branch in nodeStore.nodeBranchList" :key="branch.id">
-          <template v-for="node in branch.nodes" :key="node.id">
-            <VueDraggableResizable
-              v-for="alt in node.alts"
-              :key="alt.id"
-              :x="alt.position.x"
-              :y="alt.position.y"
-              :w="'auto'"
-              :h="'auto'"
-              :draggable="true"
-              :drag-handle="'.nodeHandle'"
-              @dragging="(x, y) => onDrag(alt, x, y)"
-            >
-              <NewNode :alt="alt" />
-            </VueDraggableResizable>
-          </template>
-        </template>
-
-        <!-- floating palette panel -->
+    <!-- nodes & alts overlay -->
+    <template v-for="branch in nodeStore.nodeBranchList" :key="branch.id">
+      <template v-for="node in branch.nodes" :key="node.id">
         <VueDraggableResizable
-          :x="position.x"
-          :y="position.y"
+          v-for="alt in node.alts"
+          :key="alt.id"
+          :x="alt.position.x"
+          :y="alt.position.y"
           :w="'auto'"
           :h="'auto'"
+          @mousemove="moveNativeDrag($event)"
           :draggable="true"
-          :drag-handle="'.handle'"
+          :drag-handle="'.nodeHandle'"
           class="design-space-container"
-          @dragging="onDrag"
+          @dragging="(x, y) => onDrag(x, y, alt)"
         >
-          <div class="header handle small fw-bolder">
-            Palette
-            <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
-              <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-            </button>
-          </div>
-
-          <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
-            <InfoPalette />
-          </div>
+          <NewNode :alt="alt" />
         </VueDraggableResizable>
+      </template>
+    </template>
+
+    <!-- floating palette panel -->
+    <VueDraggableResizable
+      :x="position.x"
+      :y="position.y"
+      :w="'auto'"
+      :h="'auto'"
+      :draggable="true"
+      :drag-handle="'.handle'"
+      class="design-space-container"
+      @dragging="onDrag"
+    >
+      <div class="header handle small fw-bolder">
+        Palette
+        <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
+          <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+        </button>
       </div>
-    </main>
+
+      <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
+        <InfoPalette />
+      </div>
+    </VueDraggableResizable>
   </div>
 </template>
 
@@ -96,43 +92,9 @@ const generatedImage = ref(null)
 const prompt = ref('')
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
-
 /* --- refs to DOM / child comps (if needed) --- */
 const wrapper = ref(null)
 const editor = ref(null) // <ImageEditor ref="editor" ...> if you restore it
-
-/* ------------------------------------------------------------------ */
-/* helpers                                                            */
-/* ------------------------------------------------------------------ */
-function ensureNodeInView(alt, nodeW = 300, nodeH = 400) {
-  const needRight = alt.position.x + nodeW + 40
-  const needBottom = alt.position.y + nodeH + 40
-  console.log('ensureNodeInView')
-  layoutStore.ensureFits(needRight, needBottom) // wrapper & fabric grow if needed
-}
-
-function downloadImage() {
-  const link = document.createElement('a')
-  link.href = generatedImage.value
-  link.download = 'magicquill-generated.png'
-  link.click()
-}
-
-function useAsNewBase() {
-  editor.value?.loadGeneratedImage(generatedImage.value)
-}
-
-function updatePrompt(p) {
-  prompt.value = p
-}
-
-function displayGeneratedImage(imgData) {
-  generatedImage.value = imgData
-}
-
-function updateParams(newParams) {
-  Object.assign(generationParams, newParams)
-}
 
 /* example async — not used right now */
 async function fetchModels() {
@@ -149,19 +111,27 @@ function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-/**
- * Called by <VueDraggableResizable>:
- *  • When dragging nodes:   onDrag(altObj, newX, newY)
- *  • When dragging palette: onDrag(newX, newY)
- */
-function onDrag(alt, x, y) {
-  if (y !== undefined) {
-    alt.position = { x, y }
-    // ensureNodeInView(alt)
+function moveNativeDrag(e) {
+  // console.log('client position', e.clientX, e.clientY)
+  // console.log('page position', e.pageX, e.pageY)
+}
+
+function onDrag(x, y, alt) {
+  if (alt !== undefined) {
+    //dragging an alt
+    alt.position.x = x
+    alt.position.y = y
+    ensureNodeInView(x, y)
   } else {
-    position.x = alt
-    position.y = x
+    //dragging the palette
+    position.x = x
+    position.y = y
   }
+}
+
+function ensureNodeInView(nodeXL, nodeYT) {
+  nodeStore.setNodeXR(nodeXL + nodeStore.nodeW)
+  nodeStore.setNodeYB(nodeYT + nodeStore.nodeH)
 }
 </script>
 
@@ -181,14 +151,10 @@ function onDrag(alt, x, y) {
   user-select: none;
 }
 
-.canvas-wrapper {
-  position: relative; /* absolute children (nodes) live here */
-  user-select: none;
-}
 .design-space-container {
-  position: fixed;
-  top: 20px;
-  left: 20px;
+  position: absolute;
+  top: 0;
+  left: 0;
   background: white;
   border: 1px solid #ddd;
   border-radius: 5px;

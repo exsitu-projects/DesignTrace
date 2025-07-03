@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, markRaw, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, markRaw, watch, computed } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -46,7 +46,8 @@ const eventInOneDOM = (clientX, clientY, rect) => {
     clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
   )
 }
-
+const nodeW = computed(() => nodeStore.nodeW)
+const nodeH = computed(() => nodeStore.nodeH)
 onMounted(() => {
   fabricCanvas = markRaw(
     new fabric.Canvas(canvasEl.value, {
@@ -227,8 +228,8 @@ watch(
 
 <style scoped>
 #new-node {
-  width: 300px;
-  height: 400px;
+  width: v-bind(nodeW);
+  height: v-bind(nodeH);
   background-color: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 8px;
