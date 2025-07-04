@@ -4,29 +4,23 @@
     <FreeCanvas />
 
     <!-- nodes & alts overlay -->
-    <template v-for="branch in nodeStore.nodeBranchList" :key="branch.id">
-      <template v-for="node in branch.nodes" :key="node.id">
-        <VueDraggableResizable
-          v-for="alt in node.alts"
-          :key="alt.id"
-          :x="alt.position.x"
-          :y="alt.position.y"
-          :w="'auto'"
-          :h="'auto'"
-          @mouseup="mouseUpNode(alt.position.x, alt.position.y, $event)"
-          :draggable="true"
-          :drag-handle="'.nodeHandle'"
-          class="design-space-container"
-          @dragging="(x, y) => onDrag(x, y, alt)"
-          :data-branch-id="branch.id"
-          :data-node-id="node.id"
-          :data-alt-id="alt.id"
-        >
-          <NewNode :alt="alt" :id="alt.id" />
-        </VueDraggableResizable>
-      </template>
-    </template>
-
+    <transition-group name="fade" tag="div" class="nodes-layer">
+      <VueDraggableResizable
+        v-for="alt in allAlts"
+        :key="alt.id"
+        :x="alt.position.x"
+        :y="alt.position.y"
+        :w="'auto'"
+        :h="'auto'"
+        @mouseup="mouseUpNode(alt.position.x, alt.position.y, $event)"
+        :draggable="true"
+        :drag-handle="'.nodeHandle'"
+        class="design-space-container"
+        @dragging="(x, y) => onDrag(x, y, alt)"
+      >
+        <NewNode :alt="alt" />
+      </VueDraggableResizable>
+    </transition-group>
     <!-- floating palette panel -->
     <VueDraggableResizable
       :x="position.x"
@@ -54,7 +48,7 @@
 
 <script setup>
 /* external libs / helpers */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 
 /* components */
@@ -73,7 +67,9 @@ const nodeStore = useNode()
 const objectStore = useObject()
 /* --- plain state --- */
 const availableModels = ref([])
-
+const allAlts = computed(() =>
+  nodeStore.nodeBranchList.flatMap((b) => b.nodes.flatMap((n) => n.alts)),
+)
 const generationParams = reactive({
   ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
   auto_save: false,
@@ -91,14 +87,10 @@ const generationParams = reactive({
   scheduler: 'karras',
 })
 
-const generatedImage = ref(null)
-const prompt = ref('')
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
-/* --- refs to DOM / child comps (if needed) --- */
-const wrapper = ref(null)
-const editor = ref(null) // <ImageEditor ref="editor" ...> if you restore it
-
+const generatedImage = ref(null)
+const prompt = ref('')
 /* example async — not used right now */
 async function fetchModels() {
   try {
@@ -109,23 +101,24 @@ async function fetchModels() {
     console.error('Error fetching models:', err)
   }
 }
-function getAltWrapperAt(x, y) {
-  const el = document.elementFromPoint(x, y)
-  return el?.closest('.node-wrapper') || null
-}
+
 function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-function mouseUpNode(altPosX, altPosY, e) {
+async function mouseUpNode(altPosX, altPosY) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag') {
       console.log(objectStore.obj.text)
-      ////TODO: opens one alternative under the same node
+      nodeStore.addMultAlt(
+        [objectStore.obj.text], // the arr length will be used to decide how many ele
+        nodeStore.currentBranchId,
+        nodeStore.currentNodeId,
+        altPosX,
+        altPosY,
+      )
     } else if (objectStore.obj.type === 'property') {
-      // nodeStore.addAlts(objectStore.obj.tags, nodeStore.currentBranchId,
-      //   nodeStore.currentNodeId, posX = initialNodeX, posY = initialNodeY)
       nodeStore.addMultAlt(
         objectStore.obj.tags,
         nodeStore.currentBranchId,
@@ -134,6 +127,7 @@ function mouseUpNode(altPosX, altPosY, e) {
         altPosY,
       )
     }
+    await nextTick()
   }
 }
 
@@ -154,39 +148,17 @@ function ensureNodeInView(nodeXL, nodeYT) {
   nodeStore.setNodeXR(nodeXL + nodeStore.nodeW)
   nodeStore.setNodeYB(nodeYT + nodeStore.nodeH)
 }
-
-onMounted('mouseup', async (e) => {
-  // window.addEventListener('mouseup', async (e) => {
-  //   //manually written dropping event detection
-  //   console.log('global mouseup', e)
-  //
-  //   const wrapper = getAltWrapperAt(e.clientX, e.clientY)
-  //   if (!wrapper) {
-  //     console.log('Dropped on empty space')
-  //     return
-  //   }
-  //
-  //   // Pull identifying info straight from the wrapper
-  //   const branchId = wrapper.dataset.branchId
-  //   const nodeId = wrapper.dataset.nodeId
-  //   const altId = wrapper.dataset.altId
-  //
-  //   console.log('Dropped on alt:', { branchId, nodeId, altId })
-  //   const rectNode = nodeEl.value.getBoundingClientRect()
-  //   console.log(e.clientX, e.clientY, rectNode)
-  //   if (eventInOneDOM(e.clientX, e.clientY, rectNode)) {
-  //     //tag or tags being dragged
-  //     console.log('tag or tags being dragged')
-  //   }
-  // })
-})
 </script>
 
-<style scoped>
+<style>
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
 }
-
+.nodes-layer {
+  position: absolute;
+  inset: 0; /* full overlay */
+  pointer-events: auto; /* nodes handle their own events */
+}
 .header {
   background: #f8f9fa;
   cursor: move;
@@ -208,5 +180,21 @@ onMounted('mouseup', async (e) => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   transform: none;
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: scale(1);
 }
 </style>
