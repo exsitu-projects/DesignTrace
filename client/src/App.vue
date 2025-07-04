@@ -122,9 +122,9 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag') {
-      console.log(objectStore.obj.text)
+      // objectStore.obj in form of {type: 'tag', tag: 'Red'}
       nodeStore.addMultAlt(
-        [objectStore.obj.text], // the arr length will be used to decide how many ele
+        [objectStore.obj], // the arr length will be used to decide how many ele
         nodeStore.currentBranchId,
         nodeStore.currentNodeId,
         altPosX,
@@ -132,6 +132,17 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
         altId,
       )
     } else if (objectStore.obj.type === 'property') {
+      ////TODO: unify formats later
+      // objectStore.obj.tags in form of [
+      // {
+      //   "uid": "175166363463802d0672f263ec8",
+      //   "tag": "Rough"
+      // },
+      // {
+      //   "uid": "1751663634638eb02fb7002f648",
+      //   "tag": "Smooth"
+      // }
+      // ]
       nodeStore.addMultAlt(
         objectStore.obj.tags,
         nodeStore.currentBranchId,
@@ -140,25 +151,20 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
         altPosY,
         altId,
       )
+    } else if (objectStore.obj.type === 'image') {
+      //the dropped thing is an image and is dropped to the canvas area
+      const droppedObj = objectStore.obj
+      objectStore.startDragTop = droppedObj.top
+      objectStore.startDragLeft = droppedObj.left
+      const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
+      const newId = Date.now()
+      imgDOMPayload.value = {
+        id: newId,
+        url: droppedObj.src,
+        e: e,
+      }
+      dropAltId.value = altId
     }
-    objectStore.dragState = 'finishedDragging'
-  }
-
-  //Mouse up inside canvas
-  if (objectStore.obj !== null && objectStore.obj.type === 'image') {
-    //the dropped thing is an image and is dropped to the canvas area
-    const droppedObj = objectStore.obj
-    objectStore.startDragTop = droppedObj.top
-    objectStore.startDragLeft = droppedObj.left
-    const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
-    const newId = Date.now()
-    imgDOMPayload.value = {
-      id: newId,
-      url: droppedObj.src,
-      e: e,
-    }
-    dropAltId.value = altId
-
     objectStore.dragState = 'finishedDragging'
   }
 }
@@ -265,7 +271,7 @@ async function fetchModels() {
   border: 1px solid #ddd;
   border-radius: 5px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: 0;
   transform: none;
 }
 .fade-enter-active,

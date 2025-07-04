@@ -12,16 +12,16 @@ export const useInfoStore = defineStore('infoStore', () => {
       name: 'Color',
       color: '#000',
       tags: [
-        { uid: uid(), text: 'Red' },
-        { uid: uid(), text: 'Green' },
+        { uid: uid(), tag: 'Red' },
+        { uid: uid(), tag: 'Green' },
       ],
     },
     {
       name: 'Texture',
       color: '#000',
       tags: [
-        { uid: uid(), text: 'Rough' },
-        { uid: uid(), text: 'Smooth' },
+        { uid: uid(), tag: 'Rough' },
+        { uid: uid(), tag: 'Smooth' },
       ],
     },
   ])
@@ -30,13 +30,13 @@ export const useInfoStore = defineStore('infoStore', () => {
     rows.value.push({
       name: 'Property',
       color: '#6c757d',
-      tags: [{ uid: uid(), text: 'Tag' }],
+      tags: [{ uid: uid(), tag: 'Tag' }],
     })
   }
 
   const addTag = (rowIdx, label = 'New') => {
     const row = rows.value[rowIdx]
-    if (row) row.tags.push({ uid: uid(), text: label })
+    if (row) row.tags.push({ uid: uid(), tag: label })
   }
 
   const removeTag = (rowIdx, tagIdx) => {

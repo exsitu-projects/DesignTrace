@@ -56,10 +56,6 @@ export const useNode = defineStore('nodes', () => {
     nodeYB.value = newVal
   }
 
-  function addDOMLayer(layer) {
-    layerPayload.value = { url: layer.url, id: layer.id, left: layer.left, top: layer.top }
-  }
-
   function addNode(nodeBranchId) {
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     if (branch) {
@@ -143,7 +139,6 @@ export const useNode = defineStore('nodes', () => {
     currentBranchId,
     setNodeXR,
     setNodeYB,
-    addDOMLayer,
     addNodeBranch,
     addNode,
     addAlt,

@@ -1,5 +1,5 @@
 <template>
-  <div class="content">
+  <div class="content" style="z-index: 0">
     <!-- One row per visual property -->
     <div
       v-for="(row, rowIdx) in rows"
@@ -13,6 +13,7 @@
         class="my-auto"
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row)"
+        @mouseup="handleMouseUp(rowIdx, row.name)"
       />
 
       <!-- Draggable area for tags -->
@@ -29,7 +30,7 @@
               :draggable="true"
               @dragstart="(e) => handleDragStart(e, element)"
               class="fw-normal"
-              v-model="element.text"
+              v-model="element.tag"
             ></EditableLabel>
             <!-- remove button -->
             <button
@@ -76,10 +77,26 @@ const handleDragStart = (e, tagObj) => {
   objectStore.dragState = 'startDragging'
   if ('uid' in tagObj) {
     //meaning this is one tag being dragged
-    objectStore.obj = { type: 'tag', text: tagObj.text }
+    objectStore.obj = { type: 'tag', tag: tagObj.tag }
   } else {
     objectStore.obj = { type: 'property', tags: tagObj.tags }
   }
+}
+
+const handleMouseUp = async (rowIdx, propName) => {
+  if (objectStore.dragState !== 'startDragging') return
+  if (objectStore.obj.type === 'image') {
+    //the dropped thing is an image and is dropped to the property
+    const droppedObj = objectStore.obj
+    objectStore.startDragTop = droppedObj.top
+    objectStore.startDragLeft = droppedObj.left
+
+    const staticPath = droppedObj.src.match(/static\/.+/)[0] // staticPath: staitc/
+
+    const propVal = await objectStore.describeImage(staticPath, propName)
+    infoStore.addTag(rowIdx, propVal)
+  }
+  objectStore.dragState = 'finishedDragging'
 }
 </script>
 

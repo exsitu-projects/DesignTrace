@@ -1,18 +1,32 @@
 import os
 import io
 from PIL import Image
+from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import uuid
 from backgroundremover.bg import remove
 from openai import OpenAI
-import base64
+import base64, mimetypes
 from io import BytesIO
 import traceback
 
 client = OpenAI()
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
+
+def static_to_base64(file_path: str) -> str:
+    """
+    file_path: e.g. 'static/assets/a2e82503-5350-4eb4.png'
+    returns:  'data:image/png;base64,AAA...'
+    """
+
+    mime, _ = mimetypes.guess_type(file_path) or ('application/octet-stream', None)
+
+    with open(file_path, 'rb') as f:
+        b64 = base64.b64encode(f.read()).decode('utf-8')
+
+    return f'data:{mime};base64,{b64}'
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -177,25 +191,22 @@ def image_to_labels():
 #             f.write(base64.b64decode(image_data))
 #             full_path = 'static/assets/lassoImage.png'
     else:
-         full_path =  image_path
+         full_path = static_to_base64(image_path)
     prompt = data.get('prompt')
     system_prompt = '''
-        You are an agent specialized in tagging images of different objects with relevant keywords that could be used to search for these items or regenerate a relevant image.
+You are a visual description assistant.
 
-        You will be provided with an image and the title of the item that is depicted in the image, and your goal is to extract keywords for only the item specified.
+The user will give you one visual property (like color, texture, or material) and an image.
 
-        Keywords should be concise and in lower case.
+Your task is to write a concise, vivid description of that property as clearly seen in the image.
 
-        Keywords can describe things like:
-        - Item type e.g. 'sofa bed', 'chair', 'desk', 'plant'
-        - Item material e.g. 'wood', 'metal', 'fabric'
-        - Item style e.g. 'scandinavian', 'vintage', 'industrial'
-        - Item color e.g. 'red', 'blue', 'white'
+Use natural language, not a list of keywords.
+Limit your response to 8 words or fewer.
+Use adjectives or phrases like “shell-like,” “light reflections,” “wood grain,” etc.
+Be specific, expressive, and grounded in what’s visible.
+If the property is not visible, respond only with “none”.
 
-        Only deduce material, style or color keywords when it is obvious that they make the item depicted in the image stand out.
-
-        Return keywords in the format of an array of strings, like this:
-        ['desk', 'industrial', 'metal']
+Return only the description. Do not explain or add anything else.
 
     '''
     try:
@@ -211,7 +222,7 @@ def image_to_labels():
             {
                 "role": "user",
                 "content": [
-#                     {"type": "input_text", "text": "what's in this image?"},
+                    {"type": "input_text", "text": prompt},
                     {
                         "type": "input_image",
                         "image_url": full_path,

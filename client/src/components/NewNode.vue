@@ -8,7 +8,7 @@
         v-for="property in alt.properties"
         :key="property.uid"
         class="btn btn-sm btn-outline-dark"
-        >{{ property.text }}</span
+        >{{ property.tag }}</span
       >
     </div>
     <div class="m-auto" ref="canvasContainer">
@@ -57,7 +57,6 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
-
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       fabricCanvas.forEachObject((obj) => {

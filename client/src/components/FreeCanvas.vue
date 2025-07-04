@@ -150,33 +150,6 @@ const updateDrawingModeButtonText = async () => {
     : 'Enter drawing mode'
 }
 
-const describeImage = async (image_path, prompt) => {
-  try {
-    objectStore.promiseLoadImageLabel = 'loading'
-
-    const response = await fetch('http://localhost:5555/image-to-labels', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ image_path, prompt }),
-    })
-    const result = await response.json()
-
-    if (response.ok) {
-      // return result.result
-      return result.output
-    } else {
-      console.log(result.error)
-      return null // Optional: explicitly return null on error
-    }
-  } catch (err) {
-    console.log(err.message)
-    return null // Optional: consistently return on error
-  } finally {
-    objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
-  }
-}
 const uploadFiles = async (event) => {
   files.value = Array.from(event.target.files)
   if (!files.value.length) {
@@ -417,6 +390,7 @@ onMounted(() => {
     'mouse:down': function (e) {
       // start dragging
       if (e.target && 'idInUpload' in e.target) {
+        //meaning the object being dragged is an image on free canvas
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
         objectStore.obj.type = 'image'
