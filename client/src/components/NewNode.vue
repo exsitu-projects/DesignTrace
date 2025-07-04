@@ -42,7 +42,6 @@ const canvasContainer = ref(null)
 const objectStore = useObject()
 const nodeStore = useNode()
 const allUtilStore = useAllUtil()
-const emit = defineEmits(['canvas-ready'])
 
 let isLasso = false
 let points = []
@@ -58,7 +57,6 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
-  emit('canvas-ready', { id: props.alt.id, canvas: fabricCanvas })
 
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
@@ -129,14 +127,12 @@ onMounted(() => {
     }
   })
 })
-const imgPayloadRef = toRef(props, 'imgPayload')
 
 watch(
   () => props.imgPayload,
   (newPayload) => {
     if (!newPayload) return
     const pointer = fabricCanvas.getPointer(newPayload.e, true)
-    console.log(pointer.x, pointer.y)
     const existingImage = fabricCanvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -148,8 +144,8 @@ watch(
           const fabricImage = new fabric.Image(img, {
             selectable: true,
             hasControls: true,
-            left: newPayload.left,
-            top: newPayload.top,
+            left: pointer.x,
+            top: pointer.y,
           })
 
           fabricImage.scaleToWidth(250)
@@ -171,43 +167,7 @@ watch(
     }
   },
 )
-// watch(
-//   () => nodeStore.layerPayload,
-//   (newPayload) => {
-//     const existingImage = fabricCanvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
-//     const img = new Image()
-//     img.crossOrigin = 'anonymous'
-//     if (newPayload.url !== ' ') {
-//       img.src = newPayload.url
-//
-//       img.onload = () => {
-//         try {
-//           const fabricImage = new fabric.Image(img, {
-//             selectable: true,
-//             hasControls: true,
-//             left: newPayload.left,
-//             top: newPayload.top,
-//           })
-//
-//           fabricImage.scaleToWidth(250)
-//           fabricImage.set('idInLayers', newPayload.id) // assign your own ID
-//           if (existingImage) {
-//             fabricCanvas.remove(existingImage)
-//           }
-//           fabricCanvas.add(fabricImage)
-//           fabricCanvas.isDrawingMode = false
-//           fabricCanvas.renderAll()
-//         } catch (error) {
-//           console.error('Failed to add image to canvas:', error)
-//         }
-//       }
-//
-//       img.onerror = () => {
-//         console.error('Failed to load image:', newPayload.url)
-//       }
-//     }
-//   },
-// )
+
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {

@@ -49,11 +49,7 @@
         class="design-space-container"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
-        <NewNode
-          :alt="alt"
-          :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
-          @canvas-ready="registerCanvas"
-        />
+        <NewNode :alt="alt" :imgPayload="alt.id === dropAltId ? imgDOMPayload : null" />
       </VueDraggableResizable>
     </transition-group>
     <!-- floating palette panel -->
@@ -95,14 +91,11 @@ import InfoPalette from '@/components/InfoPalette.vue'
 import { useNode } from '@/stores/nodeStore.js'
 import { useLayout } from '@/stores/layoutStore.js'
 import { useObject } from '@/stores/objectStore.js'
-import { nodeBuiltin } from 'globals'
 /* --- store instances --- */
 
 const layoutStore = useLayout()
 const nodeStore = useNode()
 const objectStore = useObject()
-const canvasMap = reactive(new Map()) // { altId → fabric.Canvas }
-
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
@@ -113,45 +106,13 @@ const allEdges = computed(() =>
     (alt.edges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
   ),
 )
-const generationParams = reactive({
-  ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
-  auto_save: false,
-  resolution: 512,
-  negative_prompt: '',
-  fine_edge: 'disable',
-  grow_size: 15,
-  edge_strength: 0.55,
-  color_strength: 0.55,
-  inpaint_strength: 1.0,
-  seed: -1,
-  steps: 20,
-  cfg: 5.0,
-  sampler_name: 'euler_ancestral',
-  scheduler: 'karras',
-})
+
 const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
-const generatedImage = ref(null)
-const prompt = ref('')
-/* example async — not used right now */
 
-function registerCanvas({ id, canvas }) {
-  canvasMap.set(id, canvas)
-}
-function getCanvasById(id) {
-  return canvasMap.get(id)
-}
-async function fetchModels() {
-  try {
-    const res = await fetch('http://localhost:5000/api/checkpoints')
-    const data = await res.json()
-    availableModels.value = data.checkpoints
-  } catch (err) {
-    console.error('Error fetching models:', err)
-  }
-}
+/* example async — not used right now */
 
 function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
@@ -190,14 +151,10 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
     objectStore.startDragTop = droppedObj.top
     objectStore.startDragLeft = droppedObj.left
     const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
-    const fabricCanvas = getCanvasById(altId)
-    const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
     const newId = Date.now()
     imgDOMPayload.value = {
       id: newId,
       url: droppedObj.src,
-      left: pointer.x,
-      top: pointer.y,
       e: e,
     }
     dropAltId.value = altId
@@ -244,6 +201,33 @@ function getBezierPath(edge) {
   const controlY2 = endY
 
   return `M${startX},${startY} C${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`
+}
+const generatedImage = ref(null)
+const prompt = ref('')
+const generationParams = reactive({
+  ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
+  auto_save: false,
+  resolution: 512,
+  negative_prompt: '',
+  fine_edge: 'disable',
+  grow_size: 15,
+  edge_strength: 0.55,
+  color_strength: 0.55,
+  inpaint_strength: 1.0,
+  seed: -1,
+  steps: 20,
+  cfg: 5.0,
+  sampler_name: 'euler_ancestral',
+  scheduler: 'karras',
+})
+async function fetchModels() {
+  try {
+    const res = await fetch('http://localhost:5000/api/checkpoints')
+    const data = await res.json()
+    availableModels.value = data.checkpoints
+  } catch (err) {
+    console.error('Error fetching models:', err)
+  }
 }
 </script>
 

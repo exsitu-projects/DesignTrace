@@ -62,7 +62,6 @@
 <script setup>
 import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
-import { useLayers } from '@/unused/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
 import { useLayout } from '@/stores/layoutStore'
@@ -74,7 +73,6 @@ import { useAllUtil } from '@/stores/allUtilStore.js'
 const generationStore = useGeneration()
 const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
-const layersStore = useLayers()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const nodeStore = useNode()
@@ -238,9 +236,7 @@ const addBranchNodeAlt = () => {
   // it opens a new node and add a new alt
   nodeStore.addNodeBranch()
   nodeStore.addNode(nodeStore.currentBranchId)
-  console.log(nodeStore.currentBranchId)
   nodeStore.addAlt({}, nodeStore.currentBranchId, nodeStore.currentNodeId)
-  console.log(nodeStore.currentNodeId)
 }
 
 const forwardOneLayer = () => {
@@ -366,7 +362,6 @@ onMounted(() => {
       // const prompt =
       //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
       // const semantics = await describeImage(dataUrl, prompt)
-      // layersStore.setCurrentSemantics(semantics)
       // console.log(semantics)
     }
   })

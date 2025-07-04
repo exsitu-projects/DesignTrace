@@ -24,7 +24,6 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useLayers } from '@/unused/layersStore.js'
 const model = defineModel()
 
 const emit = defineEmits(['update:modelValue', 'delete-label'])
@@ -35,7 +34,7 @@ const props = defineProps({
 
 const isEditing = ref(false)
 const text = ref('')
-const layersStore = useLayers()
+
 watch(
   () => model.value,
   (newVal) => {
