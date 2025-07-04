@@ -217,8 +217,14 @@ function getBezierPath(edge) {
 .nodes-layer {
   position: absolute;
   inset: 0; /* full overlay */
-  pointer-events: auto; /* nodes handle their own events */
+  pointer-events: none;
 }
+
+/* direct children (each VueDraggableResizable) regain events */
+.nodes-layer > * {
+  pointer-events: auto;
+}
+
 .header {
   background: #f8f9fa;
   cursor: move;
