@@ -43,13 +43,17 @@
         :y="alt.position.y"
         :w="'auto'"
         :h="'auto'"
-        @mouseup="mouseUpNode(alt.position.x, alt.position.y, alt.id)"
+        @mouseup="mouseUpNode(alt.position.x, alt.position.y, alt.id, $event)"
         :draggable="true"
         :drag-handle="'.nodeHandle'"
         class="design-space-container"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
-        <NewNode :alt="alt" />
+        <NewNode
+          :alt="alt"
+          :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
+          @canvas-ready="registerCanvas"
+        />
       </VueDraggableResizable>
     </transition-group>
     <!-- floating palette panel -->
@@ -97,6 +101,8 @@ import { nodeBuiltin } from 'globals'
 const layoutStore = useLayout()
 const nodeStore = useNode()
 const objectStore = useObject()
+const canvasMap = reactive(new Map()) // { altId → fabric.Canvas }
+
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
@@ -123,12 +129,20 @@ const generationParams = reactive({
   sampler_name: 'euler_ancestral',
   scheduler: 'karras',
 })
-
+const imgDOMPayload = ref({})
+const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
 const generatedImage = ref(null)
 const prompt = ref('')
 /* example async — not used right now */
+
+function registerCanvas({ id, canvas }) {
+  canvasMap.set(id, canvas)
+}
+function getCanvasById(id) {
+  return canvasMap.get(id)
+}
 async function fetchModels() {
   try {
     const res = await fetch('http://localhost:5000/api/checkpoints')
@@ -143,7 +157,7 @@ function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-async function mouseUpNode(altPosX, altPosY, altId) {
+async function mouseUpNode(altPosX, altPosY, altId, e) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag') {
@@ -166,6 +180,29 @@ async function mouseUpNode(altPosX, altPosY, altId) {
         altId,
       )
     }
+    objectStore.dragState = 'finishedDragging'
+  }
+
+  //Mouse up inside canvas
+  if (objectStore.obj !== null && objectStore.obj.type === 'image') {
+    //the dropped thing is an image and is dropped to the canvas area
+    const droppedObj = objectStore.obj
+    objectStore.startDragTop = droppedObj.top
+    objectStore.startDragLeft = droppedObj.left
+    const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
+    const fabricCanvas = getCanvasById(altId)
+    const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
+    const newId = Date.now()
+    imgDOMPayload.value = {
+      id: newId,
+      url: droppedObj.src,
+      left: pointer.x,
+      top: pointer.y,
+      e: e,
+    }
+    dropAltId.value = altId
+
+    objectStore.dragState = 'finishedDragging'
   }
 }
 

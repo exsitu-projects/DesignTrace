@@ -93,7 +93,6 @@ export const useNode = defineStore('nodes', () => {
           edges: [],
           properties: [altObj],
         }
-        console.log(newAlt)
         node.alts.push(newAlt)
         if (currentAltId) {
           const currentAlt = node.alts.find((n) => n.id === currentAltId)
@@ -122,7 +121,6 @@ export const useNode = defineStore('nodes', () => {
     }
     nodeYT.value = minY + offsetY.value
     nodeYB.value = Math.max(maxY + nodeH, nodeYB.value) + offsetY.value
-    console.log(nodeYT.value, nodeYB.value)
     let x = currentNodeX + nodeW + adjacent
     let y
 

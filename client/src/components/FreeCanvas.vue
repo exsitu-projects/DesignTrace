@@ -421,7 +421,7 @@ onMounted(() => {
     },
     'mouse:down': function (e) {
       // start dragging
-      if (e.target && objectStore.dragState === 'notDragging') {
+      if (e.target && 'idInUpload' in e.target) {
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
         objectStore.obj.type = 'image'

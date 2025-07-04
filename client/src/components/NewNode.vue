@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, markRaw, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, markRaw, watch, computed, toRef } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -30,6 +30,7 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  imgPayload: Object,
 })
 const canvasEl = ref(null)
 const nodeEl = ref(null)
@@ -41,54 +42,23 @@ const canvasContainer = ref(null)
 const objectStore = useObject()
 const nodeStore = useNode()
 const allUtilStore = useAllUtil()
+const emit = defineEmits(['canvas-ready'])
+
 let isLasso = false
 let points = []
 let path = null
 let lassoStart = false
 let startPointer = null
-const eventInOneDOM = (clientX, clientY, rect) => {
-  return (
-    clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
-  )
-}
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
 onMounted(() => {
-  console.log(alt.properties)
   fabricCanvas = markRaw(
     new fabric.Canvas(canvasEl.value, {
       isDrawingMode: false,
       preserveObjectStacking: true,
     }),
   )
-  const canvasElement = fabricCanvas.lowerCanvasEl
-  window.addEventListener('mouseup', async (e) => {
-    const rectCanvas = canvasElement.getBoundingClientRect()
-    if (eventInOneDOM(e.clientX, e.clientY, rectCanvas)) {
-      //Mouse up inside canvas
-      if (objectStore.obj !== null && objectStore.obj.type === 'image') {
-        //the dropped thing is an image and is dropped to the canvas area
-        const droppedObj = objectStore.obj
-        objectStore.startDragTop = droppedObj.top
-        objectStore.startDragLeft = droppedObj.left
-        const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
-
-        const pointer = fabricCanvas.getPointer(e, true) // use `true` to skip viewportTransform
-
-        const newId = Date.now()
-        const newLayerDOMInfo = {
-          id: newId,
-          url: droppedObj.src,
-          left: pointer.x,
-          top: pointer.y,
-        }
-        nodeStore.addDOMLayer(newLayerDOMInfo)
-        objectStore.dragState = 'notDragging'
-      }
-    } else {
-      objectStore.dragState = 'notDragging'
-    }
-  })
+  emit('canvas-ready', { id: props.alt.id, canvas: fabricCanvas })
 
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
@@ -159,10 +129,14 @@ onMounted(() => {
     }
   })
 })
+const imgPayloadRef = toRef(props, 'imgPayload')
 
 watch(
-  () => nodeStore.layerPayload,
+  () => props.imgPayload,
   (newPayload) => {
+    if (!newPayload) return
+    const pointer = fabricCanvas.getPointer(newPayload.e, true)
+    console.log(pointer.x, pointer.y)
     const existingImage = fabricCanvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -197,6 +171,43 @@ watch(
     }
   },
 )
+// watch(
+//   () => nodeStore.layerPayload,
+//   (newPayload) => {
+//     const existingImage = fabricCanvas.getObjects().find((obj) => obj.idInLayers === newPayload.id)
+//     const img = new Image()
+//     img.crossOrigin = 'anonymous'
+//     if (newPayload.url !== ' ') {
+//       img.src = newPayload.url
+//
+//       img.onload = () => {
+//         try {
+//           const fabricImage = new fabric.Image(img, {
+//             selectable: true,
+//             hasControls: true,
+//             left: newPayload.left,
+//             top: newPayload.top,
+//           })
+//
+//           fabricImage.scaleToWidth(250)
+//           fabricImage.set('idInLayers', newPayload.id) // assign your own ID
+//           if (existingImage) {
+//             fabricCanvas.remove(existingImage)
+//           }
+//           fabricCanvas.add(fabricImage)
+//           fabricCanvas.isDrawingMode = false
+//           fabricCanvas.renderAll()
+//         } catch (error) {
+//           console.error('Failed to add image to canvas:', error)
+//         }
+//       }
+//
+//       img.onerror = () => {
+//         console.error('Failed to load image:', newPayload.url)
+//       }
+//     }
+//   },
+// )
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
