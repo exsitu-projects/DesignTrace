@@ -91,13 +91,13 @@ export const useNode = defineStore('nodes', () => {
           id: `alt_${Date.now() + index}`,
           position: { x: posX, y: posY },
           edges: [],
-          ...altObj,
+          properties: [altObj],
         }
+        console.log(newAlt)
         node.alts.push(newAlt)
         if (currentAltId) {
           const currentAlt = node.alts.find((n) => n.id === currentAltId)
           currentAlt.edges.push({ fromAltId: currentAltId, toAltId: newAlt.id })
-          console.log(currentAlt.edges)
         }
       }
     }
@@ -129,7 +129,7 @@ export const useNode = defineStore('nodes', () => {
     nodeXR.value = Math.max(nodeXR.value, x + nodeW)
     for (let i = 0; i < num; i++) {
       y = maxY - nodeH * i + offsetY.value
-      addAlt({ properties: altObjs[i] }, nodeBranchId, nodeId, x, y, currentAltId, i)
+      addAlt(altObjs[i], nodeBranchId, nodeId, x, y, currentAltId, i)
     }
   }
 

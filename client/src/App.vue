@@ -190,7 +190,6 @@ function ensureNodeInView(nodeXL, nodeYT) {
 }
 
 function getBezierPath(edge) {
-  console.log('edge', edge)
   const fromAlt = allAlts.value.find((a) => a.id === edge.fromAltId)
   const toAlt = allAlts.value.find((a) => a.id === edge.toAltId)
   if (!fromAlt || !toAlt) return ''

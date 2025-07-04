@@ -24,7 +24,7 @@
       >
         <!-- each tag -->
         <template #item="{ element, index: tagIdx }">
-          <span class="badge bg-light text-dark">
+          <span class="badge bg-light text-dark m-1">
             <EditableLabel
               :draggable="true"
               @dragstart="(e) => handleDragStart(e, element)"

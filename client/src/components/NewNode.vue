@@ -3,8 +3,13 @@
     <div class="nodeHandle rounded-top p-1" style="background: #ededed">
       <EditableLabel v-model="nodeName" />
     </div>
-    <div class="node-tags">
-      <span v-for="tag in tags" :key="tag" class="badge …" @dragover.prevent>{{ tag }}</span>
+    <div class="node-tags p-2">
+      <span
+        v-for="property in alt.properties"
+        :key="property.uid"
+        class="btn btn-sm btn-outline-dark"
+        >{{ property.text }}</span
+      >
     </div>
     <div class="m-auto" ref="canvasContainer">
       <canvas ref="canvasEl" class="inset-border" width="280" height="280"></canvas>
@@ -32,7 +37,6 @@ let fabricCanvas = null
 const { alt } = props
 const $ = (id) => document.getElementById(id)
 const nodeName = ref('New Node')
-const tags = ref([])
 const canvasContainer = ref(null)
 const objectStore = useObject()
 const nodeStore = useNode()
@@ -50,6 +54,7 @@ const eventInOneDOM = (clientX, clientY, rect) => {
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
 onMounted(() => {
+  console.log(alt.properties)
   fabricCanvas = markRaw(
     new fabric.Canvas(canvasEl.value, {
       isDrawingMode: false,
@@ -217,11 +222,6 @@ watch(
   position: relative;
 }
 
-.drag-active {
-  background-color: #e6f7ff;
-  border: 2px dashed #1890ff;
-}
-
 .inset-border {
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -231,10 +231,7 @@ watch(
 }
 
 .node-tags {
-  padding: 10px;
-  min-height: 60px;
-  border-bottom: 1px solid #ddd;
-  background-color: #fafafa;
+  min-height: 30px;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
