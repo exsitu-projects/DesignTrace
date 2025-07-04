@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 export const useLayers = defineStore('layers', () => {
   const layers = ref([])
-  const context = ref({ visual: null, semantics: 'A living room with a table', type: 'context' })
+  const context = ref({ visual: null, semantics: 'Information Palette', type: 'context' })
   const styles = ref([])
   const layerPayload = ref(null)
   const promiseLoadLayerUpdate = ref('')

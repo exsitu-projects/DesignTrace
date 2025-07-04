@@ -3,21 +3,20 @@
   <span
     tabindex="0"
     @dblclick="startEditing"
-    :class="`bg-${props.type}`"
     @keydown="onKeyDown($event)"
-    class="btn me-1 position-relative d-inline-flex"
-    style="min-width: 70px; min-height: 38px"
+    class="btn btn-sm position-relative d-inline-flex"
+    style="min-width: 50px; min-height: 20px"
   >
     <template v-if="isEditing">
       <input
         v-model="text"
-        class="form-control form-control-sm border-0 p-0"
-        style="min-height: auto; max-width: 200px"
+        class="form-control form-control-sm m-auto border-0 p-0"
+        style="min-height: auto"
         @keyup.enter="save"
         @blur="save"
       />
     </template>
-    <template v-else>
+    <template v-else class="m-auto">
       {{ modelValue }}
     </template>
   </span>
@@ -25,7 +24,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useLayers } from '@/stores/layersStore.js'
+import { useLayers } from '@/unused/layersStore.js'
 const model = defineModel()
 
 const emit = defineEmits(['update:modelValue', 'delete-label'])
@@ -60,31 +59,4 @@ const save = () => {
   isEditing.value = false
 }
 </script>
-<style scoped>
-.bg-object {
-  background-color: #ffdddd; /* light red */
-  transition: background-color 0.3s ease;
-}
-.bg-object:hover,
-.bg-object:focus {
-  background-color: #ffaaaa; /* deeper red */
-}
-
-.bg-context {
-  background-color: #ddffdd; /* light green */
-  transition: background-color 0.3s ease;
-}
-.bg-context:hover,
-.bg-context:focus {
-  background-color: #aaddaa; /* deeper green */
-}
-
-.bg-style {
-  background-color: #ddddff; /* light blue */
-  transition: background-color 0.3s ease;
-}
-.bg-style:hover,
-.bg-style:focus {
-  background-color: #aaaadd; /* deeper blue */
-}
-</style>
+<style scoped></style>

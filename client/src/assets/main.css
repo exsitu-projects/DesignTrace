@@ -1,10 +1,80 @@
-.drawing-mode-options {
-  width:50%;
-  position: absolute;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
+
+.drawing-mode-options{
+  width: 30%;
+  position: fixed;
   bottom: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 10px;
-  border-radius: 8px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 10;
+}
+
+/* 1. Import primary web fonts (you can trim weights you don't use) */
+
+/* 2. Font‑family variables for easy reuse */
+:root {
+  --font-sans-primary:  'Roboto', 'Inter', 'Helvetica Neue',-apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell,
+    'Open Sans', 'Noto Sans', sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* 3. Reset Bootstrap's default font to our stack */
+body {
+  font-family: 'Noto Sans', sans-serif !important;
+  font-weight: 500 !important;
+  color: #212529;
+  background-color: #f8f9fa;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 500;
+  /* medium‑bold for headings */
+  line-height: 1.15;
+}
+
+
+.btn {
+  font-weight: 500;
+}
+
+input,
+button,
+textarea,
+select {
+  font-family: inherit;
+  /* keep UI controls consistent */
+}
+
+
+
+/* Specifically target common Bootstrap elements */
+.container,
+.container-fluid,
+.row,
+.col,
+[class*="col-"],
+.card,
+.btn,
+.form-control,
+.navbar,
+.nav,
+.dropdown-menu,
+.modal,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+div,
+a {
+  font-family: 'Noto Sans', sans-serif !important;
 }

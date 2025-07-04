@@ -29,14 +29,14 @@
     </div>
   </div>
 
-  <div class="parameter-group">
-    <label>Edge Detection</label>
-    <select v-model="localParams.edge_detection">
-      <option value="simple">Simple</option>
-      <option value="canny">Canny</option>
-      <option value="sobel">Sobel</option>
-    </select>
-  </div>
+  <!--  <div class="parameter-group">-->
+  <!--    <label>Edge Detection</label>-->
+  <!--    <select v-model="localParams.edge_detection">-->
+  <!--      <option value="simple">Simple</option>-->
+  <!--      <option value="canny">Canny</option>-->
+  <!--      <option value="sobel">Sobel</option>-->
+  <!--    </select>-->
+  <!--  </div>-->
 </template>
 
 <script>
@@ -95,22 +95,17 @@ export default {
   width: 90%;
   margin: 1rem auto;
 }
+
 .accordion-button {
-  width: 100%;
-  padding: 0.5rem;
-  text-align: left;
-  background: #f1f1f1;
-  border: none;
-  cursor: pointer;
 }
+
 .accordion-content {
-  padding: 1rem;
-  background: white;
-  border: 1px solid #ddd;
 }
+
 .parameter-group {
   margin-bottom: 1rem;
 }
+
 .parameter-group label {
   display: block;
   margin-bottom: 0.25rem;

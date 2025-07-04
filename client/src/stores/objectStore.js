@@ -7,12 +7,25 @@ export const useObject = defineStore('object', () => {
   const dragState = ref('notDragging')
   const startDragTop = ref(0)
   const startDragLeft = ref(0)
-  const id = ref(null)
+  const dragObjects = ref([])
+  const activeNodeId = ref(null) // id of node currently being dragged
+  const id = ref(0)
   const promiseLoadImageLabel = ref('')
+
+  function start(id) {
+    activeNodeId.value = id
+    dragState.value = 'startDragging'
+  }
+
+  function stop() {
+    activeNodeId.value = null
+    dragState.value = 'notDragging'
+  }
   return {
     id,
     obj,
     dragState,
+    dragObjects,
     startDragTop,
     startDragLeft,
     promiseLoadImageLabel,

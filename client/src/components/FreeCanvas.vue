@@ -1,72 +1,105 @@
 <template>
-  <div class="free-canvas-wrapper">
-    <canvas id="freeCanvas"></canvas>
-    <div class="drawing-mode-options border border-black">
-      <button class="btn btn-info" @click="triggerFileSelect">Upload Image</button>
-      <input
-        type="file"
-        ref="fileInput"
-        multiple
-        accept="image/*"
-        @change="uploadFiles"
-        style="display: none"
-      />
-      <button id="drawing-mode" class="btn btn-info">Enter drawing mode</button>
-      <button id="clear-canvas" class="btn btn-info">Clear</button>
+  <canvas id="freeCanvas"></canvas>
+  <div class="drawing-mode-options border border-black rounded-1 p-1">
+    <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
+    <button class="btn btn-sm btn-light" @click="triggerFileSelect">
+      <ImageUp color="black" :size="15" />
+    </button>
+    <input
+      type="file"
+      ref="fileInput"
+      multiple
+      accept="image/*"
+      @change="uploadFiles"
+      style="display: none"
+    />
+    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
 
-      <label for="drawing-mode-selector">
-        Mode:
-        <select id="drawing-mode-selector">
-          <option>Pencil</option>
-          <option>hline</option>
-          <option>vline</option>
-          <option>diamond</option>
-          <option>dotted</option>
-        </select>
-      </label>
+    <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
+    <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
 
-      <label for="drawing-line-width">
-        Line width:
-        <span class="info">30</span>
-        <input type="range" min="0" max="150" id="drawing-line-width" />
-      </label>
+    <!--      <label for="drawing-mode-selector">-->
+    <!--        Mode:-->
+    <!--        <select id="drawing-mode-selector">-->
+    <!--          <option>Pencil</option>-->
+    <!--          <option>hline</option>-->
+    <!--          <option>vline</option>-->
+    <!--          <option>diamond</option>-->
+    <!--          <option>dotted</option>-->
+    <!--        </select>-->
+    <!--      </label>-->
 
-      <label for="drawing-color">
-        Line color:
-        <input type="color" id="drawing-color" />
-      </label>
+    <!--      <label for="drawing-line-width">-->
+    <!--        Line width:-->
+    <!--        <span class="info">30</span>-->
+    <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-color">
-        Shadow color:
-        <input type="color" id="drawing-shadow-color" />
-      </label>
+    <!--      <label for="drawing-color">-->
+    <!--        Line color:-->
+    <!--        <input type="color" id="drawing-color" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-width">
-        Shadow width:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />
-      </label>
+    <!--      <label for="drawing-shadow-color">-->
+    <!--        Shadow color:-->
+    <!--        <input type="color" id="drawing-shadow-color" />-->
+    <!--      </label>-->
 
-      <label for="drawing-shadow-offset">
-        Shadow offset:
-        <span class="info">0</span>
-        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />
-      </label>
-    </div>
+    <!--      <label for="drawing-shadow-width">-->
+    <!--        Shadow width:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
+    <!--      </label>-->
+
+    <!--      <label for="drawing-shadow-offset">-->
+    <!--        Shadow offset:-->
+    <!--        <span class="info">0</span>-->
+    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
+    <!--      </label>-->
   </div>
 </template>
 
 <script setup>
-import { onMounted, markRaw, ref, watch } from 'vue'
+import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
-import { useLayers } from '@/stores/layersStore.js'
+import { useLayers } from '@/unused/layersStore.js'
 import { useObject } from '@/stores/objectStore.js'
+import { useNode } from '@/stores/nodeStore.js'
+import { useLayout } from '@/stores/layoutStore'
 
+import VisualTool from '@/components/VisualTool.vue'
+import { useGeneration } from '@/stores/generationStore.js'
+import { ImageUp, Lasso } from 'lucide-vue-next'
+import { useAllUtil } from '@/stores/allUtilStore.js'
+const generationStore = useGeneration()
+const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
 const layersStore = useLayers()
 const objectStore = useObject()
+const allUtilStore = useAllUtil()
+const nodeStore = useNode()
+const layoutStore = useLayout()
+const wrapper = ref(null)
 const $ = (id) => document.getElementById(id)
+let isLasso = false
+let points = []
+let path = null
+let lassoStart = false
+let startPointer = null
+function syncCanvasToLayout() {
+  if (!canvas) return
+  canvas.setWidth(layoutStore.width)
+  canvas.setHeight(layoutStore.height)
+  canvas.renderAll()
+}
 
+function measureWrapper() {
+  if (!wrapper.value) return
+  const { clientWidth: w, clientHeight: h } = wrapper.value
+  layoutStore.setWrapperSize(w, h) // pushes into store → watcher resizes bitmap
+}
+
+/* watch layout.width/height -> resize fabric */
 watch(
   () => objectStore.dragState,
   (newVal) => {
@@ -84,6 +117,30 @@ watch(
   },
 )
 
+watch(
+  () => allUtilStore.isLassoMode,
+  (newVal) => {
+    lassoStart = !lassoStart
+    canvas.forEachObject((obj) => {
+      obj.selectable = !lassoStart
+    })
+    canvas.selection = !lassoStart
+  },
+)
+
+watch(
+  () => [nodeStore.nodeXR, nodeStore.nodeYB],
+  ([nodeXR, nodeYB]) => {
+    if (nodeXR > canvas.width || nodeYB > canvas.height) {
+      console.log('exceed!')
+      nodeStore.nodeXR = Math.max(canvas.width, nodeXR)
+      nodeStore.nodeYB = Math.max(canvas.height, nodeYB)
+
+      resizeFabric(nodeStore.nodeXR, nodeStore.nodeYB)
+    }
+  },
+)
+
 const files = ref([])
 const triggerFileSelect = () => {
   fileInput.value.click()
@@ -95,6 +152,33 @@ const updateDrawingModeButtonText = async () => {
     : 'Enter drawing mode'
 }
 
+const describeImage = async (image_path, prompt) => {
+  try {
+    objectStore.promiseLoadImageLabel = 'loading'
+
+    const response = await fetch('http://localhost:5555/image-to-labels', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ image_path, prompt }),
+    })
+    const result = await response.json()
+
+    if (response.ok) {
+      // return result.result
+      return result.output
+    } else {
+      console.log(result.error)
+      return null // Optional: explicitly return null on error
+    }
+  } catch (err) {
+    console.log(err.message)
+    return null // Optional: consistently return on error
+  } finally {
+    objectStore.promiseLoadImageLabel = 'finished' // Ensures it always updates
+  }
+}
 const uploadFiles = async (event) => {
   files.value = Array.from(event.target.files)
   if (!files.value.length) {
@@ -150,6 +234,39 @@ const loadImgFromUrl = (url, id) => {
   }
 }
 
+const addBranchNodeAlt = () => {
+  // it opens a new node and add a new alt
+  nodeStore.addNodeBranch()
+  nodeStore.addNode(nodeStore.currentBranchId)
+  console.log(nodeStore.currentBranchId)
+  nodeStore.addAlt({}, nodeStore.currentBranchId, nodeStore.currentNodeId)
+  console.log(nodeStore.currentNodeId)
+}
+
+const forwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.bringObjectForward(activeObject, true)
+    canvas.renderAll()
+  }
+}
+const backwardOneLayer = () => {
+  const activeObject = canvas.getActiveObject()
+  if (activeObject) {
+    canvas.sendObjectToBack(activeObject, true)
+    canvas.renderAll()
+  }
+}
+
+function resizeFabric(newW, newH) {
+  canvas.setDimensions({ width: newW, height: newH })
+
+  canvas.getElement().style.width = newW + 'px'
+  canvas.getElement().style.height = newH + 'px'
+
+  canvas.renderAll()
+}
+
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
@@ -160,8 +277,99 @@ onMounted(() => {
       hoverCursor: 'pointer',
       selection: true,
       targetFindTolerance: 2,
+      preserveObjectStacking: true,
     }),
   )
+  // measureWrapper()
+  // syncCanvasToLayout()
+  //
+  // /* watch: when store width/height change (ensureFits) -> grow bitmap */
+  // watch(() => [layoutStore.width, layoutStore.height], syncCanvasToLayout)
+
+  /* ResizeObserver: when wrapper grows (window resize, flex, etc.)  */
+  // const ro = new ResizeObserver(measureWrapper)
+  // ro.observe(wrapper.value)
+  //
+  // window.addEventListener('resize', measureWrapper)
+  //
+  // onBeforeUnmount(() => {
+  //   ro.disconnect()
+  //   window.removeEventListener('resize', measureWrapper)
+  // })
+  canvas.on('mouse:down', function (opt) {
+    if (lassoStart === true) {
+      canvas.forEachObject((obj) => {
+        obj.selectable = false
+      })
+      canvas.selection = false
+      isLasso = true
+      startPointer = opt.pointer
+      points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+    }
+  })
+
+  canvas.on('mouse:move', function (opt) {
+    if (!isLasso || !lassoStart) return
+    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+
+    if (path) canvas.remove(path)
+
+    const pathStr = points.join(' ') + ' Z' // Close the path
+    path = new fabric.Path(pathStr, {
+      stroke: 'black',
+      strokeWidth: 1,
+      fill: 'rgba(0, 0, 0, 0.1)',
+      selectable: false,
+      evented: false,
+      strokeDashArray: [5, 5],
+    })
+
+    canvas.add(path)
+    canvas.requestRenderAll()
+  })
+
+  canvas.on('mouse:up', async function (opt) {
+    if (!isLasso) return
+
+    isLasso = false
+    const dx = opt.pointer.x - startPointer.x
+    const dy = opt.pointer.y - startPointer.y
+    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+
+    if (!moved) {
+      if (path) canvas.remove(path)
+      path = null
+      points = []
+      canvas.requestRenderAll()
+      return
+    }
+
+    if (path) {
+      path.setCoords()
+      const bounds = path.getBoundingRect()
+      canvas.remove(path)
+      // Render first to make sure everything is drawn
+      canvas.renderAll()
+      canvas.add(path)
+      // Extract just the area covered by the path + content inside it
+      const dataUrl = canvas.toDataURL({
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        format: 'png',
+        multiplier: 1, // can set to 2 for higher resolution
+      })
+
+      // const prompt =
+      //   'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
+      // const prompt =
+      //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
+      // const semantics = await describeImage(dataUrl, prompt)
+      // layersStore.setCurrentSemantics(semantics)
+      // console.log(semantics)
+    }
+  })
 
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
   fabric.Object.prototype.transparentCorners = false
@@ -216,8 +424,41 @@ onMounted(() => {
       if (e.target && objectStore.dragState === 'notDragging') {
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
+        objectStore.obj.type = 'image'
         objectStore.dragState = 'startDragging'
       }
+
+      const activeObjects = canvas.getActiveObjects() // Gets current multi-selection
+      const activeObject = canvas.getActiveObject()
+      const targetSize = 512
+
+      // if (activeObjects.length > 0) {
+      //   const bounds = activeObject.getBoundingRect(true) // `true` includes stroke
+      //   const scale = targetSize / Math.max(bounds.width, bounds.height)
+      //   // Multi-selection exists (Shift/Cmd + Click)
+      //   objectStore.dragObjects = activeObjects.map((obj) => ({
+      //     id: obj.idInUpload,
+      //     fabricObj: obj, // Reference to the Fabric object
+      //     originalPos: { ...obj.oCoords }, // Save initial position
+      //     left: (obj.oCoords.tl.x - bounds.left) * scale,
+      //     top: (obj.oCoords.tl.y - bounds.top) * scale,
+      //     scaleX: (obj.scaleX ?? 1) * scale,
+      //     scaleY: (obj.scaleY ?? 1) * scale,
+      //   }))
+      // } else if (e.target) {
+      //   // Single object selected
+      //   objectStore.dragObjects = [
+      //     {
+      //       id: e.target.idInUpload,
+      //       fabricObj: e.target,
+      //       originalPos: { ...e.target.oCoords },
+      //     },
+      //   ]
+      // } else {
+      //   // Clicked on empty space → clear selection
+      //   objectStore.dragObjects = []
+      // }
+      // console.log(objectStore.dragObjects)
     },
   })
   brushes.vline.getPatternSrc = function () {
@@ -252,76 +493,71 @@ onMounted(() => {
     c.add(rect)
     return c.getElement()
   }
-
-  const textureImg = new Image()
-  textureImg.src = '../../assets/ladybug.png'
-  brushes.dotted.source = textureImg
-
   // Brush Update Function
-  const updateBrush = () => {
-    const brush = canvas.freeDrawingBrush
-    if (!brush) return
-
-    brush.color = elements.color.value
-    brush.width = parseInt(elements.lineWidth.value) || 1
-
-    if ('shadow' in brush) {
-      brush.shadow = new fabric.Shadow({
-        blur: parseInt(elements.shadowWidth.value) || 0,
-        color: elements.shadowColor.value,
-        offsetX: parseInt(elements.shadowOffset.value) || 0,
-        offsetY: parseInt(elements.shadowOffset.value) || 0,
-        affectStroke: true,
-      })
-    }
-  }
-
-  // Event Handlers
-  elements.brushSelector.onchange = function () {
-    const brushName = this.value
-
-    if (brushName === 'Pencil') {
-      // Always create a new PencilBrush instance when switching to pencil
-      canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
-    } else {
-      canvas.freeDrawingBrush = brushes[brushName]
-
-      if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
-        const brush = canvas.freeDrawingBrush
-        if (brush.getPatternSrc) {
-          brush.source = brush.getPatternSrc.call(brush)
-        }
-      }
-    }
-
-    updateBrush()
-  }
-
-  elements.color.onchange = updateBrush
-  elements.shadowColor.onchange = updateBrush
-  elements.lineWidth.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-  elements.shadowWidth.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-  elements.shadowOffset.onchange = function () {
-    this.previousElementSibling.textContent = this.value
-    updateBrush()
-  }
-
-  // Other Controls
-  elements.clear.onclick = () => canvas.clear()
-
-  elements.drawingMode.onclick = () => {
-    canvas.isDrawingMode = !canvas.isDrawingMode
-    updateDrawingModeButtonText()
-  }
-
-  // Initial brush update
-  updateBrush()
+  // const updateBrush = () => {
+  //   const brush = canvas.freeDrawingBrush
+  //   if (!brush) return
+  //
+  //   brush.color = elements.color.value
+  //   brush.width = parseInt(elements.lineWidth.value) || 1
+  //
+  //   if ('shadow' in brush) {
+  //     brush.shadow = new fabric.Shadow({
+  //       blur: parseInt(elements.shadowWidth.value) || 0,
+  //       color: elements.shadowColor.value,
+  //       offsetX: parseInt(elements.shadowOffset.value) || 0,
+  //       offsetY: parseInt(elements.shadowOffset.value) || 0,
+  //       affectStroke: true,
+  //     })
+  //   }
+  // }
+  //
+  // // Event Handlers
+  // elements.brushSelector.onchange = function () {
+  //   const brushName = this.value
+  //
+  //   if (brushName === 'Pencil') {
+  //     // Always create a new PencilBrush instance when switching to pencil
+  //     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
+  //   } else {
+  //     canvas.freeDrawingBrush = brushes[brushName]
+  //
+  //     if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
+  //       const brush = canvas.freeDrawingBrush
+  //       if (brush.getPatternSrc) {
+  //         brush.source = brush.getPatternSrc.call(brush)
+  //       }
+  //     }
+  //   }
+  //
+  //   updateBrush()
+  // }
+  //
+  // elements.color.onchange = updateBrush
+  // elements.shadowColor.onchange = updateBrush
+  // elements.lineWidth.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  // elements.shadowWidth.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  // elements.shadowOffset.onchange = function () {
+  //   this.previousElementSibling.textContent = this.value
+  //   updateBrush()
+  // }
+  //
+  // // Other Controls
+  // elements.clear.onclick = () => canvas.clear()
+  //
+  // elements.drawingMode.onclick = () => {
+  //   canvas.isDrawingMode = !canvas.isDrawingMode
+  //   updateDrawingModeButtonText()
+  // }
+  //
+  // // Initial brush update
+  // updateBrush()
 })
 </script>
 
@@ -330,21 +566,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
   height: 100%;
   width: 100%;
-}
-
-canvas {
-  display: block; /* removes scrollbar from inline-block spacing */
-  width: 100vw;
-  height: 100vh;
-}
-
-.free-canvas-wrapper {
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
 }
 </style>

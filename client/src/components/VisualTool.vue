@@ -1,12 +1,14 @@
 <script setup>
 import { ref } from 'vue'
-
+import { Lasso, ArrowBigUpDash, ArrowBigDownDash } from 'lucide-vue-next'
+import { useAllUtil } from '@/stores/allUtilStore.js'
+import * as fabric from 'fabric'
 const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso'])
-const isLassoMode = ref(false)
+
+const allUtilStore = useAllUtil()
 
 function switchLasso() {
-  isLassoMode.value = !isLassoMode.value
-  emit('switchLasso')
+  allUtilStore.switchLassoMode()
 }
 </script>
 
@@ -15,9 +17,9 @@ function switchLasso() {
     <button
       type="button"
       @click="switchLasso()"
-      :class="['btn btn-light', { active: isLassoMode }]"
+      :class="['btn btn-sm btn-light', { active: allUtilStore.isLassoMode }]"
     >
-      <i class="my-auto bxr bx-lasso"></i> Select
+      <Lasso color="black" :size="15" />
     </button>
     <!--    <button type="button" class="btn btn-light">Left</button>-->
     <!--    <button type="button" class="btn btn-light">Middle</button>-->
@@ -25,8 +27,12 @@ function switchLasso() {
   </div>
 
   <div class="btn-group m-2" role="group" aria-label="Basic example">
-    <button @click="emit('forwardLayer')" type="button" class="btn btn-light">Forward</button>
-    <button @click="emit('backwardLayer')" type="button" class="btn btn-light">Backward</button>
+    <button @click="emit('forwardLayer')" type="button" class="btn btn-sm btn-light">
+      <ArrowBigUpDash color="black" :size="15" /> Forward
+    </button>
+    <button @click="emit('backwardLayer')" type="button" class="btn btn-sm btn-light">
+      <ArrowBigDownDash color="black" :size="15" /> Backward
+    </button>
   </div>
 </template>
 
