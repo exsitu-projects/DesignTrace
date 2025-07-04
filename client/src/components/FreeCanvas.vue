@@ -131,11 +131,12 @@ watch(
 watch(
   () => [nodeStore.nodeXR, nodeStore.nodeYB],
   ([nodeXR, nodeYB]) => {
-    console.log('canvas', canvas.width, canvas.height)
-    console.log('node', nodeXR, nodeYB)
     if (nodeXR > canvas.width || nodeYB > canvas.height) {
       console.log('exceed!')
-      resizeFabric(Math.max(canvas.width, nodeXR), Math.max(canvas.height, nodeYB))
+      nodeStore.nodeXR = Math.max(canvas.width, nodeXR)
+      nodeStore.nodeYB = Math.max(canvas.height, nodeYB)
+
+      resizeFabric(nodeStore.nodeXR, nodeStore.nodeYB)
     }
   },
 )

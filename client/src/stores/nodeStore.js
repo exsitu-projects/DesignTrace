@@ -33,10 +33,12 @@ export const useNode = defineStore('nodes', () => {
   const nodeH = 400
   const initialNodeX = 150
   const initialNodeY = 150
+  const adjacent = 100
   const nodeXR = ref(0)
   const nodeYB = ref(0)
   const nodeYT = ref(0)
   const offsetY = ref(0)
+
   function addNodeBranch() {
     const newBranch = {
       id: `branch_${Date.now()}`,
@@ -70,7 +72,15 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
-  function addAlt(altObj, nodeBranchId, nodeId, posX = initialNodeX, posY = initialNodeY) {
+  function addAlt(
+    altObj,
+    nodeBranchId,
+    nodeId,
+    posX = initialNodeX,
+    posY = initialNodeY,
+    currentAltId = null,
+    index,
+  ) {
     ////TODO: Maybe optimize here, duplicated code as addMultAlt
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
 
@@ -78,16 +88,22 @@ export const useNode = defineStore('nodes', () => {
       const node = branch.nodes.find((n) => n.id === nodeId)
       if (node) {
         const newAlt = {
-          id: `alt_${Date.now()}`,
+          id: `alt_${Date.now() + index}`,
           position: { x: posX, y: posY },
+          edges: [],
           ...altObj,
         }
         node.alts.push(newAlt)
+        if (currentAltId) {
+          const currentAlt = node.alts.find((n) => n.id === currentAltId)
+          currentAlt.edges.push({ fromAltId: currentAltId, toAltId: newAlt.id })
+          console.log(currentAlt.edges)
+        }
       }
     }
   }
 
-  function addMultAlt(altObjs, nodeBranchId, nodeId, currentNodeX, currentNodeY) {
+  function addMultAlt(altObjs, nodeBranchId, nodeId, currentNodeX, currentNodeY, currentAltId) {
     const num = altObjs.length
     const maxY = currentNodeY + (nodeH / 2) * (num - 1)
     const minY = currentNodeY - (nodeH / 2) * (num - 1)
@@ -101,17 +117,19 @@ export const useNode = defineStore('nodes', () => {
           alt.position.y += offsetY.value
         }
       }
+    } else {
+      offsetY.value = 0
     }
     nodeYT.value = minY + offsetY.value
     nodeYB.value = Math.max(maxY + nodeH, nodeYB.value) + offsetY.value
     console.log(nodeYT.value, nodeYB.value)
-    let x = currentNodeX + nodeW
+    let x = currentNodeX + nodeW + adjacent
     let y
 
     nodeXR.value = Math.max(nodeXR.value, x + nodeW)
     for (let i = 0; i < num; i++) {
       y = maxY - nodeH * i + offsetY.value
-      addAlt({ properties: altObjs[i] }, nodeBranchId, nodeId, x, y)
+      addAlt({ properties: altObjs[i] }, nodeBranchId, nodeId, x, y, currentAltId, i)
     }
   }
 
