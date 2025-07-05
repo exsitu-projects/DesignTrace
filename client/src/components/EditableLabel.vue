@@ -7,6 +7,7 @@
     class="btn btn-sm position-relative d-inline-flex"
     style="min-width: 50px; min-height: 20px"
   >
+    <img v-if="props.thumbnail" :src="props.thumbnail" alt="thumb" class="thumb-icon" />
     <template v-if="isEditing">
       <input
         v-model="text"
@@ -30,6 +31,7 @@ const emit = defineEmits(['update:modelValue', 'delete-label'])
 const props = defineProps({
   type: String, // Your extra prop
   index: Number,
+  thumbnail: { type: String, default: null },
 })
 
 const isEditing = ref(false)
@@ -58,4 +60,13 @@ const save = () => {
   isEditing.value = false
 }
 </script>
-<style scoped></style>
+<style scoped>
+.thumb-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px; /* nice rounded corners, but not a circle */
+  object-fit: cover;
+  margin-right: 0.5rem;
+  align-self: center;
+}
+</style>

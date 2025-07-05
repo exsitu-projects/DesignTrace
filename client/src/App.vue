@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <!-- wrapper provides the relative positioning context -->
+    <!--    <ImageEditor></ImageEditor>-->
     <FreeCanvas />
 
     <!-- nodes & alts overlay -->
@@ -91,6 +92,7 @@ import InfoPalette from '@/components/InfoPalette.vue'
 import { useNode } from '@/stores/nodeStore.js'
 import { useLayout } from '@/stores/layoutStore.js'
 import { useObject } from '@/stores/objectStore.js'
+import ImageEditor from '@/components/ImageEditor.vue'
 /* --- store instances --- */
 
 const layoutStore = useLayout()
@@ -153,10 +155,12 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
       )
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
+      console.log(objectStore.dragState)
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
-      const parsedUrl = droppedObj.src.match(/static\/.*/)[0]
+      objectStore.dragState = 'restoreInitialDOM'
+      console.log(objectStore.dragState)
       const newId = Date.now()
       imgDOMPayload.value = {
         id: newId,
@@ -165,7 +169,6 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
       }
       dropAltId.value = altId
     }
-    objectStore.dragState = 'finishedDragging'
   }
 }
 

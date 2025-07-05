@@ -7,6 +7,8 @@ function uid() {
 }
 
 export const useInfoStore = defineStore('infoStore', () => {
+  const promiseThumbnailUpdate = ref('')
+  const currentUID = ref('')
   const rows = ref([
     {
       name: 'Color',
@@ -36,7 +38,16 @@ export const useInfoStore = defineStore('infoStore', () => {
 
   const addTag = (rowIdx, label = 'New') => {
     const row = rows.value[rowIdx]
-    if (row) row.tags.push({ uid: uid(), tag: label })
+    currentUID.value = uid()
+    if (row) row.tags.push({ uid: currentUID.value, tag: label })
+  }
+
+  const addThumbnailToTag = (rowIdx, url, uid = currentUID.value) => {
+    const tagEl = rows.value[rowIdx].tags.find((t) => t.uid === uid)
+    if (tagEl) {
+      tagEl.thumbnail = url
+      console.log(url)
+    }
   }
 
   const removeTag = (rowIdx, tagIdx) => {
@@ -44,10 +55,40 @@ export const useInfoStore = defineStore('infoStore', () => {
     if (row) row.tags.splice(tagIdx, 1)
   }
 
+  const generateLayer = async (currentPrompt) => {
+    const response = await fetch('http://localhost:53577/api/generatelayer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: currentPrompt,
+      }),
+    })
+    return await response.json()
+  }
+
+  const generateThumbnail = async (prop, propVal) => {
+    //how to deal with prompts, now just connecting them with ,
+
+    const oneLinePrompt = 'A clean thumbnail that visually represents the ' + prop + 'of ' + propVal
+
+    try {
+      promiseThumbnailUpdate.value = 'loading'
+      const result = await generateLayer(oneLinePrompt)
+      return result.images_base64
+    } catch (error) {
+      console.error('Error generating image:', error)
+      alert('Image generation failed. Please try again.')
+    } finally {
+      promiseThumbnailUpdate.value = 'finished' // Ensures it always updates
+    }
+  }
+
   return {
     rows,
     addRow,
     addTag,
     removeTag,
+    generateThumbnail,
+    addThumbnailToTag,
   }
 })

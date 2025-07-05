@@ -111,7 +111,6 @@ onMounted(() => {
       fabricCanvas.remove(path)
       // Render first to make sure everything is drawn
       fabricCanvas.renderAll()
-      fabricCanvas.add(path)
       // Extract just the area covered by the path + content inside it
       const dataUrl = fabricCanvas.toDataURL({
         left: bounds.left,
@@ -122,6 +121,8 @@ onMounted(() => {
         multiplier: 1, // can set to 2 for higher resolution
       })
       console.log(dataUrl)
+
+      fabricCanvas.add(path)
       //TODO: the dataurl is the extracted image; Maybe can also use bound coords
     }
   })
@@ -137,11 +138,11 @@ watch(
     img.crossOrigin = 'anonymous'
     if (newPayload.url !== ' ') {
       img.src = newPayload.url
-
       img.onload = () => {
         try {
           const fabricImage = new fabric.Image(img, {
             selectable: true,
+            perPixelTargetFind: true,
             hasControls: true,
             left: pointer.x,
             top: pointer.y,
@@ -155,6 +156,8 @@ watch(
           fabricCanvas.add(fabricImage)
           fabricCanvas.isDrawingMode = false
           fabricCanvas.renderAll()
+          objectStore.dragState = 'finishedDragging'
+          objectStore.obj = {}
         } catch (error) {
           console.error('Failed to add image to canvas:', error)
         }
@@ -170,11 +173,12 @@ watch(
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
-    lassoStart = !lassoStart
+    lassoStart = newVal
     fabricCanvas.forEachObject((obj) => {
-      obj.selectable = !lassoStart
+      obj.selectable = !newVal
     })
-    fabricCanvas.selection = !lassoStart
+    fabricCanvas.discardActiveObject()
+    fabricCanvas.selection = !newVal
   },
 )
 </script>

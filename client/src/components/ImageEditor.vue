@@ -34,10 +34,12 @@
       class="canvas-container"
       :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }"
     >
-      <canvas ref="canvas" class="baseCanvas"></canvas>
+      <canvas ref="canvas" class="baseCanvas" width="500" height="500"></canvas>
       <canvas
         ref="negDrawingCanvas"
         class="strokeCanvas"
+        width="500"
+        height="500"
         :style="{ zIndex: currentTool === 'eraser' ? 3 : 2 }"
         @mousedown="startDrawing"
         @mousemove="draw"
@@ -76,6 +78,7 @@
         <i class="fas fa-magic"></i> Generate Image
       </button>
     </div>
+    <img v-show="this.genImgUrl !== ''" :src="this.genImgUrl" alt="" />
   </div>
 </template>
 
@@ -86,6 +89,7 @@ export default {
   name: 'ImageEditor',
   data() {
     return {
+      genImgUrl: '',
       currentTool: 'brush',
       brushSize: 10,
       isDrawing: false,
@@ -94,8 +98,8 @@ export default {
       originalImage: null,
       prompt: '',
       hasImage: false,
-      canvasWidth: 0,
-      canvasHeight: 0,
+      canvasWidth: 500,
+      canvasHeight: 500,
     }
   },
   computed: {
@@ -126,12 +130,25 @@ export default {
       const ctx = canvas.getContext('2d')
 
       // Set canvas dimensions
-      canvas.width = this.originalImage.width
-      canvas.height = this.originalImage.height
-      this.canvasWidth = this.originalImage.width
-      this.canvasHeight = this.originalImage.height
+      canvas.width = 500
+      canvas.height = 500
+      this.canvasWidth = 500
+      this.canvasHeight = 500
+      const cRatio = canvas.width / canvas.height
+      const iRatio = this.originalImage.width / this.originalImage.height
+
+      let drawW, drawH
+      if (iRatio > cRatio) {
+        // image is wider than canvas
+        drawW = canvas.width
+        drawH = canvas.width / iRatio
+      } else {
+        // image is taller (or same ratio)
+        drawH = canvas.height
+        drawW = canvas.height * iRatio
+      }
       // Draw original image
-      ctx.drawImage(this.originalImage, 0, 0)
+      ctx.drawImage(this.originalImage, 0, 0, drawW, drawH)
       this.setupPosNegDrawingCanvas()
     },
 
@@ -139,8 +156,8 @@ export default {
       const drawingCanvas =
         this.currentTool === 'brush' ? this.$refs.posDrawingCanvas : this.$refs.negDrawingCanvas
       const drawingCtx = drawingCanvas.getContext('2d')
-      drawingCanvas.width = this.originalImage.width
-      drawingCanvas.height = this.originalImage.height
+      drawingCanvas.width = 500
+      drawingCanvas.height = 500
       drawingCtx.clearRect(0, 0, this.originalImage.width, this.originalImage.height)
       // Setup drawing styles
       drawingCtx.lineJoin = 'round'
@@ -324,7 +341,8 @@ export default {
         })
 
         const result = await response.json()
-        this.$emit('image-generated', result.generated_image)
+        this.genImgUrl = result.generated_image
+        // this.$emit('image-generated', result.generated_image)
       } catch (error) {
         console.error('Error generating image:', error)
         alert('Image generation failed. Please try again.')

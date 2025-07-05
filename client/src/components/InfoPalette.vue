@@ -31,6 +31,7 @@
               @dragstart="(e) => handleDragStart(e, element)"
               class="fw-normal"
               v-model="element.tag"
+              v-bind="element.thumbnail ? { thumbnail: element.thumbnail } : {}"
             ></EditableLabel>
             <!-- remove button -->
             <button
@@ -90,13 +91,17 @@ const handleMouseUp = async (rowIdx, propName) => {
     const droppedObj = objectStore.obj
     objectStore.startDragTop = droppedObj.top
     objectStore.startDragLeft = droppedObj.left
+    objectStore.dragState = 'restoreInitialDOM' // this is to ensure image to back in place before the generation starts
 
     const staticPath = droppedObj.src.match(/static\/.+/)[0] // staticPath: staitc/
 
     const propVal = await objectStore.describeImage(staticPath, propName)
     infoStore.addTag(rowIdx, propVal)
+    // const thumbnailUrl = await infoStore.generateThumbnail(propName, propVal)
+    // infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)
+    objectStore.dragState = 'finishedDragging'
+    objectStore.obj = {}
   }
-  objectStore.dragState = 'finishedDragging'
 }
 </script>
 

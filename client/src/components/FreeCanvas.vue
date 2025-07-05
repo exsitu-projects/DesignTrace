@@ -1,8 +1,8 @@
 <template>
   <canvas id="freeCanvas"></canvas>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
-    <button class="btn btn-sm btn-light" @click="addBranchNodeAlt">+</button>
-    <button class="btn btn-sm btn-light" @click="triggerFileSelect">
+    <button class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
+    <button class="btn btn-sm btn-light m-1" @click="triggerFileSelect">
       <ImageUp color="black" :size="15" />
     </button>
     <input
@@ -101,9 +101,11 @@ function measureWrapper() {
 watch(
   () => objectStore.dragState,
   (newVal) => {
-    if (newVal === 'finishedDragging') {
+    if (newVal === 'restoreInitialDOM') {
+      console.log('restoreInitialDOM')
       const draggedObj = canvas.getObjects().find((obj) => obj.idInUpload === objectStore.id)
       if (draggedObj) {
+        console.log('found draggedObj')
         draggedObj.set({
           left: objectStore.startDragLeft,
           top: objectStore.startDragTop,
@@ -118,11 +120,12 @@ watch(
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
-    lassoStart = !lassoStart
+    lassoStart = newVal
     canvas.forEachObject((obj) => {
-      obj.selectable = !lassoStart
+      obj.selectable = !newVal
     })
-    canvas.selection = !lassoStart
+    canvas.discardActiveObject()
+    canvas.selection = !newVal
   },
 )
 
@@ -386,6 +389,10 @@ onMounted(() => {
     },
     'object:modified': function (e) {
       e.target.opacity = 1
+    },
+    'mouse:up': function (e) {
+      objectStore.dragState = 'finishedDragging' // not dropping to anywhere meaningful. may rewrite later to avoid other conditions...
+      objectStore.obj = {}
     },
     'mouse:down': function (e) {
       // start dragging
