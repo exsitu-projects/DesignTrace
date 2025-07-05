@@ -14,6 +14,7 @@
     <div class="m-auto" ref="canvasContainer">
       <canvas ref="canvasEl" class="inset-border" width="280" height="280"></canvas>
     </div>
+    <button @click="generateAlt">generate alt</button>
   </div>
 </template>
 
@@ -24,7 +25,8 @@ import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-
+import { CannyJS } from '@/js/canny'
+import { useGeneration } from '@/stores/generationStore.js'
 const props = defineProps({
   alt: {
     type: Object,
@@ -39,10 +41,17 @@ const { alt } = props
 const $ = (id) => document.getElementById(id)
 const nodeName = ref('New Node')
 const canvasContainer = ref(null)
+const posEdgeUrl = ref('')
+const negEdgeUrl = ref('')
+const totalEdgeUrl = ref('')
 const objectStore = useObject()
 const nodeStore = useNode()
+const cannyHt = 100 //canny edge high threshold
+const cannyLt = 40 //canny edge low threshold
 const allUtilStore = useAllUtil()
-
+const generationStore = useGeneration()
+const canvasUrlWithoutPath = ref('')
+const pathStr = ref('')
 let isLasso = false
 let points = []
 let path = null
@@ -75,8 +84,8 @@ onMounted(() => {
 
     if (path) fabricCanvas.remove(path)
 
-    const pathStr = points.join(' ') + ' Z' // Close the path
-    path = new fabric.Path(pathStr, {
+    pathStr.value = points.join(' ') + ' Z' // Close the path
+    path = new fabric.Path(pathStr.value, {
       stroke: 'black',
       strokeWidth: 1,
       fill: 'rgba(0, 0, 0, 0.1)',
@@ -107,27 +116,167 @@ onMounted(() => {
 
     if (path) {
       path.setCoords()
-      const bounds = path.getBoundingRect()
+
       fabricCanvas.remove(path)
       // Render first to make sure everything is drawn
       fabricCanvas.renderAll()
+      canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
       // Extract just the area covered by the path + content inside it
-      const dataUrl = fabricCanvas.toDataURL({
-        left: bounds.left,
-        top: bounds.top,
-        width: bounds.width,
-        height: bounds.height,
-        format: 'png',
-        multiplier: 1, // can set to 2 for higher resolution
-      })
-      console.log(dataUrl)
 
       fabricCanvas.add(path)
-      //TODO: the dataurl is the extracted image; Maybe can also use bound coords
+
+      if (pathStr.value) {
+        // --- 1. create a plain canvas --------------------------------------------
+        const lassoMaskCan = document.createElement('canvas')
+        lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
+        lassoMaskCan.height = fabricCanvas.height
+        const lassoMaskCtx = lassoMaskCan.getContext('2d')
+
+        // --- 2. paint background black -------------------------------------------
+        lassoMaskCtx.fillStyle = 'black'
+        lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
+
+        // --- 3. draw the lasso path in white -------------------------------------
+        const lasPath = new Path2D(pathStr.value)
+        lassoMaskCtx.fillStyle = 'white'
+        lassoMaskCtx.fill(lasPath)
+
+        // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
+        totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+        console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
+
+        const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
+        const canny = CannyJS.canny(srcCanv, cannyHt, cannyLt)
+
+        let cannyCan = document.createElement('canvas')
+        cannyCan.width = fabricCanvas.getWidth()
+        cannyCan.height = fabricCanvas.getHeight()
+
+        const cannyCtx = cannyCan.getContext('2d')
+        cannyCtx.imageSmoothingEnabled = false // keep edges crisp
+        const hiRes = document.createElement('canvas')
+        hiRes.width = srcCanv.width // 1024
+        hiRes.height = srcCanv.height
+        canny.drawOn(hiRes) // fills hiRes
+
+        cannyCtx.drawImage(
+          hiRes,
+          0,
+          0,
+          hiRes.width,
+          hiRes.height, // src rect
+          0,
+          0,
+          cannyCan.width,
+          cannyCan.height, // dest rect (scaled)
+        )
+
+        const cannyURL = cannyCan.toDataURL('image/png')
+        console.log(cannyURL) // canny edge mask, canny edge white, other black
+
+        let cannyInLassoCan = document.createElement('canvas')
+        cannyInLassoCan.width = cannyCan.width
+        cannyInLassoCan.height = cannyCan.height
+        const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
+
+        cannyInLassoCtx.fillStyle = 'white'
+        const lassoPath = new Path2D(pathStr.value)
+        cannyInLassoCtx.fill(lassoPath)
+
+        cannyInLassoCtx.globalCompositeOperation = 'source-in'
+        cannyInLassoCtx.drawImage(cannyCan, 0, 0)
+
+        cannyInLassoCtx.globalCompositeOperation = 'destination-over'
+        cannyInLassoCtx.fillStyle = 'black'
+        cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+
+        // Reset composite mode for safety
+        cannyInLassoCtx.globalCompositeOperation = 'source-over'
+        // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
+        posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
+        console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
+
+        lassoMaskCtx.globalCompositeOperation = 'difference'
+        lassoMaskCtx.fillStyle = '#fff' // white rectangle
+        lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+        lassoMaskCtx.globalCompositeOperation = 'lighter'
+        lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
+        lassoMaskCtx.globalCompositeOperation = 'difference'
+        lassoMaskCtx.fillStyle = '#fff' // white rectangle
+        lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+        //negEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
+        negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+        console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+
+        // lassoMaskCtx.globalCompositeOperation = 'difference'
+        // lassoMaskCtx.fillStyle = '#fff' // white rectangle
+        // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+        // lassoMaskCtx.globalCompositeOperation = 'lighter'
+        // lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
+        // lassoMaskCtx.globalCompositeOperation = 'difference'
+        // lassoMaskCtx.fillStyle = '#fff' // white rectangle
+        // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+        // negEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
+        // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+
+        cannyCan = null
+        cannyInLassoCan = null
+      }
     }
   })
 })
+function whiteToTransparent(canvas) {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const data = imgData.data
 
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    // If pixel is white (or near white, threshold optional)
+    if (r === 255 && g === 255 && b === 255) {
+      data[i + 3] = 0 // make transparent
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0)
+  return canvas.toDataURL('image/png')
+} // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
+async function generateAlt() {
+  try {
+    //detect if there is lasso selection
+    // if yes
+
+    //if no lasso selection -> use whole image
+
+    const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
+      // const response = await fetch('/api/magic_quill/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ms_data: {
+          original_image: canvasUrlWithoutPath.value,
+          add_color_image: canvasUrlWithoutPath.value,
+          add_edge_image: posEdgeUrl.value,
+          remove_edge_image: negEdgeUrl.value,
+          total_mask: totalEdgeUrl.value,
+        },
+        prompt: 'a leather sofa but in white iridescent color',
+        ...generationStore.generationParams,
+      }),
+    })
+
+    const result = await response.json()
+
+    console.log(result.generated_image)
+  } catch (error) {
+    console.error('Error generating image:', error)
+    alert('Image generation failed. Please try again.')
+  }
+}
 watch(
   () => props.imgPayload,
   (newPayload) => {

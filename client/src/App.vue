@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <!-- wrapper provides the relative positioning context -->
-    <!--    <ImageEditor></ImageEditor>-->
+
     <FreeCanvas />
 
     <!-- nodes & alts overlay -->
@@ -75,6 +75,7 @@
         <InfoPalette />
       </div>
     </VueDraggableResizable>
+    <ImageEditor></ImageEditor>
   </div>
 </template>
 
@@ -155,12 +156,10 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
       )
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
-      console.log(objectStore.dragState)
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
       objectStore.dragState = 'restoreInitialDOM'
-      console.log(objectStore.dragState)
       const newId = Date.now()
       imgDOMPayload.value = {
         id: newId,
@@ -211,24 +210,6 @@ function getBezierPath(edge) {
 
   return `M${startX},${startY} C${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`
 }
-const generatedImage = ref(null)
-const prompt = ref('')
-const generationParams = reactive({
-  ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
-  auto_save: false,
-  resolution: 512,
-  negative_prompt: '',
-  fine_edge: 'disable',
-  grow_size: 15,
-  edge_strength: 0.55,
-  color_strength: 0.55,
-  inpaint_strength: 1.0,
-  seed: -1,
-  steps: 20,
-  cfg: 5.0,
-  sampler_name: 'euler_ancestral',
-  scheduler: 'karras',
-})
 async function fetchModels() {
   try {
     const res = await fetch('http://localhost:5000/api/checkpoints')

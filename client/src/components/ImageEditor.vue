@@ -321,6 +321,13 @@ export default {
         const canvas = this.$refs.canvas
         const imageData = canvas.toDataURL('image/png')
         console.log(this.getPosEdgeData(), this.getNegEdgeData(), this.getMaskData())
+        console.log({
+          original_image: imageData,
+          add_color_image: imageData,
+          add_edge_image: this.getPosEdgeData(),
+          remove_edge_image: this.getNegEdgeData(),
+          total_mask: this.getMaskData(),
+        })
         const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
           // const response = await fetch('/api/magic_quill/generate', {
           method: 'POST',

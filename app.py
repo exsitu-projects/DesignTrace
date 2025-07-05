@@ -14,6 +14,7 @@ from flask_cors import CORS
 import uuid
 import traceback
 from torchvision import transforms
+from pathlib import Path
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 AUTO_SAVE = False
@@ -210,7 +211,7 @@ def generate_image_handler():
         # Original model processing
 
         latent_samples, final_image, lineart_output, color_output = scribbleColorEditModel.process(
-            "SD1.5\\realisticVisionV60B1_v51VAE.safetensors", #"SD1.5\\realisticVisionV60B1_v51VAE.safetensors" in linux
+            Path("SD1.5") / "realisticVisionV60B1_v51VAE.safetensors", #"SD1.5\\realisticVisionV60B1_v51VAE.safetensors" in linux
             original_image,
             add_color_image,
             positive_prompt,
@@ -218,7 +219,7 @@ def generate_image_handler():
             total_mask,
             add_edge_mask,
             remove_edge_mask,
-            data.get('grow_size', 15),
+            data.get('grow_size', 20),
             "enable",  # stroke_as_edge
             data.get('fine_edge', 'disable'),
             edge_strength,  # Use modified value

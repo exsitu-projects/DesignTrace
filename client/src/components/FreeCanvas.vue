@@ -91,21 +91,12 @@ function syncCanvasToLayout() {
   canvas.renderAll()
 }
 
-function measureWrapper() {
-  if (!wrapper.value) return
-  const { clientWidth: w, clientHeight: h } = wrapper.value
-  layoutStore.setWrapperSize(w, h) // pushes into store → watcher resizes bitmap
-}
-
-/* watch layout.width/height -> resize fabric */
 watch(
   () => objectStore.dragState,
   (newVal) => {
     if (newVal === 'restoreInitialDOM') {
-      console.log('restoreInitialDOM')
       const draggedObj = canvas.getObjects().find((obj) => obj.idInUpload === objectStore.id)
       if (draggedObj) {
-        console.log('found draggedObj')
         draggedObj.set({
           left: objectStore.startDragLeft,
           top: objectStore.startDragTop,
@@ -133,7 +124,6 @@ watch(
   () => [nodeStore.nodeXR, nodeStore.nodeYB],
   ([nodeXR, nodeYB]) => {
     if (nodeXR > canvas.width || nodeYB > canvas.height) {
-      console.log('exceed!')
       nodeStore.nodeXR = Math.max(canvas.width, nodeXR)
       nodeStore.nodeYB = Math.max(canvas.height, nodeYB)
 
