@@ -6,7 +6,7 @@
     <div class="node-tags p-2">
       <span
         v-for="property in alt.properties"
-        :key="property.uid"
+        :key="property.tag"
         class="btn btn-sm btn-outline-dark"
         >{{ property.tag }}</span
       >
@@ -14,7 +14,6 @@
     <div class="m-auto" ref="canvasContainer">
       <canvas ref="canvasEl" class="inset-border" width="280" height="280"></canvas>
     </div>
-    <button @click="generateAlt">generate alt</button>
   </div>
 </template>
 
@@ -46,7 +45,7 @@ const negEdgeUrl = ref('')
 const totalEdgeUrl = ref('')
 const objectStore = useObject()
 const nodeStore = useNode()
-const cannyHt = 100 //canny edge high threshold
+const cannyHt = 150 //canny edge high threshold
 const cannyLt = 40 //canny edge low threshold
 const allUtilStore = useAllUtil()
 const generationStore = useGeneration()
@@ -54,6 +53,7 @@ const canvasUrlWithoutPath = ref('')
 const pathStr = ref('')
 let isLasso = false
 let points = []
+const lassoBoundUrl = ref('')
 let path = null
 let lassoStart = false
 let startPointer = null
@@ -116,12 +116,20 @@ onMounted(() => {
 
     if (path) {
       path.setCoords()
-
+      const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
       fabricCanvas.remove(path)
       // Render first to make sure everything is drawn
       fabricCanvas.renderAll()
       canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
       // Extract just the area covered by the path + content inside it
+      lassoBoundUrl.value = fabricCanvas.toDataURL({
+        left: bounds.left,
+        top: bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        format: 'png',
+        multiplier: 1,
+      })
 
       fabricCanvas.add(path)
 
@@ -143,10 +151,17 @@ onMounted(() => {
 
         // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
         totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-        console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
+        // console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
 
         const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
-        const canny = CannyJS.canny(srcCanv, cannyHt, cannyLt)
+        const canny = CannyJS.canny(
+          srcCanv,
+          cannyHt, // ht: canny high threshold
+          cannyLt, // lt: canny low threshold
+          1.4, // gaussian blur sigma
+          3, // kernel size, default 3 usually
+          2,
+        )
 
         let cannyCan = document.createElement('canvas')
         cannyCan.width = fabricCanvas.getWidth()
@@ -172,7 +187,7 @@ onMounted(() => {
         )
 
         const cannyURL = cannyCan.toDataURL('image/png')
-        console.log(cannyURL) // canny edge mask, canny edge white, other black
+        // console.log(cannyURL) // canny edge mask, canny edge white, other black
 
         let cannyInLassoCan = document.createElement('canvas')
         cannyInLassoCan.width = cannyCan.width
@@ -194,7 +209,7 @@ onMounted(() => {
         cannyInLassoCtx.globalCompositeOperation = 'source-over'
         // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
         posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
-        console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
+        // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
 
         lassoMaskCtx.globalCompositeOperation = 'difference'
         lassoMaskCtx.fillStyle = '#fff' // white rectangle
@@ -204,20 +219,9 @@ onMounted(() => {
         lassoMaskCtx.globalCompositeOperation = 'difference'
         lassoMaskCtx.fillStyle = '#fff' // white rectangle
         lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-        //negEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
         negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-        console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
-
-        // lassoMaskCtx.globalCompositeOperation = 'difference'
-        // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-        // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-        // lassoMaskCtx.globalCompositeOperation = 'lighter'
-        // lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
-        // lassoMaskCtx.globalCompositeOperation = 'difference'
-        // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-        // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-        // negEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
         // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+        storeLassoInfo()
 
         cannyCan = null
         cannyInLassoCan = null
@@ -243,39 +247,30 @@ function whiteToTransparent(canvas) {
   ctx.putImageData(imgData, 0, 0)
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
-async function generateAlt() {
-  try {
-    //detect if there is lasso selection
-    // if yes
+// async function generateAlt(propsPerAlt) {
+//   const altImgURL = await generationStore.generateMaskedImg({
+//     original_image: canvasUrlWithoutPath.value,
+//     add_color_image: canvasUrlWithoutPath.value,
+//     add_edge_image: posEdgeUrl.value,
+//     remove_edge_image: negEdgeUrl.value,
+//     total_mask: totalEdgeUrl.value,
+//     props: propsPerAlt,
+//     lassoBoundUrl: lassoBoundUrl.value,
+//   })
+//   return altImgURL
+// }
 
-    //if no lasso selection -> use whole image
-
-    const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
-      // const response = await fetch('/api/magic_quill/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ms_data: {
-          original_image: canvasUrlWithoutPath.value,
-          add_color_image: canvasUrlWithoutPath.value,
-          add_edge_image: posEdgeUrl.value,
-          remove_edge_image: negEdgeUrl.value,
-          total_mask: totalEdgeUrl.value,
-        },
-        prompt: 'a leather sofa but in white iridescent color',
-        ...generationStore.generationParams,
-      }),
-    })
-
-    const result = await response.json()
-
-    console.log(result.generated_image)
-  } catch (error) {
-    console.error('Error generating image:', error)
-    alert('Image generation failed. Please try again.')
+function storeLassoInfo() {
+  const lassoPayload = {
+    original_image: canvasUrlWithoutPath.value,
+    add_color_image: canvasUrlWithoutPath.value,
+    add_edge_image: posEdgeUrl.value,
+    remove_edge_image: negEdgeUrl.value,
+    total_mask: totalEdgeUrl.value,
+    altId: alt.id,
+    lassoBoundUrl: lassoBoundUrl.value,
   }
+  nodeStore.setCurrentLassoInfo(lassoPayload)
 }
 watch(
   () => props.imgPayload,
@@ -297,7 +292,7 @@ watch(
             top: pointer.y,
           })
 
-          fabricImage.scaleToWidth(250)
+          fabricImage.scaleToWidth(fabricCanvas.width)
           fabricImage.set('idInLayers', newPayload.id) // assign your own ID
           if (existingImage) {
             fabricCanvas.remove(existingImage)
@@ -328,6 +323,36 @@ watch(
     })
     fabricCanvas.discardActiveObject()
     fabricCanvas.selection = !newVal
+  },
+)
+watch(
+  () => nodeStore.addAltImgPayload,
+  (newPayload) => {
+    if (alt.id !== newPayload.altId) return
+    const img = new Image()
+    img.src = newPayload.url
+    img.onload = () => {
+      try {
+        const fabricImage = new fabric.Image(img, {
+          selectable: true,
+          perPixelTargetFind: true,
+          hasControls: true,
+          left: 0,
+          top: 0,
+        })
+
+        fabricImage.scaleToWidth(fabricCanvas.width)
+        fabricCanvas.add(fabricImage)
+        fabricCanvas.isDrawingMode = false
+        fabricCanvas.renderAll()
+      } catch (error) {
+        console.error('Failed to add image to canvas:', error)
+      }
+    }
+
+    img.onerror = () => {
+      console.error('Failed to load image:', newPayload.url)
+    }
   },
 )
 </script>

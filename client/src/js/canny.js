@@ -198,6 +198,27 @@ GrayImageData = (function () {
     return ctx.putImageData(imgData, 0, 0)
   }
 
+  GrayImageData.prototype.dilate = function (iterations = 1) {
+    for (let iter = 0; iter < iterations; iter++) {
+      const copy = this.copy()
+      for (let x = 1; x < this.width - 1; x++) {
+        for (let y = 1; y < this.height - 1; y++) {
+          if (this.data[x][y] > 0) {
+            // Set all 8 neighbors and itself to white (255)
+            for (let dx = -1; dx <= 1; dx++) {
+              for (let dy = -1; dy <= 1; dy++) {
+                copy.data[x + dx][y + dy] = 255
+              }
+            }
+          }
+        }
+      }
+      // replace data with dilated copy
+      this.data = copy.data
+    }
+    return this
+  }
+
   /**
    * fill the image with given color
    * @param {number} color to fill
@@ -466,8 +487,30 @@ CannyJS.hysteresis = function (imgData, ht, lt) {
  * @return {object} GrayImageData object
  */
 
-CannyJS.canny = function (canvas, ht, lt, sigmma, kernelSize) {
-  var blur, imgData, nms, sobel
+// CannyJS.canny = function (canvas, ht, lt, sigmma, kernelSize) {
+//   var blur, imgData, nms, sobel
+//   if (ht == null) {
+//     ht = 100
+//   }
+//   if (lt == null) {
+//     lt = 50
+//   }
+//   if (sigmma == null) {
+//     sigmma = 1.4
+//   }
+//   if (kernelSize == null) {
+//     kernelSize = 3
+//   }
+//   imgData = new GrayImageData(canvas.width, canvas.height)
+//   imgData.loadCanvas(canvas)
+//   blur = CannyJS.gaussianBlur(imgData, sigmma, kernelSize)
+//   sobel = CannyJS.sobel(blur)
+//   nms = CannyJS.nonMaximumSuppression(sobel)
+//   return CannyJS.hysteresis(nms, ht, lt)
+// }
+
+CannyJS.canny = function (canvas, ht, lt, sigmma, kernelSize, dilateIterations = 0) {
+  var blur, imgData, edges
   if (ht == null) {
     ht = 100
   }
@@ -480,11 +523,22 @@ CannyJS.canny = function (canvas, ht, lt, sigmma, kernelSize) {
   if (kernelSize == null) {
     kernelSize = 3
   }
+  if (dilateIterations == null) {
+    dilateIterations = 0
+  }
+
   imgData = new GrayImageData(canvas.width, canvas.height)
   imgData.loadCanvas(canvas)
   blur = CannyJS.gaussianBlur(imgData, sigmma, kernelSize)
-  sobel = CannyJS.sobel(blur)
-  nms = CannyJS.nonMaximumSuppression(sobel)
-  return CannyJS.hysteresis(nms, ht, lt)
+  const sobel = CannyJS.sobel(blur)
+  const nms = CannyJS.nonMaximumSuppression(sobel)
+  edges = CannyJS.hysteresis(nms, ht, lt)
+
+  if (dilateIterations > 0) {
+    edges.dilate(dilateIterations)
+  }
+
+  return edges
 }
+
 export { CannyJS, Util, GrayImageData }

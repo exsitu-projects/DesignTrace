@@ -193,22 +193,7 @@ def image_to_labels():
     else:
          full_path = static_to_base64(image_path)
     prompt = data.get('prompt')
-    system_prompt = '''
-You are a visual description assistant.
-
-The user will give you one visual property (like color, texture, or material) and an image.
-
-Your task is to write a concise, vivid description of that property as clearly seen in the image.
-
-Use natural language, not a list of keywords.
-Limit your response to 8 words or fewer.
-Use adjectives or phrases like “shell-like,” “light reflections,” “wood grain,” etc.
-Be specific, expressive, and grounded in what’s visible.
-If the property is not visible, respond only with “none”.
-
-Return only the description. Do not explain or add anything else.
-
-    '''
+    system_prompt = data.get('system_prompt')
     try:
 #         with open(full_path, "rb") as image_file:
         response = client.responses.create(

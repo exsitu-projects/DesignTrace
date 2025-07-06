@@ -12,7 +12,7 @@
         v-model="row.name"
         class="my-auto"
         :draggable="true"
-        @dragstart="(e) => handleDragStart(e, row)"
+        @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
       />
 
@@ -28,7 +28,7 @@
           <span class="badge bg-light text-dark m-1">
             <EditableLabel
               :draggable="true"
-              @dragstart="(e) => handleDragStart(e, element)"
+              @dragstart="(e) => handleDragStart(e, element, row.name)"
               class="fw-normal"
               v-model="element.tag"
               v-bind="element.thumbnail ? { thumbnail: element.thumbnail } : {}"
@@ -64,9 +64,11 @@ import draggable from 'vuedraggable'
 import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
+import { useGeneration } from '@/stores/generationStore.js'
 
 const infoStore = useInfoStore()
 const objectStore = useObject()
+const generationStore = useGeneration()
 const { rows } = storeToRefs(infoStore)
 
 /* Thin wrappers that call store actions */
@@ -74,13 +76,28 @@ const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
 const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
 
-const handleDragStart = (e, tagObj) => {
+const handleDragStart = (e, tagObj, propName) => {
   objectStore.dragState = 'startDragging'
   if ('uid' in tagObj) {
     //meaning this is one tag being dragged
-    objectStore.obj = { type: 'tag', tag: tagObj.tag }
+    objectStore.obj = { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
+
+    //{ type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
   } else {
-    objectStore.obj = { type: 'property', tags: tagObj.tags }
+    const { tags } = tagObj
+    const content = tags.map(({ tag }) => ({
+      tag, // take the tag value from each element
+      propName, // add the common propName
+    }))
+    /* { type: 'tag', content:
+[
+{ tag: 'Red',   propName: 'color' },
+{ tag: 'Green', propName: 'color' },
+{ tag: 'Blue',  propName: 'color' },
+...
+]}
+*/
+    objectStore.obj = { type: 'property', content: content }
   }
 }
 
@@ -95,7 +112,11 @@ const handleMouseUp = async (rowIdx, propName) => {
 
     const staticPath = droppedObj.src.match(/static\/.+/)[0] // staticPath: staitc/
 
-    const propVal = await objectStore.describeImage(staticPath, propName)
+    const propVal = await generationStore.describeImage(
+      staticPath,
+      propName,
+      generationStore.propValSysPrompt,
+    )
     infoStore.addTag(rowIdx, propVal)
     // const thumbnailUrl = await infoStore.generateThumbnail(propName, propVal)
     // infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)

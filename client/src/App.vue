@@ -124,30 +124,15 @@ function toggleDesignSpace() {
 async function mouseUpNode(altPosX, altPosY, altId, e) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
-    if (objectStore.obj.type === 'tag') {
-      // objectStore.obj in form of {type: 'tag', tag: 'Red'}
-      nodeStore.addMultAlt(
-        [objectStore.obj], // the arr length will be used to decide how many ele
-        nodeStore.currentBranchId,
-        nodeStore.currentNodeId,
-        altPosX,
-        altPosY,
-        altId,
-      )
-    } else if (objectStore.obj.type === 'property') {
-      ////TODO: unify formats later
-      // objectStore.obj.tags in form of [
-      // {
-      //   "uid": "175166363463802d0672f263ec8",
-      //   "tag": "Rough"
-      // },
-      // {
-      //   "uid": "1751663634638eb02fb7002f648",
-      //   "tag": "Smooth"
-      // }
-      // ]
-      nodeStore.addMultAlt(
-        objectStore.obj.tags,
+    if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
+      // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
+      // objectStore.obj in form of
+      /*{ type: 'tag', content:
+[{ tag: 'Red',   propName: 'color' },
+{ tag: 'Green', propName: 'color' },
+{ tag: 'Blue',  propName: 'color' },]}*/
+      await nodeStore.addMultAlt(
+        objectStore.obj.content, // the arr length will be used to decide how many ele
         nodeStore.currentBranchId,
         nodeStore.currentNodeId,
         altPosX,

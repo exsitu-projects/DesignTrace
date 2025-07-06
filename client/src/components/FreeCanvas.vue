@@ -322,13 +322,6 @@ onMounted(() => {
         format: 'png',
         multiplier: 1, // can set to 2 for higher resolution
       })
-
-      // const prompt =
-      //   'Look at this image and list five most likely semantic labels (e.g., orange, dress, car, sky, tree, etc.) you can identify. List only the labels that are visible in the image.'
-      // const prompt =
-      //   "Describe the main object in clear, objective language in the format of 'a lamp with a shiny gold base and a white lampshade'. List the visible objects, their positions, and any observable actions or relationships. Avoid interpretation, emotion, or speculation. Focus on what can be directly seen in the image."
-      // const semantics = await describeImage(dataUrl, prompt)
-      // console.log(semantics)
     }
   })
 
