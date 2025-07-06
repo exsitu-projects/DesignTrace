@@ -14,16 +14,24 @@ export const useInfoStore = defineStore('infoStore', () => {
       name: 'Color',
       color: '#000',
       tags: [
-        { uid: uid(), tag: 'Red' },
-        { uid: uid(), tag: 'Green' },
+        { uid: uid(), tag: 'Ecru' },
+        { uid: uid(), tag: 'Dusty rose' },
       ],
     },
     {
       name: 'Texture',
       color: '#000',
       tags: [
-        { uid: uid(), tag: 'Rough' },
-        { uid: uid(), tag: 'Smooth' },
+        { uid: uid(), tag: 'Shiny woven brocade' },
+        { uid: uid(), tag: 'Crinkled sheer organza' },
+      ],
+    },
+    {
+      name: 'Material',
+      color: '#000',
+      tags: [
+        { uid: uid(), tag: 'Soft velvet' },
+        { uid: uid(), tag: 'Crushed silk' },
       ],
     },
   ])

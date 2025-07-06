@@ -12,7 +12,7 @@
       >
     </div>
     <div class="m-auto" ref="canvasContainer">
-      <canvas ref="canvasEl" class="inset-border" width="280" height="280"></canvas>
+      <canvas ref="canvasEl" class="inset-border" :width="canvasW" :height="canvasW"></canvas>
     </div>
   </div>
 </template>
@@ -57,6 +57,7 @@ const lassoBoundUrl = ref('')
 let path = null
 let lassoStart = false
 let startPointer = null
+const canvasW = computed(() => nodeStore.canvasW)
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
 onMounted(() => {

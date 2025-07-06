@@ -29,8 +29,10 @@ export const useNode = defineStore('nodes', () => {
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
-  const nodeW = 300
-  const nodeH = 400
+  const canvasW = 400
+  const nodeW = canvasW + 20
+  const nodeH = canvasW + 120
+
   const initialNodeX = 150
   const initialNodeY = 150
   const adjacent = 100
@@ -192,6 +194,7 @@ export const useNode = defineStore('nodes', () => {
     nodeYT,
     nodeW,
     nodeH,
+    canvasW,
     layerPayload,
     nodeBranchList,
     currentNodeId,

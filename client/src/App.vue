@@ -75,7 +75,6 @@
         <InfoPalette />
       </div>
     </VueDraggableResizable>
-    <ImageEditor></ImageEditor>
   </div>
 </template>
 
