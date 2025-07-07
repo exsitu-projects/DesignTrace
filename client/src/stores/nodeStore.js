@@ -29,7 +29,7 @@ export const useNode = defineStore('nodes', () => {
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
-  const canvasW = 400
+  const canvasW = 300
   const nodeW = canvasW + 20
   const nodeH = canvasW + 120
 
@@ -60,12 +60,14 @@ export const useNode = defineStore('nodes', () => {
     nodeYB.value = newVal
   }
 
-  function addNode(nodeBranchId) {
+  function addNode(nodeBranchId, midXPos = initialNodeX, midYPos = initialNodeY) {
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     if (branch) {
       const newNode = {
         id: `node_${Date.now()}`,
         alts: [],
+        midXPos: midXPos,
+        midYPos: midYPos,
       }
       currentNodeId.value = newNode.id
       branch.nodes.push(newNode)
@@ -80,49 +82,48 @@ export const useNode = defineStore('nodes', () => {
     altObj,
     nodeBranchId,
     nodeId,
+    index,
     posX = initialNodeX,
     posY = initialNodeY,
-    currentAltId = null,
-    index,
+    prevAltId = null,
   ) {
     // default if nothing gets generated
     let imgUrl = null
 
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    if (!branch) return null
-
-    const node = branch.nodes.find((n) => n.id === nodeId)
-    if (!node) return null
-
+    const prevNode = branch.nodes.find((n) => n.id === nodeId)
+    const newNode = branch.nodes.find((n) => n.id === currentNodeId.value)
     const newAlt = {
       id: `alt_${Date.now() + index}`,
       position: { x: posX, y: posY },
+      branchId: nodeBranchId,
+      nodeId: currentNodeId.value,
       edges: [],
+      z: 1000,
       properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
     }
 
-    node.alts.push(newAlt)
-
-    if (currentAltId) {
+    if (prevAltId) {
+      newNode.alts.push(newAlt)
       //meaning the alt is in an alt nodes branch rather than starting from scratch
-      const currentAlt = node.alts.find((n) => n.id === currentAltId)
-      if (currentAlt) {
-        currentAlt.edges.push({ fromAltId: currentAltId, toAltId: newAlt.id })
+      const prevAlt = prevNode.alts.find((n) => n.id === prevAltId)
+      if (prevAlt) {
+        prevAlt.edges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
+        console.log(prevAlt.edges)
       }
       try {
         imgUrl = await generationStore.generateMaskedImg({
           ...currentLassoInfo.value,
           props: newAlt.properties,
         })
-        currentAlt.imgUrl = imgUrl
         addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
       } catch (e) {
         console.error('Image generation failed:', e)
-        currentAlt.imgUrl = null
         imgUrl = null
       }
+    } else {
+      prevNode.alts.push(newAlt)
     }
-
     return imgUrl // null if nothing generated
   }
 
@@ -142,8 +143,8 @@ export const useNode = defineStore('nodes', () => {
     const minY = currentNodeY - (nodeH / 2) * (num - 1)
 
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    if (!branch) return
-
+    const prevNode = branch.nodes.find((n) => n.id === nodeId)
+    const x = currentNodeX + nodeW + adjacent
     // Shift everything down if new nodes would go above 0
     if (minY < 0) {
       offsetY.value = -minY
@@ -151,11 +152,17 @@ export const useNode = defineStore('nodes', () => {
     } else {
       offsetY.value = 0
     }
+    if ('nextNodeId' in prevNode) {
+      // create alts on existing node
+    } else {
+      //create a new node
+      addNode(nodeBranchId, x, (maxY + minY) / 2 + offsetY.value)
+    }
+    prevNode.nextNodeId = currentNodeId.value
 
     nodeYT.value = minY + offsetY.value
     nodeYB.value = Math.max(maxY + nodeH, nodeYB.value) + offsetY.value
 
-    const x = currentNodeX + nodeW + adjacent
     nodeXR.value = Math.max(nodeXR.value, x + nodeW)
 
     const urls = [] // collect generated URLs
@@ -169,6 +176,9 @@ export const useNode = defineStore('nodes', () => {
         currentLassoInfo.value.lassoBoundUrl,
         propsString,
       )
+      console.log(adjObjectText, objectText)
+      // const adjObjectText = ''
+      // const objectText = ''
       delete currentLassoInfo.value.lassoBoundUrl ////TODO: not the best way to write it like this...
       currentLassoInfo.value.adjObjectText = adjObjectText
       currentLassoInfo.value.objectText = objectText
@@ -180,11 +190,10 @@ export const useNode = defineStore('nodes', () => {
     for (let i = 0; i < num; i++) {
       // SERIAL loop, await each addAlt
       const y = maxY - nodeH * i + offsetY.value
-      const url = await addAlt(altObjs[i], nodeBranchId, nodeId, x, y, currentAltId, i)
+      const url = await addAlt(altObjs[i], nodeBranchId, nodeId, i, x, y, currentAltId)
 
       urls.push(url) // keep if you need them
     }
-    console.log(urls)
     return urls // or omit if not needed
   }
 

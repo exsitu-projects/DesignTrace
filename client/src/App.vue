@@ -39,12 +39,16 @@
     <transition-group name="fade" tag="div" class="nodes-layer">
       <VueDraggableResizable
         v-for="alt in allAlts"
+        :id="'drag_' + alt.id"
         :key="alt.id"
         :x="alt.position.x"
         :y="alt.position.y"
         :w="'auto'"
         :h="'auto'"
-        @mouseup="mouseUpNode(alt.position.x, alt.position.y, alt.id, $event)"
+        :z="alt.z"
+        @mouseup="
+          mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
+        "
         :draggable="true"
         :drag-handle="'.nodeHandle'"
         class="design-space-container"
@@ -120,20 +124,20 @@ function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-async function mouseUpNode(altPosX, altPosY, altId, e) {
+async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
       // objectStore.obj in form of
       /*{ type: 'tag', content:
-[{ tag: 'Red',   propName: 'color' },
-{ tag: 'Green', propName: 'color' },
-{ tag: 'Blue',  propName: 'color' },]}*/
+      [{ tag: 'Red',   propName: 'color' },
+      { tag: 'Green', propName: 'color' },
+      { tag: 'Blue',  propName: 'color' },]}*/
       await nodeStore.addMultAlt(
         objectStore.obj.content, // the arr length will be used to decide how many ele
-        nodeStore.currentBranchId,
-        nodeStore.currentNodeId,
+        branchId,
+        nodeId,
         altPosX,
         altPosY,
         altId,
@@ -152,6 +156,7 @@ async function mouseUpNode(altPosX, altPosY, altId, e) {
       }
       dropAltId.value = altId
     }
+    objectStore.dragState = 'finishedDragging'
   }
 }
 

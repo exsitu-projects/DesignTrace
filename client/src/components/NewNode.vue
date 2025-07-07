@@ -1,6 +1,10 @@
 <template>
-  <div ref="nodeEl" class="node">
-    <div class="nodeHandle rounded-top p-1" style="background: #ededed">
+  <div ref="nodeEl" :id="alt.id" class="node">
+    <div
+      class="nodeHandle rounded-top p-1"
+      @dblclick="clickOnNodeTap()"
+      style="background: #ededed"
+    >
       <EditableLabel v-model="nodeName" />
     </div>
     <div class="node-tags p-2">
@@ -18,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, markRaw, watch, computed, toRef } from 'vue'
+import { computed, markRaw, onMounted, ref, watch } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -26,6 +30,7 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { CannyJS } from '@/js/canny'
 import { useGeneration } from '@/stores/generationStore.js'
+
 const props = defineProps({
   alt: {
     type: Object,
@@ -248,18 +253,25 @@ function whiteToTransparent(canvas) {
   ctx.putImageData(imgData, 0, 0)
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
-// async function generateAlt(propsPerAlt) {
-//   const altImgURL = await generationStore.generateMaskedImg({
-//     original_image: canvasUrlWithoutPath.value,
-//     add_color_image: canvasUrlWithoutPath.value,
-//     add_edge_image: posEdgeUrl.value,
-//     remove_edge_image: negEdgeUrl.value,
-//     total_mask: totalEdgeUrl.value,
-//     props: propsPerAlt,
-//     lassoBoundUrl: lassoBoundUrl.value,
-//   })
-//   return altImgURL
-// }
+
+function clickOnNodeTap() {
+  //DOM Change
+  const branch = nodeStore.nodeBranchList.find((b) => b.id === alt.branchId)
+  const node = branch.nodes.find((n) => n.id === alt.nodeId)
+
+  alt.position.y = node.midYPos
+  let startZId = alt.z
+  let startPosY = node.midYPos
+  for (let eachAlt of node.alts) {
+    eachAlt.position.x = node.midXPos
+    if (eachAlt.id !== alt.id) {
+      startZId -= 1
+      startPosY -= 20
+      eachAlt.position.y = startPosY
+      eachAlt.z = startZId
+    }
+  }
+}
 
 function storeLassoInfo() {
   const lassoPayload = {

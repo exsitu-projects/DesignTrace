@@ -249,11 +249,11 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
     stroke_as_edge = "enable"
     print( 'total_mask:::::' )
     print( ms_data['total_mask'])
-#     show_base64_image(ms_data['original_image'], title="Original Image")
-#     show_base64_image(ms_data['add_color_image'], title="Color Image")
-#     show_base64_image(ms_data['total_mask'], title="Total Mask")
-#     show_base64_image(ms_data['add_edge_image'], title="Add Edge Mask")
-#     show_base64_image(ms_data['remove_edge_image'], title="Remove Edge Mask")
+    show_base64_image(ms_data['original_image'], title="Original Image")
+    show_base64_image(ms_data['add_color_image'], title="Color Image")
+    show_base64_image(ms_data['total_mask'], title="Total Mask")
+    show_base64_image(ms_data['add_edge_image'], title="Add Edge Mask")
+    show_base64_image(ms_data['remove_edge_image'], title="Remove Edge Mask")
 
 
     res = generate(

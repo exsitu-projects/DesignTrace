@@ -202,7 +202,7 @@ const addBranchNodeAlt = () => {
   // it opens a new node and add a new alt
   nodeStore.addNodeBranch()
   nodeStore.addNode(nodeStore.currentBranchId)
-  nodeStore.addAlt({}, nodeStore.currentBranchId, nodeStore.currentNodeId)
+  nodeStore.addAlt({}, nodeStore.currentBranchId, nodeStore.currentNodeId, 0)
 }
 
 const forwardOneLayer = () => {

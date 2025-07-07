@@ -15,14 +15,14 @@ export const useGeneration = defineStore('generation', () => {
     resolution: 512,
     negative_prompt: '',
     fine_edge: 'disable',
-    grow_size: 15,
+    grow_size: 20,
     edge_strength: 0.55,
     color_strength: 0.55,
     inpaint_strength: 1.0,
     seed: -1,
-    steps: 20,
-    cfg: 6.0,
-    sampler_name: 'dpm_2_ancestral',
+    steps: 30,
+    cfg: 5.5,
+    sampler_name: 'dpmpp_2m',
     scheduler: 'karras',
   }
 
@@ -54,7 +54,7 @@ Use natural language, not a list of keywords.
 Limit the first description to 10 words or fewer.
 Be specific, expressive, and grounded in what’s visible.
 
-Return only the two phrases, separated by a comma. Do not explain or add anything else.`
+Return only the two phrases, separated by a colon. Do not explain or add anything else.`
   function setGeneratePromise(promiseState) {
     generatePromise.value = promiseState
   }
@@ -103,7 +103,8 @@ Return only the two phrases, separated by a comma. Do not explain or add anythin
 
   async function whatIsObject(lassoBoundUrl, propsString) {
     const raw = await describeImage(lassoBoundUrl, propsString, objSysPrompt)
-    const [adjPart = '', objPart = ''] = raw.split(',').map((s) => s.trim())
+    console.log(raw)
+    const [adjPart = '', objPart = ''] = raw.split(':').map((s) => s.trim())
     if (!raw || typeof raw !== 'string') {
       throw new Error('describeImage returned empty or non‑string')
     }
@@ -125,7 +126,7 @@ Return only the two phrases, separated by a comma. Do not explain or add anythin
   }) {
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
     const descriptors = props.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
-    const imgGenPrompt = adjObjectText + ' in ' + descriptors.join(' and ')
+    const imgGenPrompt = descriptors.join(' and ') + ' ' + adjObjectText
     console.log(imgGenPrompt)
     try {
       const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
