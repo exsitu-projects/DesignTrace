@@ -72,7 +72,11 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
+  fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas)
+  fabricCanvas.freeDrawingBrush.width = 6 // visible stroke
+  fabricCanvas.freeDrawingBrush.color = '#ff0066'
   fabricCanvas.on('mouse:down', function (opt) {
+    if (allUtilStore.isColorPen) return // ← let the brush handle it
     if (lassoStart === true) {
       fabricCanvas.forEachObject((obj) => {
         obj.selectable = false
@@ -85,6 +89,7 @@ onMounted(() => {
   })
 
   fabricCanvas.on('mouse:move', function (opt) {
+    if (allUtilStore.isColorPen) return // ← let the brush handle it
     if (!isLasso || !lassoStart) return
     points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
 
@@ -140,24 +145,21 @@ onMounted(() => {
       fabricCanvas.add(path)
 
       if (pathStr.value) {
-        // --- 1. create a plain canvas --------------------------------------------
         const lassoMaskCan = document.createElement('canvas')
         lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
         lassoMaskCan.height = fabricCanvas.height
         const lassoMaskCtx = lassoMaskCan.getContext('2d')
 
-        // --- 2. paint background black -------------------------------------------
         lassoMaskCtx.fillStyle = 'black'
         lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
 
-        // --- 3. draw the lasso path in white -------------------------------------
         const lasPath = new Path2D(pathStr.value)
         lassoMaskCtx.fillStyle = 'white'
         lassoMaskCtx.fill(lasPath)
 
         // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
         totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-        // console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
+        console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
 
         const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
         const canny = CannyJS.canny(
@@ -227,6 +229,7 @@ onMounted(() => {
         lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
         negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
         // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+
         storeLassoInfo()
 
         cannyCan = null
@@ -286,7 +289,7 @@ function storeLassoInfo() {
   nodeStore.setCurrentLassoInfo(lassoPayload)
 }
 watch(
-  () => props.imgPayload,
+  () => props.imgPayload, //drag a new image from canvas to node
   (newPayload) => {
     if (!newPayload) return
     const pointer = fabricCanvas.getPointer(newPayload.e, true)
@@ -311,9 +314,7 @@ watch(
             fabricCanvas.remove(existingImage)
           }
           fabricCanvas.add(fabricImage)
-          fabricCanvas.isDrawingMode = false
           fabricCanvas.renderAll()
-          objectStore.dragState = 'finishedDragging'
           objectStore.obj = {}
         } catch (error) {
           console.error('Failed to add image to canvas:', error)
@@ -326,10 +327,22 @@ watch(
     }
   },
 )
-
+watch(
+  () => allUtilStore.isColorPen,
+  (newVal) => {
+    allUtilStore.isLassoMode = false // force lasso off
+    fabricCanvas.isDrawingMode = newVal
+    fabricCanvas.forEachObject((obj) => {
+      obj.selectable = !newVal
+    })
+    fabricCanvas.discardActiveObject()
+    fabricCanvas.selection = !newVal
+  },
+)
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
+    allUtilStore.isColorPen = false // force color pen off
     lassoStart = newVal
     fabricCanvas.forEachObject((obj) => {
       obj.selectable = !newVal

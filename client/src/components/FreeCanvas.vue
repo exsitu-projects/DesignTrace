@@ -2,6 +2,7 @@
   <canvas id="freeCanvas"></canvas>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
     <button class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
+
     <button class="btn btn-sm btn-light m-1" @click="triggerFileSelect">
       <ImageUp color="black" :size="15" />
     </button>
@@ -68,7 +69,7 @@ import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { ImageUp, Lasso } from 'lucide-vue-next'
+import { ImageUp, Lasso, SprayCan } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 const generationStore = useGeneration()
 const { generatePromise, setGeneratePromise } = useGeneration()
@@ -103,6 +104,7 @@ watch(
         })
         draggedObj.setCoords() // Very important for hit detection and rendering
         canvas.renderAll()
+        objectStore.dragState = 'finishedDragging'
       }
     }
   },
@@ -112,6 +114,17 @@ watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
     lassoStart = newVal
+    canvas.forEachObject((obj) => {
+      obj.selectable = !newVal
+    })
+    canvas.discardActiveObject()
+    canvas.selection = !newVal
+  },
+)
+watch(
+  () => allUtilStore.isColorPen,
+  (newVal) => {
+    canvas.isDrawingMode = newVal
     canvas.forEachObject((obj) => {
       obj.selectable = !newVal
     })
@@ -136,6 +149,7 @@ const files = ref([])
 const triggerFileSelect = () => {
   fileInput.value.click()
 }
+
 const fileInput = ref(null)
 const updateDrawingModeButtonText = async () => {
   $('drawing-mode').textContent = canvas.isDrawingMode

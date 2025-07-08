@@ -142,21 +142,21 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
         altPosY,
         altId,
       )
+      objectStore.dragState = 'finishedDragging'
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
       objectStore.startDragLeft = droppedObj.left
-      objectStore.dragState = 'restoreInitialDOM'
       const newId = Date.now()
       imgDOMPayload.value = {
         id: newId,
         url: droppedObj.src,
         e: e,
       }
+      objectStore.dragState = 'restoreInitialDOM'
       dropAltId.value = altId
     }
-    objectStore.dragState = 'finishedDragging'
   }
 }
 
