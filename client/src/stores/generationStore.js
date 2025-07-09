@@ -42,13 +42,13 @@ Return only the description. Do not explain or add anything else.`
 
   const objSysPrompt = `You are a visual description assistant.
 
-The user will give you a visual feature or property (like color, texture, or material) and an image.
+The user will provide an image.
 
-Your task is to write two short outputs, separated by a comma:
+Your task is to write two short outputs, separated by a colon:
 
-1. A detailed description of the primary object that **intentionally excludes any mention of the specified visual property but includes other clearly visible attributes (e.g., shape, form, surface detail, style, material, etc.)** plus the name of the object (e.g., when users input "color", the output could be “a midi flowy bohemian dress with linen textiles and some flower textures at the bottom” without describing the color).
+A richly detailed visual description of the primary object in the image, using as many clearly visible features as possible (e.g., color, texture, material, pattern, shape, structure, surface detail). The description must use concrete, observable details only — avoid abstract or subjective terms like "elegant" or "nice." The last word of the description must be the object’s name such as 'dress' or 'armchair'.
 
-2. The name of the primary object alone (e.g., “dress”).
+The name of the primary object alone.
 
 Use natural language, not a list of keywords.
 Limit the first description to 10 words or fewer.
@@ -142,6 +142,33 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     }
   }
 
+  async function generateOpenAIImg({ original_image, total_mask, prompt }) {
+    try {
+      promiseLoadImageLabel.value = 'loading'
+      const response = await fetch('http://localhost:5555/edit-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ original_image, total_mask, prompt }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        // return result.result
+        return result.output
+      } else {
+        console.log(result.error)
+        return null // Optional: explicitly return null on error
+      }
+    } catch (err) {
+      console.log(err.message)
+      return null // Optional: consistently return on error
+    } finally {
+      promiseLoadImageLabel.value = 'finished' // Ensures it always updates
+    }
+  }
+
   async function generateMaskedImg({
     original_image,
     add_color_image,
@@ -199,5 +226,6 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     whatIsObject,
     objSysPrompt,
     guessPrompt,
+    generateOpenAIImg,
   }
 })

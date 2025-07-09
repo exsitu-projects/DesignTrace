@@ -46,6 +46,7 @@
         :w="'auto'"
         :h="'auto'"
         :z="alt.z"
+        :requestForLasso="requestForLasso"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
         "
@@ -96,7 +97,6 @@ import InfoPalette from '@/components/InfoPalette.vue'
 import { useNode } from '@/stores/nodeStore.js'
 import { useLayout } from '@/stores/layoutStore.js'
 import { useObject } from '@/stores/objectStore.js'
-import ImageEditor from '@/components/ImageEditor.vue'
 /* --- store instances --- */
 
 const layoutStore = useLayout()
@@ -112,7 +112,7 @@ const allEdges = computed(() =>
     (alt.edges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
   ),
 )
-
+const requestForLasso = ref(false)
 const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
@@ -128,6 +128,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
+      requestForLasso.value = true
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
       // objectStore.obj in form of
       /*{ type: 'tag', content:
@@ -143,6 +144,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
         altId,
       )
       objectStore.dragState = 'finishedDragging'
+      requestForLasso.value = false
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
       const droppedObj = objectStore.obj

@@ -107,6 +107,7 @@ export const useNode = defineStore('nodes', () => {
     posY = initialNodeY,
     prevAltId = null,
     adjObjectText = '',
+    propsAltered = '',
   ) {
     // default if nothing gets generated
     let imgUrl = null
@@ -124,7 +125,15 @@ export const useNode = defineStore('nodes', () => {
       properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
     }
     const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
-    const prompt = descriptors.join(' and ') + ' ' + adjObjectText
+    // const prompt = adjObjectText + ' in ' + descriptors.join(' and ') + '. '
+    const prompt =
+      'Change the ' +
+      propsAltered +
+      ' of the ' +
+      adjObjectText +
+      ' into ' +
+      descriptors.join(' and ') +
+      ' while other visual properties remain the same.'
     console.log(prompt)
     currentLassoInfo.value.prompt = prompt
 
@@ -137,7 +146,9 @@ export const useNode = defineStore('nodes', () => {
         console.log(prevAlt.edges)
       }
       try {
-        imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
+        // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
+        imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
+        console.log(imgUrl)
         addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
       } catch (e) {
         console.error('Image generation failed:', e)
@@ -221,6 +232,7 @@ export const useNode = defineStore('nodes', () => {
         y,
         currentAltId,
         adjObjectText,
+        propsString,
       )
 
       urls.push(url) // keep if you need them

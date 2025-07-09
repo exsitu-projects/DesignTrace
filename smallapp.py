@@ -13,7 +13,7 @@ import traceback
 
 client = OpenAI()
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175"]}})
 
 def static_to_base64(file_path: str) -> str:
     """
@@ -178,6 +178,54 @@ def text_to_image():
         traceback_str = traceback.format_exc()
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
+@app.route('/edit-image', methods=['POST'])
+def edit_image():
+    json_data = request.get_json()
+
+    prompt = json_data.get('prompt', '')
+    original_image = json_data.get('original_image')  #  base64
+    total_mask = json_data.get('total_mask')  #  base64
+    try:
+        original_image_path = "static/assets/original_image.png"
+        total_mask_path = "static/assets/total_mask.png"
+        if original_image.startswith("data:image"):
+            original_image = original_image.split(",", 1)[1]
+        if total_mask.startswith("data:image"):
+            total_mask = total_mask.split(",", 1)[1]
+        os.makedirs(os.path.dirname(original_image_path), exist_ok=True)
+        os.makedirs(os.path.dirname(total_mask_path), exist_ok=True)
+        # Save the uploaded image to a file
+        with open(original_image_path, "wb") as f:
+            f.write(base64.b64decode(original_image))
+        with open(total_mask_path, "wb") as f:
+            f.write(base64.b64decode(total_mask))
+
+        result = client.images.edit(
+            model="gpt-image-1", #dall-e-2
+            image=open(original_image_path, "rb"),
+            mask=open(total_mask_path, "rb"),
+            prompt=prompt,
+            size="1024x1024",
+        )
+        result_base64 = result.data[0].b64_json
+        result_base64 = f"data:image/png;base64,{result_base64}"
+#         result_url = result.data[0].url
+
+#         note: dalle2 model only has .url not the .b64_json!!!
+        # Process result
+
+
+        return jsonify({
+            "status": "success",
+            "output": result_base64,
+        })
+
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
 
 @app.route('/image-to-labels', methods=['POST'])
 def image_to_labels():
