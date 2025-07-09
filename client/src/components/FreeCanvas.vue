@@ -1,6 +1,9 @@
 <template>
   <canvas id="freeCanvas"></canvas>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
+    <div class="collapse" id="collapseExample">
+      <ColorPicker></ColorPicker>
+    </div>
     <button class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
 
     <button class="btn btn-sm btn-light m-1" @click="triggerFileSelect">
@@ -63,14 +66,16 @@
 <script setup>
 import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
-import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
+import { useObject } from '@/stores/objectStore.js'
+
 import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso, SprayCan } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
+import ColorPicker from '@/components/colorPicker.vue'
 const generationStore = useGeneration()
 const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
@@ -108,6 +113,17 @@ watch(
       }
     }
   },
+)
+
+watch(
+  () => allUtilStore.brush,
+  (brush) => {
+    if (canvas) {
+      canvas.freeDrawingBrush.color = brush.color
+      canvas.freeDrawingBrush.width = brush.width
+    }
+  },
+  { deep: true },
 )
 
 watch(
@@ -340,6 +356,8 @@ onMounted(() => {
   })
 
   canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
+  canvas.freeDrawingBrush.width = allUtilStore.brush.width
+  canvas.freeDrawingBrush.color = allUtilStore.brush.color
   fabric.Object.prototype.transparentCorners = false
 
   const elements = {

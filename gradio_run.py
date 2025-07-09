@@ -107,9 +107,12 @@ def guess_prompt_handler(original_image, add_color_image, add_edge_image):
         add_color_image_tensor = load_and_preprocess_image(add_color_image)
     else:
         add_color_image_tensor = original_image_tensor
-    
+
+
+
     width, height = original_image_tensor.shape[1], original_image_tensor.shape[2]
     add_edge_mask = create_alpha_mask(add_edge_image) if add_edge_image else torch.zeros((1, height, width), dtype=torch.float32, device="cpu")
+#     print(original_image_tensor, add_color_image_tensor, add_edge_mask)
     res = guess(original_image_tensor, add_color_image_tensor, add_edge_mask)
     return res
 
@@ -117,7 +120,7 @@ def generate(ckpt_name, total_mask, original_image, add_color_image, add_edge_im
     add_color_image, original_image, total_mask, add_edge_mask, remove_edge_mask = prepare_images_and_masks(total_mask, original_image, add_color_image, add_edge_image, remove_edge_image)
     progress = None
 
-    print("gradio run generate")
+
 
     if torch.sum(remove_edge_mask).item() > 0 and torch.sum(add_edge_mask).item() == 0:
         if positive_prompt == "":
@@ -249,11 +252,11 @@ def generate_image_handler(x, ckpt_name, negative_prompt, fine_edge, grow_size, 
     stroke_as_edge = "enable"
     print( 'total_mask:::::' )
     print( ms_data['total_mask'])
-    show_base64_image(ms_data['original_image'], title="Original Image")
-    show_base64_image(ms_data['add_color_image'], title="Color Image")
-    show_base64_image(ms_data['total_mask'], title="Total Mask")
-    show_base64_image(ms_data['add_edge_image'], title="Add Edge Mask")
-    show_base64_image(ms_data['remove_edge_image'], title="Remove Edge Mask")
+#     show_base64_image(ms_data['original_image'], title="Original Image")
+#     show_base64_image(ms_data['add_color_image'], title="Color Image")
+#     show_base64_image(ms_data['total_mask'], title="Total Mask")
+#     show_base64_image(ms_data['add_edge_image'], title="Add Edge Mask")
+#     show_base64_image(ms_data['remove_edge_image'], title="Remove Edge Mask")
 
 
     res = generate(

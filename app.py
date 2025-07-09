@@ -105,10 +105,12 @@ def guess(original_image_tensor, add_color_image_tensor, add_edge_mask):
 
 @app.route('/api/magic_quill/guess_prompt', methods=['POST'])
 def guess_prompt_handler():
+
     data = request.json
-    original_image = data['original_image']
-    add_color_image = data.get('add_color_image', '')
-    add_edge_image = data.get('add_edge_image', '')
+    ms_data = data['ms_data']
+    original_image = ms_data['original_image']
+    add_color_image = ms_data.get('add_color_image', '')
+    add_edge_image = ms_data.get('add_edge_image', '')
 
     original_image_tensor = load_and_preprocess_image(original_image)
 
@@ -121,6 +123,7 @@ def guess_prompt_handler():
     add_edge_mask = create_alpha_mask(add_edge_image) if add_edge_image else torch.zeros((1, height, width),
                                                                                          dtype=torch.float32,
                                                                                          device="cpu")
+#     print(original_image_tensor, add_color_image_tensor, add_edge_mask)
     res = guess(original_image_tensor, add_color_image_tensor, add_edge_mask)
     return jsonify({'result': res})
 

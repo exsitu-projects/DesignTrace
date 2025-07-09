@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useGeneration } from '@/stores/generationStore.js'
+
 export const useNode = defineStore('nodes', () => {
   /* ----------------------------------------------------------
    Data‑structure overview
@@ -41,6 +42,7 @@ export const useNode = defineStore('nodes', () => {
   const nodeYT = ref(0)
   const offsetY = ref(0)
   const currentLassoInfo = ref({})
+  const currentColorPenInfo = ref({})
   const addAltImgPayload = ref({})
   const generationStore = useGeneration()
   function addNodeBranch() {
@@ -78,6 +80,24 @@ export const useNode = defineStore('nodes', () => {
     currentLassoInfo.value = lassoPayload
   }
 
+  async function applyColorPen(colorPenPayload) {
+    currentColorPenInfo.value = colorPenPayload
+    let imgUrl
+    try {
+      const output = await generationStore.guessPrompt({
+        original_image: colorPenPayload.original_image,
+        add_color_image: colorPenPayload.add_color_image,
+        add_edge_image: colorPenPayload.add_edge_image,
+      })
+      currentColorPenInfo.value.prompt = output
+      imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
+      addAltImgPayload.value = { url: imgUrl, altId: colorPenPayload.altId }
+    } catch (e) {
+      console.error('Image generation failed:', e)
+      imgUrl = null
+    }
+  }
+
   async function addAlt(
     altObj,
     nodeBranchId,
@@ -86,6 +106,7 @@ export const useNode = defineStore('nodes', () => {
     posX = initialNodeX,
     posY = initialNodeY,
     prevAltId = null,
+    adjObjectText = '',
   ) {
     // default if nothing gets generated
     let imgUrl = null
@@ -102,6 +123,10 @@ export const useNode = defineStore('nodes', () => {
       z: 1000,
       properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
     }
+    const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
+    const prompt = descriptors.join(' and ') + ' ' + adjObjectText
+    console.log(prompt)
+    currentLassoInfo.value.prompt = prompt
 
     if (prevAltId) {
       newNode.alts.push(newAlt)
@@ -112,10 +137,7 @@ export const useNode = defineStore('nodes', () => {
         console.log(prevAlt.edges)
       }
       try {
-        imgUrl = await generationStore.generateMaskedImg({
-          ...currentLassoInfo.value,
-          props: newAlt.properties,
-        })
+        imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
         addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
       } catch (e) {
         console.error('Image generation failed:', e)
@@ -171,17 +193,17 @@ export const useNode = defineStore('nodes', () => {
       .filter((v, i, arr) => arr.indexOf(v) === i) // optional: remove duplicates
       .join(', ') // → "color, texture"
     //detect what exactly the object selection is before generating alts
+    let adjObjectText = ''
+    let objectText = ''
     try {
-      const { adjObjectText, objectText } = await generationStore.whatIsObject(
+      const result = await generationStore.whatIsObject(
         currentLassoInfo.value.lassoBoundUrl,
         propsString,
       )
-      console.log(adjObjectText, objectText)
-      // const adjObjectText = ''
-      // const objectText = ''
-      delete currentLassoInfo.value.lassoBoundUrl ////TODO: not the best way to write it like this...
-      currentLassoInfo.value.adjObjectText = adjObjectText
-      currentLassoInfo.value.objectText = objectText
+      adjObjectText = result.adjObjectText
+      objectText = result.objectText
+      ////TODO: Consider a cleaner state update mechanism than direct deletion
+      delete currentLassoInfo.value.lassoBoundUrl
     } catch (e) {
       console.error('Primary object detection failed:', e)
       return
@@ -190,7 +212,16 @@ export const useNode = defineStore('nodes', () => {
     for (let i = 0; i < num; i++) {
       // SERIAL loop, await each addAlt
       const y = maxY - nodeH * i + offsetY.value
-      const url = await addAlt(altObjs[i], nodeBranchId, nodeId, i, x, y, currentAltId)
+      const url = await addAlt(
+        altObjs[i],
+        nodeBranchId,
+        nodeId,
+        i,
+        x,
+        y,
+        currentAltId,
+        adjObjectText,
+      )
 
       urls.push(url) // keep if you need them
     }
@@ -216,5 +247,6 @@ export const useNode = defineStore('nodes', () => {
     addAlt,
     addMultAlt,
     setCurrentLassoInfo,
+    applyColorPen,
   }
 })

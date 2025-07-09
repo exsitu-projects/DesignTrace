@@ -27,10 +27,15 @@ function switchColorPen() {
     </button>
     <button
       :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"
+      data-bs-toggle="collapse"
+      data-bs-target="#collapseExample"
+      aria-expanded="false"
+      aria-controls="collapseExample"
       @click="switchColorPen"
     >
       <SprayCan color="black" :size="15"></SprayCan>
     </button>
+
     <!--    <button type="button" class="btn btn-light">Left</button>-->
     <!--    <button type="button" class="btn btn-light">Middle</button>-->
     <!--    <button type="button" class="btn btn-light">Right</button>-->

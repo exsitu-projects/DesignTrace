@@ -15,14 +15,14 @@ export const useGeneration = defineStore('generation', () => {
     resolution: 512,
     negative_prompt: '',
     fine_edge: 'disable',
-    grow_size: 20,
+    grow_size: 15,
     edge_strength: 0.55,
     color_strength: 0.55,
     inpaint_strength: 1.0,
     seed: -1,
-    steps: 30,
-    cfg: 5.5,
-    sampler_name: 'dpmpp_2m',
+    steps: 20,
+    cfg: 5,
+    sampler_name: 'euler_ancestral',
     scheduler: 'karras',
   }
 
@@ -114,20 +114,44 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     }
   }
 
+  async function guessPrompt({ original_image, add_color_image, add_edge_image }) {
+    //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
+
+    try {
+      const response = await fetch('http://localhost:5000/api/magic_quill/guess_prompt', {
+        // const response = await fetch('/api/magic_quill/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ms_data: {
+            original_image: original_image,
+            add_color_image: add_color_image,
+            add_edge_image: add_edge_image,
+          },
+        }),
+      })
+
+      const result = await response.json()
+
+      return result.result
+    } catch (error) {
+      console.error('Error generating image:', error)
+      alert('Image generation failed. Please try again.')
+    }
+  }
+
   async function generateMaskedImg({
     original_image,
     add_color_image,
     add_edge_image,
     remove_edge_image,
     total_mask,
-    props,
-    adjObjectText,
-    objectText,
+    prompt,
   }) {
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
-    const descriptors = props.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
-    const imgGenPrompt = descriptors.join(' and ') + ' ' + adjObjectText
-    console.log(imgGenPrompt)
+
     try {
       const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
         // const response = await fetch('/api/magic_quill/generate', {
@@ -143,7 +167,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
             remove_edge_image: remove_edge_image,
             total_mask: total_mask,
           },
-          prompt: imgGenPrompt,
+          prompt: prompt,
           ...generationParams,
         }),
       })
@@ -173,5 +197,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     setGeneratePromise,
     propValSysPrompt,
     whatIsObject,
+    objSysPrompt,
+    guessPrompt,
   }
 })

@@ -6,6 +6,7 @@ export const useAllUtil = defineStore('allUtil', () => {
   const obj = ref(null)
   const isLassoMode = ref(false)
   const isColorPen = ref(false)
+  const brush = { color: ref('#000000'), width: ref(10) }
   function switchLassoMode() {
     isLassoMode.value = !isLassoMode.value
   }
@@ -15,6 +16,7 @@ export const useAllUtil = defineStore('allUtil', () => {
   return {
     isColorPen,
     isLassoMode,
+    brush,
     switchLassoMode,
     switchColorPen,
   }

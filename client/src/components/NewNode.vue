@@ -1,11 +1,18 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
-      class="nodeHandle rounded-top p-1"
+      class="nodeHandle rounded-top p-1 d-flex align-items-center"
       @dblclick="clickOnNodeTap()"
       style="background: #ededed"
     >
       <EditableLabel v-model="nodeName" />
+      <button
+        v-show="changeDetected"
+        @click="transformColorStroke"
+        class="btn btn-outline-dark btn-sm ms-auto"
+      >
+        Transform
+      </button>
     </div>
     <div class="node-tags p-2">
       <span
@@ -48,6 +55,9 @@ const canvasContainer = ref(null)
 const posEdgeUrl = ref('')
 const negEdgeUrl = ref('')
 const totalEdgeUrl = ref('')
+const brushMask = ref('')
+const emptyMask = ref('')
+const changeDetected = ref(false)
 const objectStore = useObject()
 const nodeStore = useNode()
 const cannyHt = 150 //canny edge high threshold
@@ -59,12 +69,33 @@ const pathStr = ref('')
 let isLasso = false
 let points = []
 const lassoBoundUrl = ref('')
+const strokesBoundUrl = ref('')
 let path = null
 let lassoStart = false
 let startPointer = null
+const fabricCanvasW = ref(0) // reactive refs
+const fabricCanvasH = ref(0)
 const canvasW = computed(() => nodeStore.canvasW)
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
+const canvasUrlWithoutBrush = ref('')
+const cursor = new fabric.Circle({
+  //brush cursor
+  radius: allUtilStore.brush.width / 2,
+  fill: allUtilStore.brush.color,
+  originX: 'center',
+  originY: 'center',
+  selectable: false,
+  evented: false,
+  absolutePositioned: true, // ← stays in screen coords
+})
+function updateCursor() {
+  cursor.set({
+    radius: allUtilStore.brush.width / 2,
+    fill: allUtilStore.brush.color,
+  })
+  cursor.dirty = true // force re‑render
+}
 onMounted(() => {
   fabricCanvas = markRaw(
     new fabric.Canvas(canvasEl.value, {
@@ -72,11 +103,20 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
+  fabricCanvas.upperCanvasEl.style.cursor = 'none'
+
+  fabricCanvasW.value = fabricCanvas.width
+  fabricCanvasH.value = fabricCanvas.height
   fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas)
-  fabricCanvas.freeDrawingBrush.width = 6 // visible stroke
-  fabricCanvas.freeDrawingBrush.color = '#ff0066'
+  const brush = fabricCanvas.freeDrawingBrush
+  brush.width = allUtilStore.brush.width
+  brush.color = allUtilStore.brush.color
+
+  fabricCanvas.add(cursor) // top of stack
+  cursor.visible = false // hidden until drawing starts
+
+  updateCursor()
   fabricCanvas.on('mouse:down', function (opt) {
-    if (allUtilStore.isColorPen) return // ← let the brush handle it
     if (lassoStart === true) {
       fabricCanvas.forEachObject((obj) => {
         obj.selectable = false
@@ -85,156 +125,176 @@ onMounted(() => {
       isLasso = true
       startPointer = opt.pointer
       points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+    } else if (allUtilStore.isColorPen) {
+      cursor.visible = true
+      fabricCanvas.requestRenderAll()
     }
   })
 
   fabricCanvas.on('mouse:move', function (opt) {
-    if (allUtilStore.isColorPen) return // ← let the brush handle it
-    if (!isLasso || !lassoStart) return
-    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+    if (isLasso && lassoStart) {
+      points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
 
-    if (path) fabricCanvas.remove(path)
-
-    pathStr.value = points.join(' ') + ' Z' // Close the path
-    path = new fabric.Path(pathStr.value, {
-      stroke: 'black',
-      strokeWidth: 1,
-      fill: 'rgba(0, 0, 0, 0.1)',
-      selectable: false,
-      evented: false,
-      strokeDashArray: [5, 5],
-    })
-
-    fabricCanvas.add(path)
-    fabricCanvas.requestRenderAll()
-  })
-
-  fabricCanvas.on('mouse:up', async function (opt) {
-    if (!isLasso) return
-
-    isLasso = false
-    const dx = opt.pointer.x - startPointer.x
-    const dy = opt.pointer.y - startPointer.y
-    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
-
-    if (!moved) {
       if (path) fabricCanvas.remove(path)
-      path = null
-      points = []
-      fabricCanvas.requestRenderAll()
-      return
-    }
 
-    if (path) {
-      path.setCoords()
-      const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
-      fabricCanvas.remove(path)
-      // Render first to make sure everything is drawn
-      fabricCanvas.renderAll()
-      canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
-      // Extract just the area covered by the path + content inside it
-      lassoBoundUrl.value = fabricCanvas.toDataURL({
-        left: bounds.left,
-        top: bounds.top,
-        width: bounds.width,
-        height: bounds.height,
-        format: 'png',
-        multiplier: 1,
+      pathStr.value = points.join(' ') + ' Z' // Close the path
+      path = new fabric.Path(pathStr.value, {
+        stroke: 'black',
+        strokeWidth: 1,
+        fill: 'rgba(0, 0, 0, 0.1)',
+        selectable: false,
+        evented: false,
+        strokeDashArray: [5, 5],
       })
 
       fabricCanvas.add(path)
+      fabricCanvas.requestRenderAll()
+    } else if (allUtilStore.isColorPen) {
+      cursor.visible = true
+      const p = fabricCanvas.getPointer(opt.e)
+      cursor.set({ left: p.x, top: p.y })
+      cursor.setCoords()
+      fabricCanvas.bringObjectToFront(cursor)
+      fabricCanvas.requestRenderAll()
+    }
+  })
 
-      if (pathStr.value) {
-        const lassoMaskCan = document.createElement('canvas')
-        lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
-        lassoMaskCan.height = fabricCanvas.height
-        const lassoMaskCtx = lassoMaskCan.getContext('2d')
+  fabricCanvas.on('path:created', ({ path, e }) => {
+    changeDetected.value = true
+    path.objectCaching = false // render directly, no off‑screen crop
 
-        lassoMaskCtx.fillStyle = 'black'
-        lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
+    fabricCanvas.bringObjectToFront(cursor)
+  })
 
-        const lasPath = new Path2D(pathStr.value)
-        lassoMaskCtx.fillStyle = 'white'
-        lassoMaskCtx.fill(lasPath)
+  fabricCanvas.on('mouse:up', async function (opt) {
+    if (isLasso) {
+      isLasso = false
+      const dx = opt.pointer.x - startPointer.x
+      const dy = opt.pointer.y - startPointer.y
+      const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
 
-        // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
-        totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-        console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
-
-        const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
-        const canny = CannyJS.canny(
-          srcCanv,
-          cannyHt, // ht: canny high threshold
-          cannyLt, // lt: canny low threshold
-          1.4, // gaussian blur sigma
-          3, // kernel size, default 3 usually
-          2,
-        )
-
-        let cannyCan = document.createElement('canvas')
-        cannyCan.width = fabricCanvas.getWidth()
-        cannyCan.height = fabricCanvas.getHeight()
-
-        const cannyCtx = cannyCan.getContext('2d')
-        cannyCtx.imageSmoothingEnabled = false // keep edges crisp
-        const hiRes = document.createElement('canvas')
-        hiRes.width = srcCanv.width // 1024
-        hiRes.height = srcCanv.height
-        canny.drawOn(hiRes) // fills hiRes
-
-        cannyCtx.drawImage(
-          hiRes,
-          0,
-          0,
-          hiRes.width,
-          hiRes.height, // src rect
-          0,
-          0,
-          cannyCan.width,
-          cannyCan.height, // dest rect (scaled)
-        )
-
-        const cannyURL = cannyCan.toDataURL('image/png')
-        // console.log(cannyURL) // canny edge mask, canny edge white, other black
-
-        let cannyInLassoCan = document.createElement('canvas')
-        cannyInLassoCan.width = cannyCan.width
-        cannyInLassoCan.height = cannyCan.height
-        const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
-
-        cannyInLassoCtx.fillStyle = 'white'
-        const lassoPath = new Path2D(pathStr.value)
-        cannyInLassoCtx.fill(lassoPath)
-
-        cannyInLassoCtx.globalCompositeOperation = 'source-in'
-        cannyInLassoCtx.drawImage(cannyCan, 0, 0)
-
-        cannyInLassoCtx.globalCompositeOperation = 'destination-over'
-        cannyInLassoCtx.fillStyle = 'black'
-        cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-
-        // Reset composite mode for safety
-        cannyInLassoCtx.globalCompositeOperation = 'source-over'
-        // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
-        posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
-        // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
-
-        lassoMaskCtx.globalCompositeOperation = 'difference'
-        lassoMaskCtx.fillStyle = '#fff' // white rectangle
-        lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-        lassoMaskCtx.globalCompositeOperation = 'lighter'
-        lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
-        lassoMaskCtx.globalCompositeOperation = 'difference'
-        lassoMaskCtx.fillStyle = '#fff' // white rectangle
-        lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-        negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-        // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
-
-        storeLassoInfo()
-
-        cannyCan = null
-        cannyInLassoCan = null
+      if (!moved) {
+        if (path) fabricCanvas.remove(path)
+        path = null
+        points = []
+        fabricCanvas.requestRenderAll()
+        return
       }
+      if (path) {
+        path.setCoords()
+        const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
+        fabricCanvas.remove(path)
+        // Render first to make sure everything is drawn
+        fabricCanvas.renderAll()
+        canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
+        console.log(canvasUrlWithoutPath.value)
+        // Extract just the area covered by the path + content inside it
+        lassoBoundUrl.value = fabricCanvas.toDataURL({
+          left: bounds.left,
+          top: bounds.top,
+          width: bounds.width,
+          height: bounds.height,
+          format: 'png',
+          multiplier: 1,
+        })
+
+        fabricCanvas.add(path)
+
+        if (pathStr.value) {
+          const lassoMaskCan = document.createElement('canvas')
+          lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
+          lassoMaskCan.height = fabricCanvas.height
+          const lassoMaskCtx = lassoMaskCan.getContext('2d')
+
+          lassoMaskCtx.fillStyle = 'black'
+          lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
+
+          const lasPath = new Path2D(pathStr.value)
+          lassoMaskCtx.fillStyle = 'white'
+          lassoMaskCtx.fill(lasPath)
+
+          // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
+          totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+          console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
+
+          const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
+          const canny = CannyJS.canny(
+            srcCanv,
+            cannyHt, // ht: canny high threshold
+            cannyLt, // lt: canny low threshold
+            1.4, // gaussian blur sigma
+            3, // kernel size, default 3 usually
+            2,
+          )
+
+          let cannyCan = document.createElement('canvas')
+          cannyCan.width = fabricCanvas.getWidth()
+          cannyCan.height = fabricCanvas.getHeight()
+
+          const cannyCtx = cannyCan.getContext('2d')
+          cannyCtx.imageSmoothingEnabled = false // keep edges crisp
+          const hiRes = document.createElement('canvas')
+          hiRes.width = srcCanv.width // 1024
+          hiRes.height = srcCanv.height
+          canny.drawOn(hiRes) // fills hiRes
+
+          cannyCtx.drawImage(
+            hiRes,
+            0,
+            0,
+            hiRes.width,
+            hiRes.height, // src rect
+            0,
+            0,
+            cannyCan.width,
+            cannyCan.height, // dest rect (scaled)
+          )
+
+          const cannyURL = cannyCan.toDataURL('image/png')
+          // console.log(cannyURL) // canny edge mask, canny edge white, other black
+
+          let cannyInLassoCan = document.createElement('canvas')
+          cannyInLassoCan.width = cannyCan.width
+          cannyInLassoCan.height = cannyCan.height
+          const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
+
+          cannyInLassoCtx.fillStyle = 'white'
+          const lassoPath = new Path2D(pathStr.value)
+          cannyInLassoCtx.fill(lassoPath)
+
+          cannyInLassoCtx.globalCompositeOperation = 'source-in'
+          cannyInLassoCtx.drawImage(cannyCan, 0, 0)
+
+          cannyInLassoCtx.globalCompositeOperation = 'destination-over'
+          cannyInLassoCtx.fillStyle = 'black'
+          cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+
+          // Reset composite mode for safety
+          cannyInLassoCtx.globalCompositeOperation = 'source-over'
+          // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
+          posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
+          // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
+
+          lassoMaskCtx.globalCompositeOperation = 'difference'
+          lassoMaskCtx.fillStyle = '#fff' // white rectangle
+          lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+          lassoMaskCtx.globalCompositeOperation = 'lighter'
+          lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
+          lassoMaskCtx.globalCompositeOperation = 'difference'
+          lassoMaskCtx.fillStyle = '#fff' // white rectangle
+          lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+          negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+          // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+
+          storeLassoInfo()
+
+          cannyCan = null
+          cannyInLassoCan = null
+        }
+      }
+    } else if (allUtilStore.isColorPen) {
+      cursor.visible = false
+      fabricCanvas.requestRenderAll()
     }
   })
 })
@@ -257,6 +317,92 @@ function whiteToTransparent(canvas) {
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
 
+function transformColorStroke() {
+  if (allUtilStore.isColorPen) {
+    let left = Infinity,
+      top = Infinity,
+      right = -Infinity,
+      bottom = -Infinity
+
+    const paths = fabricCanvas.getObjects('path')
+
+    // 1. snapshot with strokes
+    canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
+
+    // 3. build the mask
+    const mask = document.createElement('canvas')
+    mask.width = fabricCanvasW.value
+    mask.height = fabricCanvasH.value
+    const ctx = mask.getContext('2d')
+
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0, 0, mask.width, mask.height)
+    emptyMask.value = mask.toDataURL('image/png')
+
+    ctx.save()
+    paths.forEach((p) => {
+      // Update path's coordinate cache
+      p.setCoords()
+
+      const rect = p.getBoundingRect()
+
+      left = Math.min(left, rect.left)
+      top = Math.min(top, rect.top)
+      right = Math.max(right, rect.left + rect.width)
+      bottom = Math.max(bottom, rect.top + rect.height)
+      // Get transformed coordinates (accounts for rotation, scale, skew)
+      // remember original settings
+      const prevComp = p.globalCompositeOperation
+      const prevOpacity = p.opacity
+
+      p.globalCompositeOperation = 'destination-out'
+      p.opacity = 1 // full erase, no half‑alpha edges
+
+      p.render(ctx) // now it really punches the hole
+
+      // restore original settings in case you need the object later
+      p.globalCompositeOperation = prevComp
+      p.opacity = prevOpacity
+    })
+    strokesBoundUrl.value = fabricCanvas.toDataURL({
+      left: isFinite(left) ? left : 0,
+      top: isFinite(top) ? top : 0,
+      width: isFinite(left) ? right - left : 0,
+      height: isFinite(top) ? bottom - top : 0,
+      format: 'png',
+      multiplier: 1,
+    })
+
+    ctx.restore()
+
+    brushMask.value = mask.toDataURL('image/png') // pure black + transparent holes
+
+    // 4. now strip the strokes from the main canvas
+    paths.forEach((p) => fabricCanvas.remove(p))
+    fabricCanvas.renderAll()
+
+    // 5. snapshot without strokes
+    canvasUrlWithoutBrush.value = fabricCanvas.toDataURL()
+
+    // console.log(
+    //   emptyMask.value,
+    //   brushMask.value,
+    //   canvasUrlWithoutPath.value,
+    //   canvasUrlWithoutBrush.value,
+    // )
+    const colorPenPayload = {
+      original_image: canvasUrlWithoutBrush.value,
+      add_color_image: canvasUrlWithoutPath.value,
+      add_edge_image: emptyMask.value,
+      remove_edge_image: emptyMask.value,
+      total_mask: brushMask.value,
+      strokesBoundUrl: strokesBoundUrl.value,
+      altId: alt.id,
+    }
+    nodeStore.applyColorPen(colorPenPayload)
+    changeDetected.value = false
+  }
+}
 function clickOnNodeTap() {
   //DOM Change
   const branch = nodeStore.nodeBranchList.find((b) => b.id === alt.branchId)
@@ -288,6 +434,17 @@ function storeLassoInfo() {
   }
   nodeStore.setCurrentLassoInfo(lassoPayload)
 }
+watch(
+  () => allUtilStore.brush,
+  (brush) => {
+    if (fabricCanvas) {
+      fabricCanvas.freeDrawingBrush.color = brush.color
+      fabricCanvas.freeDrawingBrush.width = brush.width
+      updateCursor()
+    }
+  },
+  { deep: true },
+)
 watch(
   () => props.imgPayload, //drag a new image from canvas to node
   (newPayload) => {
