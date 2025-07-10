@@ -10,6 +10,7 @@
 
       <EditableLabel
         v-model="row.name"
+        style="min-width: 80px"
         class="my-auto"
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
@@ -28,7 +29,15 @@
           <span class="badge bg-light text-dark m-1">
             <EditableLabel
               :draggable="true"
-              @dragstart="(e) => handleDragStart(e, element, row.name)"
+              @dragstart="
+                (e) =>
+                  handleDragStart(
+                    e,
+                    element,
+                    row.name,
+                    element.thumbnail ? { thumbnail: element.thumbnail } : {},
+                  )
+              "
               class="fw-normal"
               v-model="element.tag"
               v-bind="element.thumbnail ? { thumbnail: element.thumbnail } : {}"
@@ -76,11 +85,15 @@ const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
 const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
 
-const handleDragStart = (e, tagObj, propName) => {
+const handleDragStart = (e, tagObj, propName, thumbnail) => {
   objectStore.dragState = 'startDragging'
+  console.log(thumbnail)
   if ('uid' in tagObj) {
     //meaning this is one tag being dragged
-    objectStore.obj = { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
+    objectStore.obj = {
+      type: 'tag',
+      content: [{ tag: tagObj.tag, propName: propName, thumbnail: thumbnail.thumbnail }],
+    }
 
     //{ type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
   } else {
@@ -117,9 +130,12 @@ const handleMouseUp = async (rowIdx, propName) => {
       propName,
       generationStore.propValSysPrompt,
     )
+    //const propVal = ''
     infoStore.addTag(rowIdx, propVal)
+    console.log(droppedObj)
+    const thumbnailUrl = droppedObj.src
     // const thumbnailUrl = await infoStore.generateThumbnail(propName, propVal)
-    // infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)
+    infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)
     objectStore.dragState = 'finishedDragging'
     objectStore.obj = {}
   }

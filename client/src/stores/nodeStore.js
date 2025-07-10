@@ -77,7 +77,9 @@ export const useNode = defineStore('nodes', () => {
   }
 
   function setCurrentLassoInfo(lassoPayload) {
-    currentLassoInfo.value = lassoPayload
+    //currentLassoInfo.value = lassoPayload
+    const alt = findAlt(lassoPayload.altId)
+    alt.lassoPayload = lassoPayload
   }
 
   async function applyColorPen(colorPenPayload) {
@@ -107,6 +109,7 @@ export const useNode = defineStore('nodes', () => {
     posY = initialNodeY,
     prevAltId = null,
     adjObjectText = '',
+    objectText = '',
     propsAltered = '',
   ) {
     // default if nothing gets generated
@@ -124,18 +127,6 @@ export const useNode = defineStore('nodes', () => {
       z: 1000,
       properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
     }
-    const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
-    // const prompt = adjObjectText + ' in ' + descriptors.join(' and ') + '. '
-    const prompt =
-      'Change the ' +
-      propsAltered +
-      ' of the ' +
-      adjObjectText +
-      ' into ' +
-      descriptors.join(' and ') +
-      ' while other visual properties remain the same.'
-    console.log(prompt)
-    currentLassoInfo.value.prompt = prompt
 
     if (prevAltId) {
       newNode.alts.push(newAlt)
@@ -143,12 +134,23 @@ export const useNode = defineStore('nodes', () => {
       const prevAlt = prevNode.alts.find((n) => n.id === prevAltId)
       if (prevAlt) {
         prevAlt.edges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
-        console.log(prevAlt.edges)
       }
       try {
+        const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
+        const prompt =
+          'Change the ' +
+          propsAltered +
+          ' of the ' +
+          adjObjectText +
+          ' ' +
+          objectText +
+          ' into ' +
+          descriptors.join(' and ') +
+          ' while other visual properties remain the same.'
+        console.log(prompt)
+        currentLassoInfo.value.prompt = prompt
         // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
         imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
-        console.log(imgUrl)
         addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
       } catch (e) {
         console.error('Image generation failed:', e)
@@ -157,7 +159,22 @@ export const useNode = defineStore('nodes', () => {
     } else {
       prevNode.alts.push(newAlt)
     }
+    currentLassoInfo.value = {}
     return imgUrl // null if nothing generated
+  }
+  const requestCanvasData = ref({ status: false })
+
+  let resolveCanvasData
+  const canvasDataPromise = (requestAltId) =>
+    new Promise((resolve) => {
+      resolveCanvasData = resolve
+      requestCanvasData.value.status = true
+      requestCanvasData.value.altId = requestAltId
+    })
+
+  function receiveCanvasData(data) {
+    resolveCanvasData?.(data)
+    requestCanvasData.value.status = false
   }
 
   async function addMultAlt(
@@ -168,15 +185,14 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
+    currentLassoInfo.value = await canvasDataPromise(currentAltId)
     // Guard: only proceed for the current lasso alt
-    if (currentAltId !== currentLassoInfo.value.altId) return
-
+    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
+    const prevNode = branch.nodes.find((n) => n.id === nodeId)
     const num = altObjs.length
     const maxY = currentNodeY + (nodeH / 2) * (num - 1)
     const minY = currentNodeY - (nodeH / 2) * (num - 1)
 
-    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    const prevNode = branch.nodes.find((n) => n.id === nodeId)
     const x = currentNodeX + nodeW + adjacent
     // Shift everything down if new nodes would go above 0
     if (minY < 0) {
@@ -232,12 +248,18 @@ export const useNode = defineStore('nodes', () => {
         y,
         currentAltId,
         adjObjectText,
+        objectText,
         propsString,
       )
 
       urls.push(url) // keep if you need them
     }
     return urls // or omit if not needed
+  }
+
+  function findAlt(altId) {
+    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
+    return allAlts.find((n) => n.id === altId)
   }
 
   return {
@@ -260,5 +282,8 @@ export const useNode = defineStore('nodes', () => {
     addMultAlt,
     setCurrentLassoInfo,
     applyColorPen,
+    requestCanvasData,
+    canvasDataPromise,
+    receiveCanvasData,
   }
 })

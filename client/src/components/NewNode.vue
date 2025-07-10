@@ -15,12 +15,18 @@
       </button>
     </div>
     <div class="node-tags p-2">
-      <span
+      <button
         v-for="property in alt.properties"
         :key="property.tag"
         class="btn btn-sm btn-outline-dark"
-        >{{ property.tag }}</span
       >
+        <img
+          v-show="property.thumbnail"
+          :src="property.thumbnail"
+          alt="thumb"
+          class="thumb-icon"
+        />{{ property.tag }}
+      </button>
     </div>
     <div class="m-auto" ref="canvasContainer">
       <canvas ref="canvasEl" class="inset-border" :width="canvasW" :height="canvasW"></canvas>
@@ -76,6 +82,7 @@ let lassoStart = false
 let startPointer = null
 const fabricCanvasW = ref(0) // reactive refs
 const fabricCanvasH = ref(0)
+const lassoPayload = ref({})
 const canvasW = computed(() => nodeStore.canvasW)
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
@@ -165,6 +172,11 @@ onMounted(() => {
     path.objectCaching = false // render directly, no off‑screen crop
 
     fabricCanvas.bringObjectToFront(cursor)
+  })
+
+  fabricCanvas.upperCanvasEl.addEventListener('mouseout', () => {
+    cursor.visible = false
+    fabricCanvas.requestRenderAll()
   })
 
   fabricCanvas.on('mouse:up', async function (opt) {
@@ -360,7 +372,6 @@ function transformColorStroke() {
     paths.forEach((p) => {
       // Update path's coordinate cache
       p.setCoords()
-
       const rect = p.getBoundingRect()
 
       left = Math.min(left, rect.left)
@@ -434,6 +445,12 @@ function clickOnNodeTap() {
 }
 
 function storeLassoInfo() {
+  lassoPayload.value = {
+    original_image: canvasUrlWithoutPath.value,
+    total_mask: totalEdgeUrl.value,
+    altId: alt.id,
+    lassoBoundUrl: lassoBoundUrl.value,
+  }
   // const lassoPayload = {
   //   original_image: canvasUrlWithoutPath.value,
   //   add_color_image: canvasUrlWithoutPath.value,
@@ -443,13 +460,6 @@ function storeLassoInfo() {
   //   altId: alt.id,
   //   lassoBoundUrl: lassoBoundUrl.value,
   // }
-  const lassoPayload = {
-    original_image: canvasUrlWithoutPath.value,
-    total_mask: totalEdgeUrl.value,
-    altId: alt.id,
-    lassoBoundUrl: lassoBoundUrl.value,
-  }
-  nodeStore.setCurrentLassoInfo(lassoPayload)
 }
 
 watch(
@@ -463,12 +473,27 @@ watch(
   },
   { deep: true },
 )
+
 watch(
-  () => props.requestForLasso,
-  (requestForLasso) => {
-    console.log(requestForLasso)
-    if (requestForLasso) {
-      storeLassoInfo()
+  () => nodeStore.requestCanvasData.status,
+  (shouldSend) => {
+    if (shouldSend && nodeStore.requestCanvasData.altId === alt.id) {
+      if (path !== null) {
+        // if there is lasso path
+        nodeStore.receiveCanvasData(lassoPayload.value)
+        console.log('transform lasso')
+      } else {
+        // else send the whole image
+        const fabricCanvasUrl = fabricCanvas.toDataURL()
+        const wholeImgPayload = {
+          original_image: fabricCanvasUrl,
+          total_mask: null,
+          altId: alt.id,
+          lassoBoundUrl: fabricCanvasUrl,
+        }
+        console.log('transform image')
+        nodeStore.receiveCanvasData(wholeImgPayload)
+      }
     }
   },
 )

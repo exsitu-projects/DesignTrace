@@ -60,12 +60,13 @@ const save = () => {
   isEditing.value = false
 }
 </script>
-<style scoped>
+<style>
 .thumb-icon {
-  width: 40px;
-  height: 40px;
+  width: 20px;
+  height: 20px;
   border-radius: 8px; /* nice rounded corners, but not a circle */
-  object-fit: cover;
+  object-fit: cover; /* 👈 show the real-size image pixels */
+  object-position: center; /* or 'center' if you prefer */
   margin-right: 0.5rem;
   align-self: center;
 }
