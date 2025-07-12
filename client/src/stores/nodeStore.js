@@ -31,197 +31,337 @@ export const useNode = defineStore('nodes', () => {
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
-  const canvasW = 300
-  const nodeW = canvasW + 20
-  const nodeH = canvasW + 120
+  // ===== CONSTANTS =====
+  const CANVAS_WIDTH = 300
+  const NODE_WIDTH = CANVAS_WIDTH + 20
+  const NODE_HEIGHT = CANVAS_WIDTH + 120
+  const INITIAL_NODE_X = 150
+  const INITIAL_NODE_Y = 150
+  const NODE_ADJACENCY_SPACING = 100
 
-  const initialNodeX = 150
-  const initialNodeY = 150
-  const adjacent = 100
-  const nodeXR = ref(0)
-  const nodeYB = ref(0)
-  const nodeYT = ref(0)
+  // Layout and positioning
+  const nodeXR = ref(0) // Right boundary
+  const nodeYB = ref(0) // Bottom boundary  
+  const nodeYT = ref(0) // Top boundary
   const offsetY = ref(0)
+  
+  // Payloads and temporary data
   const currentLassoInfo = ref({})
   const currentColorPenInfo = ref({})
   const addAltImgPayload = ref({})
+  const requestCanvasData = ref({ status: false })
+  
+  // Canvas data promise resolver
+  let resolveCanvasData
+
+  // External dependencies
   const generationStore = useGeneration()
+
+  // ===== HELPER FUNCTIONS =====
+  
+  /**
+   * Find an alt by its ID across all branches and nodes
+   */
+  function findAlt(altId) {
+    const allAlts = nodeBranchList.value.flatMap((branch) => 
+      branch.nodes.flatMap((node) => node.alts)
+    )
+    return allAlts.find((alt) => alt.id === altId)
+  }
+
+  /**
+   * Generate a unique ID with timestamp and optional suffix
+   */
+  function generateId(prefix, suffix = '') {
+    return `${prefix}_${Date.now()}${suffix}`
+  }
+
+  /**
+   * Calculate layout boundaries and update positioning refs
+   */
+  function updateLayoutBoundaries(x, y, nodeWidth = NODE_WIDTH, nodeHeight = NODE_HEIGHT) {
+    nodeXR.value = Math.max(nodeXR.value, x + nodeWidth)
+    nodeYB.value = Math.max(nodeYB.value, y + nodeHeight)
+    nodeYT.value = Math.min(nodeYT.value, y)
+  }
+
+  // ===== BRANCH MANAGEMENT =====
+
+  /**
+   * Add a new node branch to the forest
+   */
   function addNodeBranch() {
     const newBranch = {
-      id: `branch_${Date.now()}`,
+      id: generateId('branch'),
       nodes: [],
       parents: [],
       steps: [],
     }
     currentBranchId.value = newBranch.id
     nodeBranchList.value.push(newBranch)
+    return newBranch
   }
 
+  // ===== LAYOUT AND POSITIONING =====
+
+  /**
+   * Set the right boundary position
+   */
   function setNodeXR(newVal) {
     nodeXR.value = newVal
   }
 
+  /**
+   * Set the bottom boundary position
+   */
   function setNodeYB(newVal) {
     nodeYB.value = newVal
   }
 
-  function addNode(nodeBranchId, midXPos = initialNodeX, midYPos = initialNodeY) {
+  // ===== NODE MANAGEMENT =====
+
+  /**
+   * Add a new node to a specific branch
+   */
+  function addNode(nodeBranchId, midXPos = INITIAL_NODE_X, midYPos = INITIAL_NODE_Y) {
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    if (branch) {
-      const newNode = {
-        id: `node_${Date.now()}`,
-        alts: [],
-        midXPos: midXPos,
-        midYPos: midYPos,
-      }
-      currentNodeId.value = newNode.id
-      branch.nodes.push(newNode)
+    if (!branch) {
+      console.warn(`Branch with ID ${nodeBranchId} not found`)
+      return null
+    }
+
+    const newNode = {
+      id: generateId('node'),
+      alts: [],
+      midXPos,
+      midYPos,
+    }
+    
+    currentNodeId.value = newNode.id
+    branch.nodes.push(newNode)
+    return newNode
+  }
+
+  // ===== LASSO AND COLOR PEN MANAGEMENT =====
+
+  /**
+   * Set lasso information for a specific alt
+   */
+  function setCurrentLassoInfo(lassoPayload) {
+    const alt = findAlt(lassoPayload.altId)
+    if (alt) {
+      alt.lassoPayload = lassoPayload
+    } else {
+      console.warn(`Alt with ID ${lassoPayload.altId} not found`)
     }
   }
 
-  function setCurrentLassoInfo(lassoPayload) {
-    //currentLassoInfo.value = lassoPayload
-    const alt = findAlt(lassoPayload.altId)
-    alt.lassoPayload = lassoPayload
-  }
-
+  /**
+   * Apply color pen effect and generate new image
+   */
   async function applyColorPen(colorPenPayload) {
     currentColorPenInfo.value = colorPenPayload
-    let imgUrl
+    let imgUrl = null
+    
     try {
       const output = await generationStore.guessPrompt({
         original_image: colorPenPayload.original_image,
         add_color_image: colorPenPayload.add_color_image,
         add_edge_image: colorPenPayload.add_edge_image,
       })
+      
       currentColorPenInfo.value.prompt = output
       imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
-      addAltImgPayload.value = { url: imgUrl, altId: colorPenPayload.altId }
-    } catch (e) {
-      console.error('Image generation failed:', e)
-      imgUrl = null
+      addAltImgPayload.value = { 
+        url: imgUrl, 
+        altId: colorPenPayload.altId 
+      }
+    } catch (error) {
+      console.error('Image generation failed:', error)
     }
+    
+    return imgUrl
   }
 
+  // ===== PARENT MANAGEMENT =====
+
+  /**
+   * Update parent relationships and visibility for selected alts
+   */
   function updateParents(selectedAltIdArr, branchId) {
-    // update the selected alts in the branch, create new edges from the latest parent to the selected alts
-    // Hide the alts that are not selected
-    let newParents = []
     const branch = nodeBranchList.value.find((b) => b.id === branchId)
-    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
-    const allAltsInSteps = branch.steps.flatMap((s) => s)
-    for (let alts of allAlts) {
-      if (!allAltsInSteps.includes(alts.id)) {
-        // if the alt are not previously selected (not in steps) Hide the alts, and remove edges
-        alts.visible = false
-        alts.visibleEdges = []
+    if (!branch) {
+      console.warn(`Branch with ID ${branchId} not found`)
+      return
+    }
+
+    const allAlts = nodeBranchList.value.flatMap((b) => 
+      b.nodes.flatMap((n) => n.alts)
+    )
+    const allAltsInSteps = branch.steps.flatMap((step) => step)
+    
+    // Hide alts that are not previously selected (not in steps)
+    for (const alt of allAlts) {
+      if (!allAltsInSteps.includes(alt.id)) {
+        alt.visible = false
+        alt.visibleEdges = []
       }
     }
-    branch.steps.push(branch.parents)
-    // Update steps with parents,
-    // do this after clearing edges of parents so the edges from parents could be removed
-    for (let altId of selectedAltIdArr) {
-      let child = altId
-      const childAlt = allAlts.find((a) => a.id === child)
-      let parent = childAlt.prevAltId
-      childAlt.visible = true // show the selected alt
-      while (!branch.parents.includes(parent) && parent !== null) {
-        // Find the closest alt in branch.parents
-        // If parent of current alt is not in branch.parents, move to previous
-        child = parent
-        const childAlt = allAlts.find((a) => a.id === child)
-        parent = childAlt.prevAltId
+    
+    // Update steps with current parents
+    branch.steps.push([...branch.parents])
+    
+    const newParents = []
+    
+    // Process each selected alt
+    for (const altId of selectedAltIdArr) {
+      const childAlt = allAlts.find((a) => a.id === altId)
+      if (!childAlt) continue
+      
+      // Make selected alt visible
+      childAlt.visible = true
+      
+      // Find the closest parent in branch.parents
+      let currentChild = altId
+      let currentParent = childAlt.prevAltId
+      
+      while (currentParent && !branch.parents.includes(currentParent)) {
+        const currentChildAlt = allAlts.find((a) => a.id === currentChild)
+        currentChild = currentParent
+        currentParent = currentChildAlt?.prevAltId || null
       }
-      if (parent !== null) {
-        // Push the new created edges to parent
-        const parentAlt = allAlts.find((a) => a.id === parent)
-        parentAlt.visible = true // show the alt
-        parentAlt.visibleEdges.push({ fromAltId: parent, toAltId: altId })
+      
+      // Create edge from parent to selected alt
+      if (currentParent) {
+        const parentAlt = allAlts.find((a) => a.id === currentParent)
+        if (parentAlt) {
+          parentAlt.visible = true
+          parentAlt.visibleEdges.push({ 
+            fromAltId: currentParent, 
+            toAltId: altId 
+          })
+        }
       }
+      
       newParents.push(altId)
     }
-    branch.parents = structuredClone(newParents)
+    
+    branch.parents = newParents
   }
 
-  async function addAlt(
-    altObj,
-    nodeBranchId,
-    nodeId,
-    index,
-    posX = initialNodeX,
-    posY = initialNodeY,
-    prevAltId = null,
-    adjObjectText = '',
-    objectText = '',
-    propsAltered = '',
-  ) {
-    // default if nothing gets generated
-    let imgUrl = null
+  // ===== ALT MANAGEMENT =====
 
-    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    const prevNode = branch.nodes.find((n) => n.id === nodeId)
-    const newNode = branch.nodes.find((n) => n.id === currentNodeId.value)
-
-    const newAlt = {
-      id: `alt_${Date.now() + index}`,
+  /**
+   * Create a new alt object with default properties
+   */
+  function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null) {
+    return {
+      id: generateId('alt', index),
       position: { x: posX, y: posY },
       branchId: nodeBranchId,
       nodeId: currentNodeId.value,
       edges: [],
       visibleEdges: [],
       nextAltId: [],
-      prevAltId: prevAltId || null, // if prevAltId is null, it means this is the first alt in a new node
+      prevAltId,
       z: 1000,
-      properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
+      properties: [altObj],
       visible: true,
     }
+  }
 
+  /**
+   * Generate a prompt for alt generation
+   */
+  function generateAltPrompt(propsAltered, adjObjectText, objectText, descriptors) {
+    return `Change the ${propsAltered} of the ${adjObjectText} ${objectText} into ${descriptors.join(' and ')} while other visual properties remain the same.`
+  }
+
+  /**
+   * Add a new alt to a node with optional image generation
+   */
+  async function addAlt(
+    altObj,
+    nodeBranchId,
+    nodeId,
+    index,
+    posX = INITIAL_NODE_X,
+    posY = INITIAL_NODE_Y,
+    prevAltId = null,
+    adjObjectText = '',
+    objectText = '',
+    propsAltered = '',
+  ) {
+    let imgUrl = null
+
+    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
+    const prevNode = branch.nodes.find((n) => n.id === nodeId)
+    const newNode = branch.nodes.find((n) => n.id === currentNodeId.value)
+
+    if (!branch || !prevNode || !newNode) {
+      console.warn('Required branch or node not found')
+      return null
+    }
+
+    const newAlt = createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId)
+
+    // Handle alt with previous connection
     if (prevAltId) {
       newNode.alts.push(newAlt)
-      //meaning the alt is in an alt nodes branch rather than starting from scratch
-      const prevAlt = prevNode.alts.find((n) => n.id === prevAltId)
+      const prevAlt = prevNode.alts.find((alt) => alt.id === prevAltId)
 
       if (prevAlt) {
-        prevAlt.edges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
-        prevAlt.visibleEdges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
-        prevAlt.nextAltId.push(newAlt.id) // link to the new alt
+        // Create bidirectional links
+        const edge = { fromAltId: prevAltId, toAltId: newAlt.id }
+        prevAlt.edges.push(edge)
+        prevAlt.visibleEdges.push(edge)
+        prevAlt.nextAltId.push(newAlt.id)
       }
-      try {
-        const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
-        const prompt =
-          'Change the ' +
-          propsAltered +
-          ' of the ' +
-          adjObjectText +
-          ' ' +
-          objectText +
-          ' into ' +
-          descriptors.join(' and ') +
-          ' while other visual properties remain the same.'
-        console.log(prompt)
-        currentLassoInfo.value.prompt = prompt
-        // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
-        //imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
-        addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
-      } catch (e) {
-        console.error('Image generation failed:', e)
-        imgUrl = null
+
+      // Generate image if properties are specified
+      if (propsAltered && adjObjectText && objectText) {
+        try {
+          const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`)
+          const prompt = generateAltPrompt(propsAltered, adjObjectText, objectText, descriptors)
+          
+          console.log('Generated prompt:', prompt)
+          currentLassoInfo.value.prompt = prompt
+          
+          // Uncomment when ready to generate images
+          // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
+          // imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
+          
+          addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
+        } catch (error) {
+          console.error('Image generation failed:', error)
+        }
       }
     } else {
-      const isFirstAltInBranch =
+      // Handle first alt in branch
+      const isFirstAltInBranch = (
         branch.nodes.length > 0 &&
-        branch.nodes[0].id === nodeId && // is this the first node?
+        branch.nodes[0].id === nodeId &&
         prevNode.alts.length === 0
-      if (isFirstAltInBranch) branch.parents.push(newAlt.id)
-      console.log(branch.parents)
+      )
+      
+      if (isFirstAltInBranch) {
+        branch.parents.push(newAlt.id)
+      }
+      
+      console.log('Branch parents:', branch.parents)
       prevNode.alts.push(newAlt)
     }
-    currentLassoInfo.value = {}
-    return imgUrl // null if nothing generated
-  }
-  const requestCanvasData = ref({ status: false })
 
-  let resolveCanvasData
+    // Clear current lasso info
+    currentLassoInfo.value = {}
+    return imgUrl
+  }
+
+  // ===== CANVAS DATA MANAGEMENT =====
+
+  /**
+   * Create a promise to request canvas data for a specific alt
+   */
   const canvasDataPromise = (requestAltId) =>
     new Promise((resolve) => {
       resolveCanvasData = resolve
@@ -229,11 +369,44 @@ export const useNode = defineStore('nodes', () => {
       requestCanvasData.value.altId = requestAltId
     })
 
+  /**
+   * Receive and resolve canvas data
+   */
   function receiveCanvasData(data) {
     resolveCanvasData?.(data)
     requestCanvasData.value.status = false
   }
 
+  // ===== MULTIPLE ALT MANAGEMENT =====
+
+  /**
+   * Calculate layout for multiple alts
+   */
+  function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts) {
+    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1)
+    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1)
+    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING
+
+    return { maxY, minY, x }
+  }
+
+  /**
+   * Adjust positions if nodes would go above y=0
+   */
+  function adjustPositionsForBounds(branch, minY) {
+    if (minY < 0) {
+      offsetY.value = -minY
+      branch.nodes.forEach((node) => 
+        node.alts.forEach((alt) => alt.position.y += offsetY.value)
+      )
+    } else {
+      offsetY.value = 0
+    }
+  }
+
+  /**
+   * Add multiple alts to a node with automatic layout
+   */
   async function addMultAlt(
     altObjs,
     nodeBranchId,
@@ -242,61 +415,61 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
+    // Wait for canvas data
     currentLassoInfo.value = await canvasDataPromise(currentAltId)
-    // Guard: only proceed for the current lasso alt
+    
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     const prevNode = branch.nodes.find((n) => n.id === nodeId)
-    const num = altObjs.length
-    const maxY = currentNodeY + (nodeH / 2) * (num - 1)
-    const minY = currentNodeY - (nodeH / 2) * (num - 1)
-
-    const x = currentNodeX + nodeW + adjacent
-    // Shift everything down if new nodes would go above 0
-    if (minY < 0) {
-      offsetY.value = -minY
-      branch.nodes.forEach((n) => n.alts.forEach((a) => (a.position.y += offsetY.value)))
-    } else {
-      offsetY.value = 0
+    
+    if (!branch || !prevNode) {
+      console.warn('Required branch or node not found')
+      return []
     }
-    if ('nextNodeId' in prevNode) {
-      // create alts on existing node
-    } else {
-      //create a new node
+
+    const numAlts = altObjs.length
+    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts)
+
+    // Adjust positions if needed
+    adjustPositionsForBounds(branch, minY)
+
+    // Create or use existing next node
+    if (!('nextNodeId' in prevNode)) {
       addNode(nodeBranchId, x, (maxY + minY) / 2 + offsetY.value)
     }
     prevNode.nextNodeId = currentNodeId.value
 
+    // Update boundaries
     nodeYT.value = minY + offsetY.value
-    nodeYB.value = Math.max(maxY + nodeH, nodeYB.value) + offsetY.value
+    nodeYB.value = Math.max(maxY + NODE_HEIGHT, nodeYB.value) + offsetY.value
+    nodeXR.value = Math.max(nodeXR.value, x + NODE_WIDTH)
 
-    nodeXR.value = Math.max(nodeXR.value, x + nodeW)
-
-    const urls = [] // collect generated URLs
+    // Prepare properties string for object detection
     const propsString = altObjs
-      .map((o) => o.propName) // → ["color","texture"]
-      .filter((v, i, arr) => arr.indexOf(v) === i) // optional: remove duplicates
-      .join(', ') // → "color, texture"
-    //detect what exactly the object selection is before generating alts
+      .map((obj) => obj.propName)
+      .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
+      .join(', ')
+
+    // Object detection (currently disabled)
     let adjObjectText = ''
     let objectText = ''
     try {
+      // Uncomment when object detection is ready
       // const result = await generationStore.whatIsObject(
       //   currentLassoInfo.value.lassoBoundUrl,
       //   propsString,
       // )
-      const result = ''
-      adjObjectText = result.adjObjectText
-      objectText = result.objectText
-      ////TODO: Consider a cleaner state update mechanism than direct deletion
-      delete currentLassoInfo.value.lassoBoundUrl
-    } catch (e) {
-      console.error('Primary object detection failed:', e)
-      return
+      // adjObjectText = result.adjObjectText
+      // objectText = result.objectText
+      // delete currentLassoInfo.value.lassoBoundUrl
+    } catch (error) {
+      console.error('Object detection failed:', error)
+      return []
     }
 
-    for (let i = 0; i < num; i++) {
-      // SERIAL loop, await each addAlt
-      const y = maxY - nodeH * i + offsetY.value
+    // Generate alts sequentially
+    const urls = []
+    for (let i = 0; i < numAlts; i++) {
+      const y = maxY - NODE_HEIGHT * i + offsetY.value
       const url = await addAlt(
         altObjs[i],
         nodeBranchId,
@@ -309,40 +482,53 @@ export const useNode = defineStore('nodes', () => {
         objectText,
         propsString,
       )
-
-      urls.push(url) // keep if you need them
+      urls.push(url)
     }
-    return urls // or omit if not needed
+
+    return urls
   }
 
-  function findAlt(altId) {
-    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
-    return allAlts.find((n) => n.id === altId)
-  }
-
+  // ===== EXPORTED VALUES AND FUNCTIONS =====
   return {
+    // Constants
     nodeXR,
     nodeYB,
     nodeYT,
-    nodeW,
-    nodeH,
-    canvasW,
+    nodeW: NODE_WIDTH,
+    nodeH: NODE_HEIGHT,
+    canvasW: CANVAS_WIDTH,
+    
+    // State
     layerPayload,
     nodeBranchList,
     currentNodeId,
     currentBranchId,
     addAltImgPayload,
+    requestCanvasData,
+    
+    // Layout functions
     setNodeXR,
     setNodeYB,
+    
+    // Branch management
     addNodeBranch,
+    
+    // Node management
     addNode,
+    
+    // Alt management
     addAlt,
     addMultAlt,
+    
+    // Lasso and color pen
     setCurrentLassoInfo,
     applyColorPen,
-    requestCanvasData,
+    
+    // Canvas data
     canvasDataPromise,
     receiveCanvasData,
+    
+    // Parent management
     updateParents,
   }
 })
