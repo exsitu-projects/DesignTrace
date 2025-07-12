@@ -186,6 +186,9 @@ def edit_image():
     prompt = json_data.get('prompt', '')
     original_image = json_data.get('original_image')  #  base64
     total_mask = json_data.get('total_mask')  #  base64
+    print(prompt)
+    print(original_image)
+    print(total_mask)
     try:
         original_image_path = "static/assets/original_image.png"
         if original_image.startswith("data:image"):

@@ -27,7 +27,7 @@
       </defs>
 
       <path
-        v-for="edge in allEdges"
+        v-for="edge in allVisibleEdges"
         :key="edge.fromAltId + '-' + edge.toAltId"
         :d="getBezierPath(edge)"
         stroke="#666"
@@ -46,6 +46,7 @@
         :w="'auto'"
         :h="'auto'"
         :z="alt.z"
+        @click="handleClick(alt.id, alt.branchId)"
         :requestForLasso="requestForLasso"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
@@ -75,7 +76,7 @@
           <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
         </button>
       </div>
-
+      <button @click="confirmNodes" class="btn btn-sm btn-outline-dark">confirm selection</button>
       <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
         <InfoPalette />
       </div>
@@ -95,21 +96,20 @@ import InfoPalette from '@/components/InfoPalette.vue'
 
 /* Pinia stores */
 import { useNode } from '@/stores/nodeStore.js'
-import { useLayout } from '@/stores/layoutStore.js'
 import { useObject } from '@/stores/objectStore.js'
 /* --- store instances --- */
 
-const layoutStore = useLayout()
 const nodeStore = useNode()
 const objectStore = useObject()
+const selectedBranchId = ref('')
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
   nodeStore.nodeBranchList.flatMap((b) => b.nodes.flatMap((n) => n.alts)),
 )
-const allEdges = computed(() =>
+const allVisibleEdges = computed(() =>
   allAlts.value.flatMap((alt) =>
-    (alt.edges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
+    (alt.visibleEdges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
   ),
 )
 const requestForLasso = ref(false)
@@ -117,8 +117,39 @@ const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
-
+const selectedIndices = ref([])
+const lastSelectedIndex = ref(null)
+const ctrlPressed = ref(false)
 /* example async — not used right now */
+
+function handleClick(altId, branchId) {
+  if (ctrlPressed.value) {
+    // Toggle selection
+    const idx = selectedIndices.value.indexOf(altId)
+    if (idx > -1) {
+      selectedIndices.value.splice(idx, 1)
+    } else {
+      selectedIndices.value.push(altId)
+    }
+  } else {
+    // Single selection
+    selectedIndices.value = [altId]
+  }
+  selectedBranchId.value = branchId
+  lastSelectedIndex.value = altId
+}
+
+function confirmNodes() {
+  console.log(selectedIndices.value)
+  nodeStore.updateParents(selectedIndices.value, selectedBranchId.value)
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Control') ctrlPressed.value = true
+}
+function handleKeyUp(e) {
+  if (e.key === 'Control') ctrlPressed.value = false
+}
 
 function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
@@ -210,6 +241,10 @@ async function fetchModels() {
     console.error('Error fetching models:', err)
   }
 }
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+})
 </script>
 
 <style>

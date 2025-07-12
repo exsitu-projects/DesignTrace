@@ -5,6 +5,7 @@
       @dblclick="clickOnNodeTap()"
       style="background: #ededed"
     >
+      {{ alt.id }}{{ alt.visible }}
       <EditableLabel v-model="nodeName" />
       <button
         v-show="changeDetected"

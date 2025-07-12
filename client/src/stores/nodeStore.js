@@ -27,6 +27,7 @@ export const useNode = defineStore('nodes', () => {
 
 */
   const nodeBranchList = ref([])
+
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
@@ -49,6 +50,8 @@ export const useNode = defineStore('nodes', () => {
     const newBranch = {
       id: `branch_${Date.now()}`,
       nodes: [],
+      parents: [],
+      steps: [],
     }
     currentBranchId.value = newBranch.id
     nodeBranchList.value.push(newBranch)
@@ -100,6 +103,46 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
+  function updateParents(selectedAltIdArr, branchId) {
+    // update the selected alts in the branch, create new edges from the latest parent to the selected alts
+    // Hide the alts that are not selected
+    let newParents = []
+    const branch = nodeBranchList.value.find((b) => b.id === branchId)
+    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
+    const allAltsInSteps = branch.steps.flatMap((s) => s)
+    for (let alts of allAlts) {
+      if (!allAltsInSteps.includes(alts.id)) {
+        // if the alt are not previously selected (not in steps) Hide the alts, and remove edges
+        alts.visible = false
+        alts.visibleEdges = []
+      }
+    }
+    branch.steps.push(branch.parents)
+    // Update steps with parents,
+    // do this after clearing edges of parents so the edges from parents could be removed
+    for (let altId of selectedAltIdArr) {
+      let child = altId
+      const childAlt = allAlts.find((a) => a.id === child)
+      let parent = childAlt.prevAltId
+      childAlt.visible = true // show the selected alt
+      while (!branch.parents.includes(parent) && parent !== null) {
+        // Find the closest alt in branch.parents
+        // If parent of current alt is not in branch.parents, move to previous
+        child = parent
+        const childAlt = allAlts.find((a) => a.id === child)
+        parent = childAlt.prevAltId
+      }
+      if (parent !== null) {
+        // Push the new created edges to parent
+        const parentAlt = allAlts.find((a) => a.id === parent)
+        parentAlt.visible = true // show the alt
+        parentAlt.visibleEdges.push({ fromAltId: parent, toAltId: altId })
+      }
+      newParents.push(altId)
+    }
+    branch.parents = structuredClone(newParents)
+  }
+
   async function addAlt(
     altObj,
     nodeBranchId,
@@ -118,22 +161,30 @@ export const useNode = defineStore('nodes', () => {
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     const prevNode = branch.nodes.find((n) => n.id === nodeId)
     const newNode = branch.nodes.find((n) => n.id === currentNodeId.value)
+
     const newAlt = {
       id: `alt_${Date.now() + index}`,
       position: { x: posX, y: posY },
       branchId: nodeBranchId,
       nodeId: currentNodeId.value,
       edges: [],
+      visibleEdges: [],
+      nextAltId: [],
+      prevAltId: prevAltId || null, // if prevAltId is null, it means this is the first alt in a new node
       z: 1000,
       properties: [altObj], // e.g. [{ tag: 'Red', propName: 'color' }]
+      visible: true,
     }
 
     if (prevAltId) {
       newNode.alts.push(newAlt)
       //meaning the alt is in an alt nodes branch rather than starting from scratch
       const prevAlt = prevNode.alts.find((n) => n.id === prevAltId)
+
       if (prevAlt) {
         prevAlt.edges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
+        prevAlt.visibleEdges.push({ fromAltId: prevAltId, toAltId: newAlt.id })
+        prevAlt.nextAltId.push(newAlt.id) // link to the new alt
       }
       try {
         const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // ["Red color", "Velvet fabric", ...]
@@ -150,13 +201,19 @@ export const useNode = defineStore('nodes', () => {
         console.log(prompt)
         currentLassoInfo.value.prompt = prompt
         // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
-        imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
+        //imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
         addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
       } catch (e) {
         console.error('Image generation failed:', e)
         imgUrl = null
       }
     } else {
+      const isFirstAltInBranch =
+        branch.nodes.length > 0 &&
+        branch.nodes[0].id === nodeId && // is this the first node?
+        prevNode.alts.length === 0
+      if (isFirstAltInBranch) branch.parents.push(newAlt.id)
+      console.log(branch.parents)
       prevNode.alts.push(newAlt)
     }
     currentLassoInfo.value = {}
@@ -223,10 +280,11 @@ export const useNode = defineStore('nodes', () => {
     let adjObjectText = ''
     let objectText = ''
     try {
-      const result = await generationStore.whatIsObject(
-        currentLassoInfo.value.lassoBoundUrl,
-        propsString,
-      )
+      // const result = await generationStore.whatIsObject(
+      //   currentLassoInfo.value.lassoBoundUrl,
+      //   propsString,
+      // )
+      const result = ''
       adjObjectText = result.adjObjectText
       objectText = result.objectText
       ////TODO: Consider a cleaner state update mechanism than direct deletion
@@ -285,5 +343,6 @@ export const useNode = defineStore('nodes', () => {
     requestCanvasData,
     canvasDataPromise,
     receiveCanvasData,
+    updateParents,
   }
 })
