@@ -3,7 +3,14 @@
     <!-- wrapper provides the relative positioning context -->
 
     <FreeCanvas />
-
+    <button
+      v-show="nodesSelected"
+      @click="confirmNodes"
+      class="btn btn-sm btn-outline-success m-1 mx-auto"
+      style="z-index: 5000; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
+    >
+      <Check color="green" :size="15" />&nbsp;Confirm Node Selection
+    </button>
     <!-- nodes & alts overlay -->
     <svg
       class="arrows-layer"
@@ -39,6 +46,7 @@
     <transition-group name="fade" tag="div" class="nodes-layer">
       <VueDraggableResizable
         v-for="alt in allAlts"
+        v-show="alt.visible"
         :id="'drag_' + alt.id"
         :key="alt.id"
         :x="alt.position.x"
@@ -47,13 +55,13 @@
         :h="'auto'"
         :z="alt.z"
         @click="handleClick(alt.id, alt.branchId)"
+        :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
         :requestForLasso="requestForLasso"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
         "
         :draggable="true"
         :drag-handle="'.nodeHandle'"
-        class="design-space-container"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
         <NewNode :alt="alt" :imgPayload="alt.id === dropAltId ? imgDOMPayload : null" />
@@ -76,7 +84,7 @@
           <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
         </button>
       </div>
-      <button @click="confirmNodes" class="btn btn-sm btn-outline-dark">confirm selection</button>
+
       <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
         <InfoPalette />
       </div>
@@ -97,6 +105,7 @@ import InfoPalette from '@/components/InfoPalette.vue'
 /* Pinia stores */
 import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
+import { Check } from 'lucide-vue-next'
 /* --- store instances --- */
 
 const nodeStore = useNode()
@@ -121,6 +130,11 @@ const selectedIndices = ref([])
 const lastSelectedIndex = ref(null)
 const ctrlPressed = ref(false)
 /* example async — not used right now */
+function confirmNodes() {
+  console.log(selectedIndices.value)
+  nodeStore.updateParents(selectedIndices.value, selectedBranchId.value)
+  selectedIndices.value = []
+}
 
 function handleClick(altId, branchId) {
   if (ctrlPressed.value) {
@@ -133,16 +147,23 @@ function handleClick(altId, branchId) {
     }
   } else {
     // Single selection
-    selectedIndices.value = [altId]
+    const idx = selectedIndices.value.indexOf(altId)
+    if (idx > -1) {
+      selectedIndices.value = []
+    } else {
+      selectedIndices.value = [altId]
+    }
   }
   selectedBranchId.value = branchId
   lastSelectedIndex.value = altId
+  console.log('selected indices', selectedIndices.value)
 }
 
-function confirmNodes() {
-  console.log(selectedIndices.value)
-  nodeStore.updateParents(selectedIndices.value, selectedBranchId.value)
+function isSelected(altId) {
+  return selectedIndices.value.includes(altId)
 }
+
+const nodesSelected = computed(() => selectedIndices.value.length > 0)
 
 function handleKeyDown(e) {
   if (e.key === 'Control') ctrlPressed.value = true
@@ -299,5 +320,8 @@ onMounted(() => {
 .fade-leave-from {
   opacity: 1;
   transform: scale(1);
+}
+.alt-item.selected {
+  border: 2px solid #42b983; /* Green border */
 }
 </style>

@@ -73,7 +73,7 @@ import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { ImageUp, Lasso, SprayCan } from 'lucide-vue-next'
+import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import ColorPicker from '@/components/colorPicker.vue'
 const generationStore = useGeneration()
