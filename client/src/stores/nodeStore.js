@@ -41,16 +41,16 @@ export const useNode = defineStore('nodes', () => {
 
   // Layout and positioning
   const nodeXR = ref(0) // Right boundary
-  const nodeYB = ref(0) // Bottom boundary  
+  const nodeYB = ref(0) // Bottom boundary
   const nodeYT = ref(0) // Top boundary
   const offsetY = ref(0)
-  
+
   // Payloads and temporary data
   const currentLassoInfo = ref({})
   const currentColorPenInfo = ref({})
   const addAltImgPayload = ref({})
   const requestCanvasData = ref({ status: false })
-  
+
   // Canvas data promise resolver
   let resolveCanvasData
 
@@ -58,13 +58,13 @@ export const useNode = defineStore('nodes', () => {
   const generationStore = useGeneration()
 
   // ===== HELPER FUNCTIONS =====
-  
+
   /**
    * Find an alt by its ID across all branches and nodes
    */
   function findAlt(altId) {
-    const allAlts = nodeBranchList.value.flatMap((branch) => 
-      branch.nodes.flatMap((node) => node.alts)
+    const allAlts = nodeBranchList.value.flatMap((branch) =>
+      branch.nodes.flatMap((node) => node.alts),
     )
     return allAlts.find((alt) => alt.id === altId)
   }
@@ -136,7 +136,7 @@ export const useNode = defineStore('nodes', () => {
       midXPos,
       midYPos,
     }
-    
+
     currentNodeId.value = newNode.id
     branch.nodes.push(newNode)
     return newNode
@@ -162,24 +162,24 @@ export const useNode = defineStore('nodes', () => {
   async function applyColorPen(colorPenPayload) {
     currentColorPenInfo.value = colorPenPayload
     let imgUrl = null
-    
+
     try {
       const output = await generationStore.guessPrompt({
         original_image: colorPenPayload.original_image,
         add_color_image: colorPenPayload.add_color_image,
         add_edge_image: colorPenPayload.add_edge_image,
       })
-      
+
       currentColorPenInfo.value.prompt = output
       imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
-      addAltImgPayload.value = { 
-        url: imgUrl, 
-        altId: colorPenPayload.altId 
+      addAltImgPayload.value = {
+        url: imgUrl,
+        altId: colorPenPayload.altId,
       }
     } catch (error) {
       console.error('Image generation failed:', error)
     }
-    
+
     return imgUrl
   }
 
@@ -195,11 +195,9 @@ export const useNode = defineStore('nodes', () => {
       return
     }
 
-    const allAlts = nodeBranchList.value.flatMap((b) => 
-      b.nodes.flatMap((n) => n.alts)
-    )
+    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
     const allAltsInSteps = branch.steps.flatMap((step) => step)
-    
+
     // Hide alts that are not previously selected (not in steps)
     for (const alt of allAlts) {
       if (!allAltsInSteps.includes(alt.id)) {
@@ -207,45 +205,45 @@ export const useNode = defineStore('nodes', () => {
         alt.visibleEdges = []
       }
     }
-    
+
     // Update steps with current parents
     branch.steps.push([...branch.parents])
-    
+
     const newParents = []
-    
+
     // Process each selected alt
     for (const altId of selectedAltIdArr) {
       const childAlt = allAlts.find((a) => a.id === altId)
       if (!childAlt) continue
-      
+
       // Make selected alt visible
       childAlt.visible = true
-      
+
       // Find the closest parent in branch.parents
       let currentChild = altId
       let currentParent = childAlt.prevAltId
-      
+
       while (currentParent && !branch.parents.includes(currentParent)) {
         const currentChildAlt = allAlts.find((a) => a.id === currentChild)
         currentChild = currentParent
         currentParent = currentChildAlt?.prevAltId || null
       }
-      
+
       // Create edge from parent to selected alt
       if (currentParent) {
         const parentAlt = allAlts.find((a) => a.id === currentParent)
         if (parentAlt) {
           parentAlt.visible = true
-          parentAlt.visibleEdges.push({ 
-            fromAltId: currentParent, 
-            toAltId: altId 
+          parentAlt.visibleEdges.push({
+            fromAltId: currentParent,
+            toAltId: altId,
           })
         }
       }
-      
+
       newParents.push(altId)
     }
-    
+
     branch.parents = newParents
   }
 
@@ -254,12 +252,12 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Create a new alt object with default properties
    */
-  function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null) {
+  function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null, nodeId = null) {
     return {
       id: generateId('alt', index),
       position: { x: posX, y: posY },
       branchId: nodeBranchId,
-      nodeId: currentNodeId.value,
+      nodeId: nodeId,
       edges: [],
       visibleEdges: [],
       nextAltId: [],
@@ -285,6 +283,7 @@ export const useNode = defineStore('nodes', () => {
     nodeBranchId,
     nodeId,
     index,
+    nextNodeId = null,
     posX = INITIAL_NODE_X,
     posY = INITIAL_NODE_Y,
     prevAltId = null,
@@ -296,14 +295,14 @@ export const useNode = defineStore('nodes', () => {
 
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     const prevNode = branch.nodes.find((n) => n.id === nodeId)
-    const newNode = branch.nodes.find((n) => n.id === currentNodeId.value)
+    const newNode = branch.nodes.find((n) => n.id === nextNodeId)
 
-    if (!branch || !prevNode || !newNode) {
-      console.warn('Required branch or node not found')
-      return null
-    }
+    // if (!branch || !prevNode || !newNode) {
+    //   console.warn('Required branch or node not found')
+    //   return null
+    // }
 
-    const newAlt = createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId)
+    const newAlt = createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId, nextNodeId)
 
     // Handle alt with previous connection
     if (prevAltId) {
@@ -323,14 +322,14 @@ export const useNode = defineStore('nodes', () => {
         try {
           const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`)
           const prompt = generateAltPrompt(propsAltered, adjObjectText, objectText, descriptors)
-          
+
           console.log('Generated prompt:', prompt)
           currentLassoInfo.value.prompt = prompt
-          
+
           // Uncomment when ready to generate images
           // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
           // imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
-          
+
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
         } catch (error) {
           console.error('Image generation failed:', error)
@@ -338,16 +337,13 @@ export const useNode = defineStore('nodes', () => {
       }
     } else {
       // Handle first alt in branch
-      const isFirstAltInBranch = (
-        branch.nodes.length > 0 &&
-        branch.nodes[0].id === nodeId &&
-        prevNode.alts.length === 0
-      )
-      
+      const isFirstAltInBranch =
+        branch.nodes.length > 0 && branch.nodes[0].id === nodeId && prevNode.alts.length === 0
+
       if (isFirstAltInBranch) {
         branch.parents.push(newAlt.id)
       }
-      
+
       console.log('Branch parents:', branch.parents)
       prevNode.alts.push(newAlt)
     }
@@ -396,14 +392,19 @@ export const useNode = defineStore('nodes', () => {
   function adjustPositionsForBounds(branch, minY) {
     if (minY < 0) {
       offsetY.value = -minY
-      branch.nodes.forEach((node) => 
-        node.alts.forEach((alt) => alt.position.y += offsetY.value)
-      )
+      branch.nodes.forEach((node) => node.alts.forEach((alt) => (alt.position.y += offsetY.value)))
     } else {
       offsetY.value = 0
     }
   }
-
+  function updateAltPos(maxY, minY, x, node) {
+    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
+    for (let i = 0; i < visibleNodeList.length; i++) {
+      const alt = visibleNodeList[i]
+      alt.position.x = x
+      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
+    }
+  }
   /**
    * Add multiple alts to a node with automatic layout
    */
@@ -417,26 +418,33 @@ export const useNode = defineStore('nodes', () => {
   ) {
     // Wait for canvas data
     currentLassoInfo.value = await canvasDataPromise(currentAltId)
-    
+
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     const prevNode = branch.nodes.find((n) => n.id === nodeId)
-    
+
     if (!branch || !prevNode) {
       console.warn('Required branch or node not found')
       return []
     }
+    let updatedAltLength
+    let newNode
+    if (!('nextNodeId' in prevNode)) {
+      updatedAltLength = altObjs.length
+    } else {
+      newNode = branch.nodes.find((n) => n.id === prevNode.nextNodeId)
+      updatedAltLength = newNode.alts.filter((alt) => alt.visible !== false).length + altObjs.length
+    }
 
-    const numAlts = altObjs.length
-    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts)
+    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, updatedAltLength)
 
     // Adjust positions if needed
     adjustPositionsForBounds(branch, minY)
 
     // Create or use existing next node
     if (!('nextNodeId' in prevNode)) {
-      addNode(nodeBranchId, x, (maxY + minY) / 2 + offsetY.value)
+      newNode = addNode(nodeBranchId, x, (maxY + minY) / 2 + offsetY.value)
+      prevNode.nextNodeId = currentNodeId.value
     }
-    prevNode.nextNodeId = currentNodeId.value
 
     // Update boundaries
     nodeYT.value = minY + offsetY.value
@@ -468,13 +476,14 @@ export const useNode = defineStore('nodes', () => {
 
     // Generate alts sequentially
     const urls = []
-    for (let i = 0; i < numAlts; i++) {
+    for (let i = 0; i < altObjs.length; i++) {
       const y = maxY - NODE_HEIGHT * i + offsetY.value
       const url = await addAlt(
         altObjs[i],
         nodeBranchId,
         nodeId,
         i,
+        prevNode.nextNodeId,
         x,
         y,
         currentAltId,
@@ -484,6 +493,8 @@ export const useNode = defineStore('nodes', () => {
       )
       urls.push(url)
     }
+
+    updateAltPos(maxY, minY, x, newNode)
 
     return urls
   }
@@ -497,7 +508,7 @@ export const useNode = defineStore('nodes', () => {
     nodeW: NODE_WIDTH,
     nodeH: NODE_HEIGHT,
     canvasW: CANVAS_WIDTH,
-    
+
     // State
     layerPayload,
     nodeBranchList,
@@ -505,29 +516,29 @@ export const useNode = defineStore('nodes', () => {
     currentBranchId,
     addAltImgPayload,
     requestCanvasData,
-    
+
     // Layout functions
     setNodeXR,
     setNodeYB,
-    
+
     // Branch management
     addNodeBranch,
-    
+
     // Node management
     addNode,
-    
+
     // Alt management
     addAlt,
     addMultAlt,
-    
+
     // Lasso and color pen
     setCurrentLassoInfo,
     applyColorPen,
-    
+
     // Canvas data
     canvasDataPromise,
     receiveCanvasData,
-    
+
     // Parent management
     updateParents,
   }
