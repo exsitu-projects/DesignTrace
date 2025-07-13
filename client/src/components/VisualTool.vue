@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Lasso, ArrowBigUpDash, ArrowBigDownDash, SprayCan } from 'lucide-vue-next'
+import { Lasso, ArrowBigUpDash, ArrowBigDownDash, SprayCan, Lock, LockOpen } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import * as fabric from 'fabric'
 const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso'])
@@ -14,6 +14,10 @@ function switchLasso() {
 function switchColorPen() {
   allUtilStore.switchColorPen()
 }
+
+function switchStepLock() {
+  allUtilStore.switchStepLock()
+}
 </script>
 
 <template>
@@ -25,6 +29,7 @@ function switchColorPen() {
     >
       <Lasso color="black" :size="15" />
     </button>
+
     <button
       :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"
       data-bs-toggle="collapse"
@@ -49,6 +54,15 @@ function switchColorPen() {
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
+  <button
+    type="button"
+    @click="switchStepLock()"
+    :class="['btn btn-sm btn-light', { active: allUtilStore.isStepLock }]"
+  >
+    <Lock v-show="allUtilStore.isStepLock" color="black" :size="15" />
+    <LockOpen v-show="!allUtilStore.isStepLock" color="black" :size="15" />
+    Step Lock
+  </button>
 </template>
 
 <style scoped></style>

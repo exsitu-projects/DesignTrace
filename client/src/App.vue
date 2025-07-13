@@ -9,7 +9,7 @@
       class="btn btn-sm btn-outline-success m-1 mx-auto"
       style="z-index: 5000; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
     >
-      <Check color="green" :size="15" />&nbsp;Confirm Node Selection
+      <Check color="green" :size="15" />&nbsp;Proceed to Next Step
     </button>
     <!-- nodes & alts overlay -->
     <svg
