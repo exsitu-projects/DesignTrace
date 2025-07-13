@@ -5,17 +5,24 @@
       v-for="(row, rowIdx) in rows"
       :key="rowIdx"
       class="d-flex flex-column flex-md-row align-items-start mb-2"
+      @mouseenter="hoveredRowIndex = rowIdx"
+      @mouseleave="hoveredRowIndex = null"
     >
       <!-- Editable property name tag (not draggable) -->
 
       <EditableLabel
         v-model="row.name"
         style="min-width: 80px"
-        class="my-auto"
+        class="my-auto bg-transparent"
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
-      />
+      ></EditableLabel
+      ><span
+        v-show="hoveredRowIndex === rowIdx && objectStore.obj.type === 'image'"
+        class="my-auto badge rounded-pill text-bg-success"
+        >+</span
+      >
 
       <!-- Draggable area for tags -->
       <draggable
@@ -74,12 +81,12 @@ import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-
+import { ref } from 'vue'
 const infoStore = useInfoStore()
 const objectStore = useObject()
 const generationStore = useGeneration()
 const { rows } = storeToRefs(infoStore)
-
+const hoveredRowIndex = ref(null)
 /* Thin wrappers that call store actions */
 const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)

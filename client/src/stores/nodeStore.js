@@ -331,7 +331,7 @@ export const useNode = defineStore('nodes', () => {
             const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
             console.log('Generated prompt:', prompt)
             selectionPayload.value.prompt = prompt
-            imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
+            //imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
           } else if (selectionPayload.value.type === 'lasso') {
             const guess_prompt = await generationStore.guessPrompt({
               original_image: selectionPayload.value.original_image,
@@ -343,7 +343,7 @@ export const useNode = defineStore('nodes', () => {
 
             console.log('Generated prompt:', prompt)
             selectionPayload.value.prompt = prompt
-            imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+            //imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
           }
 
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
@@ -476,12 +476,12 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     try {
       // Uncomment when object detection is ready
-      const result = await generationStore.whatIsObject(
-        selectionPayload.value.lassoBoundUrl,
-        propsString,
-      )
-      adjObjectText = result.adjObjectText
-      objectText = result.objectText
+      // const result = await generationStore.whatIsObject(
+      //   selectionPayload.value.lassoBoundUrl,
+      //   propsString,
+      // )
+      // adjObjectText = result.adjObjectText
+      // objectText = result.objectText
       // delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)

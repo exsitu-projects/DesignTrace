@@ -33,7 +33,7 @@ export const useInfoStore = defineStore('infoStore', () => {
     rows.value.push({
       name: 'Property',
       color: '#6c757d',
-      tags: [{ uid: uid(), tag: 'Tag' }],
+      tags: [],
     })
   }
 
