@@ -252,6 +252,7 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Create a new alt object with default properties
    */
+
   function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null, nodeId = null) {
     return {
       id: generateId('alt', index),
@@ -263,7 +264,7 @@ export const useNode = defineStore('nodes', () => {
       nextAltId: [],
       prevAltId,
       z: 1000,
-      properties: [altObj],
+      properties: altObj,
       visible: true,
     }
   }
@@ -306,7 +307,7 @@ export const useNode = defineStore('nodes', () => {
     //   return null
     // }
 
-    const newAlt = createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId, nextNodeId)
+    const newAlt = createAlt([altObj], nodeBranchId, index, posX, posY, prevAltId, nextNodeId)
 
     // Handle alt with previous connection
     if (prevAltId) {
@@ -359,8 +360,6 @@ export const useNode = defineStore('nodes', () => {
       if (isFirstAltInBranch) {
         branch.parents.push(newAlt.id)
       }
-
-      console.log('Branch parents:', branch.parents)
       prevNode.alts.push(newAlt)
     }
 
@@ -422,6 +421,62 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Add multiple alts to a node with automatic layout
    */
+
+  async function addOnExistingAlt(
+    altObjs,
+    nodeBranchId,
+    nodeId,
+    currentNodeX,
+    currentNodeY,
+    currentAltId,
+  ) {
+    selectionPayload.value = await canvasDataPromise(currentAltId)
+    const alt = findAlt(currentAltId)
+
+    alt.properties = alt.properties.length === 1 ? [...altObjs] : [...alt.properties, ...altObjs]
+
+    const propsAltered = altObjs
+      .map((obj) => obj.propName)
+      .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
+      .join(', ')
+
+    let adjObjectText = ''
+    let objectText = ''
+    try {
+      // Uncomment when object detection is ready
+      const result = await generationStore.whatIsObject(
+        selectionPayload.value.lassoBoundUrl,
+        propsAltered,
+      )
+      adjObjectText = result.adjObjectText
+      objectText = result.objectText
+      delete selectionPayload.value.lassoBoundUrl
+    } catch (error) {
+      console.error('Object detection failed:', error)
+      return []
+    }
+    const descriptors = alt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
+    let imgUrl
+    // magic quill for lasso, openai api for full image
+    if (selectionPayload.value.type === 'full-img') {
+      const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
+      console.log('Generated prompt:', prompt)
+      selectionPayload.value.prompt = prompt
+      imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
+    } else if (selectionPayload.value.type === 'lasso') {
+      const guess_prompt = await generationStore.guessPrompt({
+        original_image: selectionPayload.value.original_image,
+        add_color_image: selectionPayload.value.add_color_image,
+        add_edge_image: selectionPayload.value.add_edge_image,
+      })
+      console.log('guess_prompt', guess_prompt)
+      const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
+      console.log('Generated prompt:', prompt)
+      selectionPayload.value.prompt = prompt
+      imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+    }
+    addAltImgPayload.value = { url: imgUrl, altId: currentAltId }
+  }
   async function addMultAlt(
     altObjs,
     nodeBranchId,
@@ -466,7 +521,7 @@ export const useNode = defineStore('nodes', () => {
     nodeXR.value = Math.max(nodeXR.value, x + NODE_WIDTH)
 
     // Prepare properties string for object detection
-    const propsString = altObjs
+    const propsAltered = altObjs
       .map((obj) => obj.propName)
       .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
       .join(', ')
@@ -478,7 +533,7 @@ export const useNode = defineStore('nodes', () => {
       // Uncomment when object detection is ready
       // const result = await generationStore.whatIsObject(
       //   selectionPayload.value.lassoBoundUrl,
-      //   propsString,
+      //   propsAltered,
       // )
       // adjObjectText = result.adjObjectText
       // objectText = result.objectText
@@ -503,7 +558,7 @@ export const useNode = defineStore('nodes', () => {
         currentAltId,
         adjObjectText,
         objectText,
-        propsString,
+        propsAltered,
       )
       urls.push(url)
     }
@@ -555,5 +610,6 @@ export const useNode = defineStore('nodes', () => {
 
     // Parent management
     updateParents,
+    addOnExistingAlt,
   }
 })

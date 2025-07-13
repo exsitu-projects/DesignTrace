@@ -19,7 +19,7 @@
         @mouseup="handleMouseUp(rowIdx, row.name)"
       ></EditableLabel
       ><span
-        v-show="hoveredRowIndex === rowIdx && objectStore.obj.type === 'image'"
+        v-show="hoveredRowIndex === rowIdx && objectStore.obj && objectStore.obj.type === 'image'"
         class="my-auto badge rounded-pill text-bg-success"
         >+</span
       >

@@ -234,7 +234,7 @@ const addBranchNodeAlt = () => {
   nodeStore.addNodeBranch()
   nodeStore.addNode(nodeStore.currentBranchId)
   nodeStore.addAlt(
-    {},
+    [],
     nodeStore.currentBranchId,
     nodeStore.currentNodeId,
     0,

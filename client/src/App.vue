@@ -106,10 +106,12 @@ import InfoPalette from '@/components/InfoPalette.vue'
 import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
 import { Check } from 'lucide-vue-next'
+import { useAllUtil } from '@/stores/allUtilStore.js'
 /* --- store instances --- */
 
 const nodeStore = useNode()
 const objectStore = useObject()
+const allUtilStore = useAllUtil()
 const selectedBranchId = ref('')
 /* --- plain state --- */
 const availableModels = ref([])
@@ -156,7 +158,6 @@ function handleClick(altId, branchId) {
   }
   selectedBranchId.value = branchId
   lastSelectedIndex.value = altId
-  console.log('selected indices', selectedIndices.value)
 }
 
 function isSelected(altId) {
@@ -187,14 +188,26 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       [{ tag: 'Red',   propName: 'color' },
       { tag: 'Green', propName: 'color' },
       { tag: 'Blue',  propName: 'color' },]}*/
-      await nodeStore.addMultAlt(
-        objectStore.obj.content, // the arr length will be used to decide how many ele
-        branchId,
-        nodeId,
-        altPosX,
-        altPosY,
-        altId,
-      )
+      if (allUtilStore.isStepLock) {
+        await nodeStore.addOnExistingAlt(
+          objectStore.obj.content,
+          branchId,
+          nodeId,
+          altPosX,
+          altPosY,
+          altId,
+        )
+      } else {
+        await nodeStore.addMultAlt(
+          objectStore.obj.content,
+          branchId,
+          nodeId,
+          altPosX,
+          altPosY,
+          altId,
+        )
+      }
+
       objectStore.obj = {}
       objectStore.dragState = 'finishedDragging'
       requestForLasso.value = false
@@ -226,6 +239,7 @@ function onDrag(x, y, alt) {
     position.x = x
     position.y = y
   }
+  nodesSelected.value = false
 }
 
 function ensureNodeInView(nodeXL, nodeYT) {
