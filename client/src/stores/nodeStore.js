@@ -46,7 +46,7 @@ export const useNode = defineStore('nodes', () => {
   const offsetY = ref(0)
 
   // Payloads and temporary data
-  const currentLassoInfo = ref({})
+  const selectionPayload = ref({})
   const currentColorPenInfo = ref({})
   const addAltImgPayload = ref({})
   const requestCanvasData = ref({ status: false })
@@ -195,7 +195,7 @@ export const useNode = defineStore('nodes', () => {
       return
     }
 
-    const allAlts = nodeBranchList.value.flatMap((b) => b.nodes.flatMap((n) => n.alts))
+    const allAlts = branch.nodes.flatMap((n) => n.alts)
     const allAltsInSteps = branch.steps.flatMap((step) => step)
 
     // Hide alts that are not previously selected (not in steps)
@@ -271,8 +271,12 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Generate a prompt for alt generation
    */
-  function generateAltPrompt(propsAltered, adjObjectText, objectText, descriptors) {
+  function openAIPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     return `Change the ${propsAltered} of the ${adjObjectText} ${objectText} into ${descriptors.join(' and ')} while other visual properties remain the same.`
+  }
+
+  function magicQPrompt(propsAltered, guessPrompt, objectText, descriptors) {
+    return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
   }
 
   /**
@@ -320,15 +324,27 @@ export const useNode = defineStore('nodes', () => {
       // Generate image if properties are specified
       if (propsAltered && adjObjectText && objectText) {
         try {
-          const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`)
-          const prompt = generateAltPrompt(propsAltered, adjObjectText, objectText, descriptors)
+          const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
 
-          console.log('Generated prompt:', prompt)
-          currentLassoInfo.value.prompt = prompt
+          // magic quill for lasso, openai api for full image
+          if (selectionPayload.value.type === 'full-img') {
+            const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
+            console.log('Generated prompt:', prompt)
+            selectionPayload.value.prompt = prompt
+            imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
+          } else if (selectionPayload.value.type === 'lasso') {
+            const guess_prompt = await generationStore.guessPrompt({
+              original_image: selectionPayload.value.original_image,
+              add_color_image: selectionPayload.value.add_color_image,
+              add_edge_image: selectionPayload.value.add_edge_image,
+            })
+            console.log('guess_prompt', guess_prompt)
+            const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
 
-          // Uncomment when ready to generate images
-          // imgUrl = await generationStore.generateMaskedImg(currentLassoInfo.value)
-          // imgUrl = await generationStore.generateOpenAIImg(currentLassoInfo.value)
+            console.log('Generated prompt:', prompt)
+            selectionPayload.value.prompt = prompt
+            imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+          }
 
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
         } catch (error) {
@@ -348,8 +364,6 @@ export const useNode = defineStore('nodes', () => {
       prevNode.alts.push(newAlt)
     }
 
-    // Clear current lasso info
-    currentLassoInfo.value = {}
     return imgUrl
   }
 
@@ -417,7 +431,7 @@ export const useNode = defineStore('nodes', () => {
     currentAltId,
   ) {
     // Wait for canvas data
-    currentLassoInfo.value = await canvasDataPromise(currentAltId)
+    selectionPayload.value = await canvasDataPromise(currentAltId)
 
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
     const prevNode = branch.nodes.find((n) => n.id === nodeId)
@@ -462,13 +476,13 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     try {
       // Uncomment when object detection is ready
-      // const result = await generationStore.whatIsObject(
-      //   currentLassoInfo.value.lassoBoundUrl,
-      //   propsString,
-      // )
-      // adjObjectText = result.adjObjectText
-      // objectText = result.objectText
-      // delete currentLassoInfo.value.lassoBoundUrl
+      const result = await generationStore.whatIsObject(
+        selectionPayload.value.lassoBoundUrl,
+        propsString,
+      )
+      adjObjectText = result.adjObjectText
+      objectText = result.objectText
+      // delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)
       return []

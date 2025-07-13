@@ -187,7 +187,6 @@ def edit_image():
     original_image = json_data.get('original_image')  #  base64
     total_mask = json_data.get('total_mask')  #  base64
     print(prompt)
-    print(original_image)
     print(total_mask)
     try:
         original_image_path = "static/assets/original_image.png"

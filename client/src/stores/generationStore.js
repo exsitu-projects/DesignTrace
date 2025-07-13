@@ -46,7 +46,7 @@ The user will provide an image.
 
 Your task is to write two short outputs, separated by a colon:
 
-A richly detailed visual description of the primary object in the image, using as many clearly visible features as possible (e.g., color, texture, material, pattern, shape, structure, surface detail). The description must use concrete, observable details only — avoid abstract or subjective terms like "elegant" or "nice." The last word of the description must be the object’s name such as 'dress' or 'armchair'.
+A richly detailed visual description of the primary object in the image, using as many clearly visible features as possible (e.g., color, texture, material, pattern, shape, structure, surface detail). The description must use concrete, observable details only — avoid abstract or subjective terms like "elegant" or "nice." The last word of the description must be the object’s name such as 'dress' or 'armchair' without any descriptors.
 
 The name of the primary object alone.
 

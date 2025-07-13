@@ -215,110 +215,113 @@ onMounted(() => {
         fabricCanvas.add(path)
 
         if (pathStr.value) {
-          const erasePath = new fabric.Path(pathStr.value, {
-            absolutePositioned: true,
-            globalCompositeOperation: 'destination-out', // <-- eraser mode
-            fill: 'black', // fill is needed even if transparent
-            strokeWidth: 0,
-            selectable: false,
-            evented: false,
-            objectCaching: false, // do NOT cache or it’ll clip edges
-          })
+          // uncomment to use openai api for inpainting (masks not working well with 4.1 api)
+          // const erasePath = new fabric.Path(pathStr.value, {
+          //   absolutePositioned: true,
+          //   globalCompositeOperation: 'destination-out', // <-- eraser mode
+          //   fill: 'black', // fill is needed even if transparent
+          //   strokeWidth: 0,
+          //   selectable: false,
+          //   evented: false,
+          //   objectCaching: false, // do NOT cache or it’ll clip edges
+          // })
+          //
+          // // Add the path to canvas (which erases underlying content)
+          // fabricCanvas.add(erasePath)
+          // fabricCanvas.remove(path)
+          // fabricCanvas.requestRenderAll()
+          // totalEdgeUrl.value = fabricCanvas.toDataURL()
+          // console.log(totalEdgeUrl.value)
+          // fabricCanvas.add(path)
+          // fabricCanvas.remove(erasePath) // gone from the display list
+          //
+          // uncomment to use magic quill for inpainting
+          const lassoMaskCan = document.createElement('canvas')
+          lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
+          lassoMaskCan.height = fabricCanvas.height
+          const lassoMaskCtx = lassoMaskCan.getContext('2d')
 
-          // Add the path to canvas (which erases underlying content)
-          fabricCanvas.add(erasePath)
-          fabricCanvas.remove(path)
-          fabricCanvas.requestRenderAll()
-          totalEdgeUrl.value = fabricCanvas.toDataURL()
-          console.log(totalEdgeUrl.value)
-          fabricCanvas.add(path)
-          fabricCanvas.remove(erasePath) // gone from the display list
-          // const lassoMaskCan = document.createElement('canvas')
-          // lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
-          // lassoMaskCan.height = fabricCanvas.height
-          // const lassoMaskCtx = lassoMaskCan.getContext('2d')
-          //
-          // lassoMaskCtx.fillStyle = 'black'
-          // lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
-          //
-          // const lasPath = new Path2D(pathStr.value)
-          // lassoMaskCtx.fillStyle = 'white'
-          // lassoMaskCtx.fill(lasPath)
-          //
-          // // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
-          // totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-          // console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
-          //
-          // const srcCanv = fabricCanvas.lowerCanvasEl // 1024 × 1024
-          // const canny = CannyJS.canny(
-          //   srcCanv,
-          //   cannyHt, // ht: canny high threshold
-          //   cannyLt, // lt: canny low threshold
-          //   1.4, // gaussian blur sigma
-          //   3, // kernel size, default 3 usually
-          //   2,
-          // )
-          //
-          // let cannyCan = document.createElement('canvas')
-          // cannyCan.width = fabricCanvas.getWidth()
-          // cannyCan.height = fabricCanvas.getHeight()
-          //
-          // const cannyCtx = cannyCan.getContext('2d')
-          // cannyCtx.imageSmoothingEnabled = false // keep edges crisp
-          // const hiRes = document.createElement('canvas')
-          // hiRes.width = srcCanv.width // 1024
-          // hiRes.height = srcCanv.height
-          // canny.drawOn(hiRes) // fills hiRes
-          //
-          // cannyCtx.drawImage(
-          //   hiRes,
-          //   0,
-          //   0,
-          //   hiRes.width,
-          //   hiRes.height, // src rect
-          //   0,
-          //   0,
-          //   cannyCan.width,
-          //   cannyCan.height, // dest rect (scaled)
-          // )
-          //
-          // const cannyURL = cannyCan.toDataURL('image/png')
-          // // console.log(cannyURL) // canny edge mask, canny edge white, other black
-          //
-          // let cannyInLassoCan = document.createElement('canvas')
-          // cannyInLassoCan.width = cannyCan.width
-          // cannyInLassoCan.height = cannyCan.height
-          // const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
-          //
-          // cannyInLassoCtx.fillStyle = 'white'
-          // const lassoPath = new Path2D(pathStr.value)
-          // cannyInLassoCtx.fill(lassoPath)
-          //
-          // cannyInLassoCtx.globalCompositeOperation = 'source-in'
-          // cannyInLassoCtx.drawImage(cannyCan, 0, 0)
-          //
-          // cannyInLassoCtx.globalCompositeOperation = 'destination-over'
-          // cannyInLassoCtx.fillStyle = 'black'
-          // cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          //
-          // // Reset composite mode for safety
-          // cannyInLassoCtx.globalCompositeOperation = 'source-over'
-          // // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
-          // posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
-          // // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
-          //
-          // lassoMaskCtx.globalCompositeOperation = 'difference'
-          // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-          // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          // lassoMaskCtx.globalCompositeOperation = 'lighter'
-          // lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
-          // lassoMaskCtx.globalCompositeOperation = 'difference'
-          // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-          // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          // negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-          // // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
-          // cannyCan = null
-          // cannyInLassoCan = null
+          lassoMaskCtx.fillStyle = 'black'
+          lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
+
+          const lasPath = new Path2D(pathStr.value)
+          lassoMaskCtx.fillStyle = 'white'
+          lassoMaskCtx.fill(lasPath)
+
+          // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
+          totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+          console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
+
+          const srcCanv = fabricCanvas.lowerCanvasEl
+          const canny = CannyJS.canny(
+            srcCanv,
+            cannyHt, // ht: canny high threshold
+            cannyLt, // lt: canny low threshold
+            1.4, // gaussian blur sigma
+            3, // kernel size, default 3 usually
+            2,
+          )
+
+          let cannyCan = document.createElement('canvas')
+          cannyCan.width = fabricCanvas.getWidth()
+          cannyCan.height = fabricCanvas.getHeight()
+
+          const cannyCtx = cannyCan.getContext('2d')
+          cannyCtx.imageSmoothingEnabled = false // keep edges crisp
+          const hiRes = document.createElement('canvas')
+          hiRes.width = srcCanv.width // 1024
+          hiRes.height = srcCanv.height
+          canny.drawOn(hiRes) // fills hiRes
+
+          cannyCtx.drawImage(
+            hiRes,
+            0,
+            0,
+            hiRes.width,
+            hiRes.height, // src rect
+            0,
+            0,
+            cannyCan.width,
+            cannyCan.height, // dest rect (scaled)
+          )
+
+          const cannyURL = cannyCan.toDataURL('image/png')
+          // console.log(cannyURL) // canny edge mask, canny edge white, other black
+
+          let cannyInLassoCan = document.createElement('canvas')
+          cannyInLassoCan.width = cannyCan.width
+          cannyInLassoCan.height = cannyCan.height
+          const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
+
+          cannyInLassoCtx.fillStyle = 'white'
+          const lassoPath = new Path2D(pathStr.value)
+          cannyInLassoCtx.fill(lassoPath)
+
+          cannyInLassoCtx.globalCompositeOperation = 'source-in'
+          cannyInLassoCtx.drawImage(cannyCan, 0, 0)
+
+          cannyInLassoCtx.globalCompositeOperation = 'destination-over'
+          cannyInLassoCtx.fillStyle = 'black'
+          cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+
+          // Reset composite mode for safety
+          cannyInLassoCtx.globalCompositeOperation = 'source-over'
+          // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
+          posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
+          // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
+
+          lassoMaskCtx.globalCompositeOperation = 'difference'
+          lassoMaskCtx.fillStyle = '#fff' // white rectangle
+          lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+          lassoMaskCtx.globalCompositeOperation = 'lighter'
+          lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
+          lassoMaskCtx.globalCompositeOperation = 'difference'
+          lassoMaskCtx.fillStyle = '#fff' // white rectangle
+          lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
+          negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
+          // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
+          cannyCan = null
+          cannyInLassoCan = null
           storeLassoInfo()
         }
       }
@@ -446,21 +449,21 @@ function clickOnNodeTap() {
 }
 
 function storeLassoInfo() {
-  lassoPayload.value = {
-    original_image: canvasUrlWithoutPath.value,
-    total_mask: totalEdgeUrl.value,
-    altId: alt.id,
-    lassoBoundUrl: lassoBoundUrl.value,
-  }
-  // const lassoPayload = {
+  // lassoPayload.value = {
   //   original_image: canvasUrlWithoutPath.value,
-  //   add_color_image: canvasUrlWithoutPath.value,
-  //   add_edge_image: posEdgeUrl.value,
-  //   remove_edge_image: negEdgeUrl.value,
   //   total_mask: totalEdgeUrl.value,
   //   altId: alt.id,
   //   lassoBoundUrl: lassoBoundUrl.value,
   // }
+  lassoPayload.value = {
+    original_image: canvasUrlWithoutPath.value,
+    add_color_image: canvasUrlWithoutPath.value,
+    add_edge_image: posEdgeUrl.value,
+    remove_edge_image: negEdgeUrl.value,
+    total_mask: totalEdgeUrl.value,
+    altId: alt.id,
+    lassoBoundUrl: lassoBoundUrl.value,
+  }
 }
 
 watch(
@@ -481,19 +484,19 @@ watch(
     if (shouldSend && nodeStore.requestCanvasData.altId === alt.id) {
       if (path !== null) {
         // if there is lasso path
+        lassoPayload.value.type = 'lasso'
         nodeStore.receiveCanvasData(lassoPayload.value)
-        console.log('transform lasso')
       } else {
         // else send the whole image
         const fabricCanvasUrl = fabricCanvas.toDataURL()
-        const wholeImgPayload = {
+        const fullImgPayload = {
           original_image: fabricCanvasUrl,
           total_mask: null,
           altId: alt.id,
           lassoBoundUrl: fabricCanvasUrl,
+          type: 'full-img',
         }
-        console.log('transform image')
-        nodeStore.receiveCanvasData(wholeImgPayload)
+        nodeStore.receiveCanvasData(fullImgPayload)
       }
     }
   },
