@@ -195,6 +195,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
         altPosY,
         altId,
       )
+      objectStore.obj = {}
       objectStore.dragState = 'finishedDragging'
       requestForLasso.value = false
     } else if (objectStore.obj.type === 'image') {

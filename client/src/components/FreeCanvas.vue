@@ -109,6 +109,7 @@ watch(
         })
         draggedObj.setCoords() // Very important for hit detection and rendering
         canvas.renderAll()
+        objectStore.obj = {}
         objectStore.dragState = 'finishedDragging'
       }
     }
