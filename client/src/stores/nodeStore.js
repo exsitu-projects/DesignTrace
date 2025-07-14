@@ -85,6 +85,61 @@ export const useNode = defineStore('nodes', () => {
     nodeYT.value = Math.min(nodeYT.value, y)
   }
 
+  // ===== UNDO/REDO HISTORY =====
+
+  /**
+   * Save the canvas state for a specific alt
+   */
+  function saveState(altId, canvasState) {
+    const alt = findAlt(altId)
+    if (!alt) return
+
+    if (!alt.history) {
+      alt.history = {
+        undoStack: [],
+        redoStack: [],
+      }
+    }
+
+    alt.history.undoStack.push(canvasState)
+    alt.history.redoStack = [] // Clear redo stack on new action
+
+    // Limit undo stack size
+    if (alt.history.undoStack.length > 50) {
+      alt.history.undoStack.shift()
+    }
+  }
+
+  /**
+   * Undo the last action for a specific alt
+   */
+  function undo(altId) {
+    const alt = findAlt(altId)
+    if (!alt || !alt.history || alt.history.undoStack.length <= 1) {
+      return null
+    }
+
+    const currentState = alt.history.undoStack.pop()
+    alt.history.redoStack.push(currentState)
+
+    return alt.history.undoStack[alt.history.undoStack.length - 1]
+  }
+
+  /**
+   * Redo the last undone action for a specific alt
+   */
+  function redo(altId) {
+    const alt = findAlt(altId)
+    if (!alt || !alt.history || alt.history.redoStack.length === 0) {
+      return null
+    }
+
+    const redoState = alt.history.redoStack.pop()
+    alt.history.undoStack.push(redoState)
+
+    return redoState
+  }
+
   // ===== BRANCH MANAGEMENT =====
 
   /**
@@ -252,7 +307,6 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Create a new alt object with default properties
    */
-
   function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null, nodeId = null) {
     return {
       id: generateId('alt', index),
@@ -266,6 +320,10 @@ export const useNode = defineStore('nodes', () => {
       z: 1000,
       properties: altObj,
       visible: true,
+      history: {
+        undoStack: [],
+        redoStack: [],
+      },
     }
   }
 
@@ -410,18 +468,6 @@ export const useNode = defineStore('nodes', () => {
       offsetY.value = 0
     }
   }
-  function updateAltPos(maxY, minY, x, node) {
-    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
-    for (let i = 0; i < visibleNodeList.length; i++) {
-      const alt = visibleNodeList[i]
-      alt.position.x = x
-      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
-    }
-  }
-  /**
-   * Add multiple alts to a node with automatic layout
-   */
-
   async function addOnExistingAlt(
     altObjs,
     nodeBranchId,
@@ -433,8 +479,11 @@ export const useNode = defineStore('nodes', () => {
     selectionPayload.value = await canvasDataPromise(currentAltId)
     const alt = findAlt(currentAltId)
 
-    alt.properties = alt.properties.length === 1 ? [...altObjs] : [...alt.properties, ...altObjs]
-
+    if (alt.properties.length && alt.properties[0].length === 0) {
+      alt.properties.splice(0, alt.properties.length, ...altObjs) // Replace all elements
+    } else {
+      alt.properties.push(...altObjs) // Add to existing elements
+    }
     const propsAltered = altObjs
       .map((obj) => obj.propName)
       .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
@@ -444,12 +493,12 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     try {
       // Uncomment when object detection is ready
-      const result = await generationStore.whatIsObject(
-        selectionPayload.value.lassoBoundUrl,
-        propsAltered,
-      )
-      adjObjectText = result.adjObjectText
-      objectText = result.objectText
+      // const result = await generationStore.whatIsObject(
+      //   selectionPayload.value.lassoBoundUrl,
+      //   propsAltered,
+      // )
+      // adjObjectText = result.adjObjectText
+      // objectText = result.objectText
       delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)
@@ -462,7 +511,7 @@ export const useNode = defineStore('nodes', () => {
       const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
       console.log('Generated prompt:', prompt)
       selectionPayload.value.prompt = prompt
-      imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
+      //imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
     } else if (selectionPayload.value.type === 'lasso') {
       const guess_prompt = await generationStore.guessPrompt({
         original_image: selectionPayload.value.original_image,
@@ -477,6 +526,17 @@ export const useNode = defineStore('nodes', () => {
     }
     addAltImgPayload.value = { url: imgUrl, altId: currentAltId }
   }
+  function updateAltPos(maxY, minY, x, node) {
+    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
+    for (let i = 0; i < visibleNodeList.length; i++) {
+      const alt = visibleNodeList[i]
+      alt.position.x = x
+      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
+    }
+  }
+  /**
+   * Add multiple alts to a node with automatic layout
+   */
   async function addMultAlt(
     altObjs,
     nodeBranchId,
@@ -610,6 +670,11 @@ export const useNode = defineStore('nodes', () => {
 
     // Parent management
     updateParents,
+
+    // History management
+    saveState,
+    undo,
+    redo,
     addOnExistingAlt,
   }
 })

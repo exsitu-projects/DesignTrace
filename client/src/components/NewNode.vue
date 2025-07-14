@@ -1,12 +1,30 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
-    <div
-      class="nodeHandle rounded-top p-1 d-flex align-items-center"
-      @dblclick="clickOnNodeTap()"
-      style="background: #ededed"
-    >
+    <div class="nodeHandle rounded-top p-1 d-flex align-items-center" style="background: #ededed">
+      <!--      @dblclick="clickOnNodeTap()"-->
       {{ alt.nodeId }}
       <EditableLabel v-model="nodeName" />
+
+      <!-- Undo/Redo Controls -->
+      <div class="d-flex align-items-center gap-1 ms-2">
+        <button
+          @click="undo($event)"
+          :disabled="undoStack.length <= 1"
+          class="btn btn-sm btn-outline-secondary"
+          title="Undo"
+        >
+          ⟲
+        </button>
+        <button
+          @click="redo($event)"
+          :disabled="redoStack.length === 0"
+          class="btn btn-sm btn-outline-secondary"
+          title="Redo"
+        >
+          ⟳
+        </button>
+      </div>
+
       <button
         v-show="changeDetected"
         @click="transformColorStroke"
@@ -19,7 +37,7 @@
       <button
         v-for="property in alt.properties"
         :key="property.tag"
-        class="btn btn-sm btn-outline-dark"
+        class="btn btn-sm btn-outline-dark mx-1"
       >
         <img
           v-show="property.thumbnail"
@@ -88,6 +106,11 @@ const canvasW = computed(() => nodeStore.canvasW)
 const nodeW = computed(() => nodeStore.nodeW)
 const nodeH = computed(() => nodeStore.nodeH)
 const canvasUrlWithoutBrush = ref('')
+// Undo/Redo functionality
+const isLoadingState = ref(false) // Prevent saving state during undo/redo
+const undoStack = computed(() => alt.history?.undoStack || [])
+const redoStack = computed(() => alt.history?.redoStack || [])
+
 const cursor = new fabric.Circle({
   //brush cursor
   radius: allUtilStore.brush.width / 2,
@@ -125,6 +148,13 @@ onMounted(() => {
   cursor.visible = false // hidden until drawing starts
 
   updateCursor()
+
+  // Save initial canvas state for undo functionality
+  setTimeout(() => {
+    console.log('Saving initial canvas state')
+    saveState()
+  }, 100)
+
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       fabricCanvas.forEachObject((obj) => {
@@ -173,6 +203,12 @@ onMounted(() => {
     path.objectCaching = false // render directly, no off‑screen crop
 
     fabricCanvas.bringObjectToFront(cursor)
+
+    // Save state after drawing (with slight delay to ensure path is fully added)
+    setTimeout(() => {
+      console.log('Saving state after path creation')
+      saveState()
+    }, 50)
   })
 
   fabricCanvas.upperCanvasEl.addEventListener('mouseout', () => {
@@ -323,6 +359,9 @@ onMounted(() => {
           cannyCan = null
           cannyInLassoCan = null
           storeLassoInfo()
+
+          // Save state after lasso operation
+          saveState()
         }
       }
     } else if (allUtilStore.isColorPen) {
@@ -427,6 +466,9 @@ function transformColorStroke() {
     }
     nodeStore.applyColorPen(colorPenPayload)
     changeDetected.value = false
+
+    // Save state after transform
+    saveState()
   }
 }
 function clickOnNodeTap() {
@@ -529,6 +571,10 @@ watch(
           fabricCanvas.add(fabricImage)
           fabricCanvas.renderAll()
           objectStore.obj = {}
+
+          // Save state after adding image
+          console.log('Saving state after adding dragged image')
+          saveState()
         } catch (error) {
           console.error('Failed to add image to canvas:', error)
         }
@@ -584,6 +630,10 @@ watch(
         fabricCanvas.add(fabricImage)
         fabricCanvas.isDrawingMode = false
         fabricCanvas.renderAll()
+
+        // Save state after adding new alt image
+        console.log('Saving state after adding alt image')
+        saveState()
       } catch (error) {
         console.error('Failed to add image to canvas:', error)
       }
@@ -594,6 +644,90 @@ watch(
     }
   },
 )
+
+async function loadCanvasState(state) {
+  return new Promise((resolve, reject) => {
+    if (!state) {
+      console.warn('Attempted to load a null or undefined state.')
+      return resolve()
+    }
+    const parsedState = JSON.parse(state)
+    fabricCanvas.loadFromJSON(parsedState, () => {
+      try {
+        fabricCanvas.renderAll()
+        fabricCanvas.calcOffset()
+
+        // Re-add cursor
+        fabricCanvas.add(cursor)
+        cursor.visible = false
+        fabricCanvas.bringObjectToFront(cursor)
+
+        const objects = fabricCanvas.getObjects()
+        if (objects.length > 0) {
+          fabricCanvas.setActiveObject(objects[0])
+          fabricCanvas.requestRenderAll()
+        }
+        resolve()
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
+}
+
+async function saveState() {
+  if (isLoadingState.value) return
+
+  const cursorExists = fabricCanvas.getObjects().includes(cursor)
+  if (cursorExists) {
+    fabricCanvas.remove(cursor)
+  }
+
+  const canvasState = JSON.stringify(fabricCanvas.toJSON(['idInLayers']))
+  nodeStore.saveState(alt.id, canvasState)
+
+  if (cursorExists) {
+    fabricCanvas.add(cursor)
+    cursor.visible = false
+    fabricCanvas.bringObjectToFront(cursor)
+  }
+}
+
+async function undo(event) {
+  event.stopPropagation()
+  if (undoStack.value.length <= 2 || isLoadingState.value) return
+
+  isLoadingState.value = true
+  try {
+    const prevState = nodeStore.undo(alt.id)
+    if (prevState) {
+      await loadCanvasState(prevState)
+      console.log('Undo completed')
+    }
+  } catch (error) {
+    console.error('Error during undo:', error)
+  } finally {
+    isLoadingState.value = false
+  }
+}
+
+async function redo(event) {
+  event.stopPropagation()
+  if (redoStack.value.length === 0 || isLoadingState.value) return
+
+  isLoadingState.value = true
+  try {
+    const redoState = nodeStore.redo(alt.id)
+    if (redoState) {
+      await loadCanvasState(redoState)
+      console.log('Redo completed')
+    }
+  } catch (error) {
+    console.error('Error during redo:', error)
+  } finally {
+    isLoadingState.value = false
+  }
+}
 </script>
 
 <style scoped>
