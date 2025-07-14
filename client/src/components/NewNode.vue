@@ -237,7 +237,9 @@ onMounted(() => {
         // Render first to make sure everything is drawn
         fabricCanvas.renderAll()
         canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
-        console.log(canvasUrlWithoutPath.value)
+        // Save state before adding lasso
+        console.log('Saving state before adding lasso')
+        saveState()
         // Extract just the area covered by the path + content inside it
         lassoBoundUrl.value = fabricCanvas.toDataURL({
           left: bounds.left,
@@ -614,6 +616,7 @@ watch(
   () => nodeStore.addAltImgPayload,
   (newPayload) => {
     if (alt.id !== newPayload.altId) return
+
     const img = new Image()
     img.src = newPayload.url
     img.onload = () => {
@@ -694,6 +697,7 @@ async function saveState() {
 }
 
 async function undo(event) {
+  //allUtilStore.nodeOnDrag = true
   event.stopPropagation()
   if (undoStack.value.length <= 2 || isLoadingState.value) return
 
@@ -712,6 +716,7 @@ async function undo(event) {
 }
 
 async function redo(event) {
+  //allUtilStore.nodeOnDrag = true
   event.stopPropagation()
   if (redoStack.value.length === 0 || isLoadingState.value) return
 

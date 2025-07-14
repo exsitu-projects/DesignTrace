@@ -56,7 +56,8 @@
         :z="alt.z"
         :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
         :requestForLasso="requestForLasso"
-        @mousedown="nodeOnDrag = false"
+        @mousedown="allUtilStore.nodeOnDrag = false"
+        @click="handleClick(alt.id, alt.branchId)"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
         "
@@ -113,7 +114,6 @@ const nodeStore = useNode()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const selectedBranchId = ref('')
-const nodeOnDrag = ref(false)
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
@@ -140,6 +140,8 @@ function confirmNodes() {
 }
 
 function handleClick(altId, branchId) {
+  if (allUtilStore.nodeOnDrag) return
+
   if (ctrlPressed.value) {
     // Toggle selection
     const idx = selectedIndices.value.indexOf(altId)
@@ -179,10 +181,7 @@ function toggleDesignSpace() {
 }
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
-  if (!nodeOnDrag.value) {
-    handleClick(altId, branchId)
-  }
-  nodeOnDrag.value = false // reset
+  allUtilStore.nodeOnDrag = false // reset
   if (objectStore.dragState !== 'startDragging') return
   if (objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
@@ -234,7 +233,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
 }
 
 function onDrag(x, y, alt) {
-  nodeOnDrag.value = true
+  allUtilStore.nodeOnDrag = true
   if (alt !== undefined) {
     //dragging an alt
     alt.position.x = x
