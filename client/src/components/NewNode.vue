@@ -2,7 +2,6 @@
   <div ref="nodeEl" :id="alt.id" class="node">
     <div class="nodeHandle rounded-top p-1 d-flex align-items-center" style="background: #ededed">
       <!--      @dblclick="clickOnNodeTap()"-->
-      {{ alt.nodeId }}
       <EditableLabel v-model="nodeName" />
 
       <!-- Undo/Redo Controls -->
@@ -72,7 +71,7 @@
 </template>
 
 <script setup>
-import { computed, markRaw, onMounted, ref, watch } from 'vue'
+import { computed, markRaw, onMounted, ref, watch, defineEmits } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -80,6 +79,7 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { CannyJS } from '@/js/canny'
 import { useGeneration } from '@/stores/generationStore.js'
+const emit = defineEmits(['remove']) // or whatever event you want to emit
 
 const props = defineProps({
   alt: {
@@ -394,6 +394,7 @@ onMounted(() => {
     }
   })
 })
+
 function whiteToTransparent(canvas) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -493,6 +494,21 @@ function transformColorStroke() {
 
     // Save state after transform
     saveState()
+  }
+}
+defineExpose({
+  deleteSelectedObjects,
+})
+
+function deleteSelectedObjects() {
+  const canvas = fabricCanvas // this component’s own instance
+  const activeObjects = canvas.getActiveObjects()
+  if (activeObjects.length > 0) {
+    activeObjects.forEach((obj) => canvas.remove(obj))
+    canvas.discardActiveObject()
+    canvas.requestRenderAll()
+  } else {
+    emit('remove') // remove this whole node if nothing selected
   }
 }
 function clickOnNodeTap() {

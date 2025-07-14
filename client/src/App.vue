@@ -64,7 +64,12 @@
         :drag-handle="'.nodeHandle'"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
-        <NewNode :alt="alt" :imgPayload="alt.id === dropAltId ? imgDOMPayload : null" />
+        <NewNode
+          @remove="() => deleteAlt(alt.id)"
+          :alt="alt"
+          :ref="(el) => setActiveNodeCanvas(el, alt.id)"
+          :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
+        />
       </VueDraggableResizable>
     </transition-group>
     <!-- floating palette panel -->
@@ -108,6 +113,7 @@ import { useObject } from '@/stores/objectStore.js'
 import { Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 /* --- store instances --- */
+const nodeCanvasRefs = reactive({}) // { [altId]: componentRef }
 
 const nodeStore = useNode()
 const objectStore = useObject()
@@ -136,6 +142,13 @@ function confirmNodes() {
   console.log(selectedIndices.value)
   nodeStore.updateParents(selectedIndices.value, selectedBranchId.value)
   selectedIndices.value = []
+}
+function deleteAlt(altId) {
+  nodeStore.nodeBranchList.forEach((branch) => {
+    branch.nodes.forEach((node) => {
+      node.alts = node.alts.filter((alt) => alt.id !== altId)
+    })
+  })
 }
 
 function handleClick(altId, branchId) {
@@ -171,10 +184,28 @@ function isSelected(altId) {
 const nodesSelected = computed(() => selectedIndices.value.length > 0)
 
 function handleKeyDown(e) {
-  if (e.key === 'Control') ctrlPressed.value = true
+  const tag = document.activeElement?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+
+  if (e.key === 'Control') {
+    ctrlPressed.value = true
+    return
+  }
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && lastSelectedIndex.value != null) {
+    const canvasComp = nodeCanvasRefs[lastSelectedIndex.value]
+    canvasComp?.deleteSelectedObjects?.()
+  }
 }
 function handleKeyUp(e) {
   if (e.key === 'Control') ctrlPressed.value = false
+}
+function setActiveNodeCanvas(el, altId) {
+  if (el) {
+    nodeCanvasRefs[altId] = el
+  } else {
+    delete nodeCanvasRefs[altId] // cleanup when component unmounts
+  }
 }
 
 function toggleDesignSpace() {
