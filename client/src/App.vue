@@ -57,7 +57,6 @@
         :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
         :requestForLasso="requestForLasso"
         @mousedown="allUtilStore.nodeOnDrag = false"
-        @click="handleClick(alt.id, alt.branchId)"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
         "
@@ -140,8 +139,10 @@ function confirmNodes() {
 }
 
 function handleClick(altId, branchId) {
-  if (allUtilStore.nodeOnDrag) return
-
+  if (allUtilStore.nodeOnDrag) {
+    allUtilStore.nodeOnDrag = false // always reset
+    return
+  }
   if (ctrlPressed.value) {
     // Toggle selection
     const idx = selectedIndices.value.indexOf(altId)
@@ -181,9 +182,7 @@ function toggleDesignSpace() {
 }
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
-  allUtilStore.nodeOnDrag = false // reset
-  if (objectStore.dragState !== 'startDragging') return
-  if (objectStore.obj !== null) {
+  if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       requestForLasso.value = true
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
@@ -215,6 +214,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       objectStore.obj = {}
       objectStore.dragState = 'finishedDragging'
       requestForLasso.value = false
+      return
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
       const droppedObj = objectStore.obj
@@ -228,8 +228,14 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       }
       objectStore.dragState = 'restoreInitialDOM'
       dropAltId.value = altId
+      return
     }
   }
+  if (!allUtilStore.nodeOnDrag) {
+    handleClick(altId, branchId)
+  }
+
+  allUtilStore.nodeOnDrag = false
 }
 
 function onDrag(x, y, alt) {

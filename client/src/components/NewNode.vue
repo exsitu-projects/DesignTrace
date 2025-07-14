@@ -12,6 +12,7 @@
           :disabled="undoStack.length <= 1"
           class="btn btn-sm btn-outline-secondary"
           title="Undo"
+          @mouseup.stop
         >
           ⟲
         </button>
@@ -20,6 +21,7 @@
           :disabled="redoStack.length === 0"
           class="btn btn-sm btn-outline-secondary"
           title="Redo"
+          @mouseup.stop
         >
           ⟳
         </button>
@@ -47,8 +49,24 @@
         />{{ property.tag }}
       </button>
     </div>
-    <div class="m-auto" ref="canvasContainer">
-      <canvas ref="canvasEl" class="inset-border" :width="canvasW" :height="canvasW"></canvas>
+
+    <div @click.stop class="m-auto" ref="canvasContainer">
+      <div
+        v-show="generationStore.generatePromise === 'loading'"
+        class="position-absolute top-50 start-50 translate-middle"
+      >
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+
+      <canvas
+        v-show="generationStore.generatePromise !== 'loading'"
+        ref="canvasEl"
+        class="inset-border"
+        :width="canvasW"
+        :height="canvasW"
+      ></canvas>
     </div>
   </div>
 </template>
@@ -171,6 +189,7 @@ onMounted(() => {
   })
 
   fabricCanvas.on('mouse:move', function (opt) {
+    allUtilStore.nodeOnDrag = true
     if (isLasso && lassoStart) {
       points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
 
@@ -217,6 +236,9 @@ onMounted(() => {
   })
 
   fabricCanvas.on('mouse:up', async function (opt) {
+    opt.e.preventDefault()
+    opt.e.stopPropagation()
+
     if (isLasso) {
       isLasso = false
       const dx = opt.pointer.x - startPointer.x
@@ -697,7 +719,7 @@ async function saveState() {
 }
 
 async function undo(event) {
-  //allUtilStore.nodeOnDrag = true
+  allUtilStore.nodeOnDrag = true
   event.stopPropagation()
   if (undoStack.value.length <= 2 || isLoadingState.value) return
 
@@ -716,7 +738,7 @@ async function undo(event) {
 }
 
 async function redo(event) {
-  //allUtilStore.nodeOnDrag = true
+  allUtilStore.nodeOnDrag = true
   event.stopPropagation()
   if (redoStack.value.length === 0 || isLoadingState.value) return
 

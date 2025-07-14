@@ -102,15 +102,18 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
   }
 
   async function whatIsObject(lassoBoundUrl, propsString) {
-    const raw = await describeImage(lassoBoundUrl, propsString, objSysPrompt)
-    console.log(raw)
-    const [adjPart = '', objPart = ''] = raw.split(':').map((s) => s.trim())
-    if (!raw || typeof raw !== 'string') {
-      throw new Error('describeImage returned empty or non‑string')
-    }
-    return {
-      adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
-      objectText: objPart, // e.g. "sofa"
+    try {
+      const raw = await describeImage(lassoBoundUrl, propsString, objSysPrompt)
+      console.log(raw)
+      const [adjPart = '', objPart = ''] = raw.split(':').map((s) => s.trim())
+      if (!raw || typeof raw !== 'string') {
+        throw new Error('describeImage returned empty or non‑string')
+      }
+      return {
+        adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
+        objectText: objPart, // e.g. "sofa"
+      }
+    } finally {
     }
   }
 
@@ -143,6 +146,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
   }
 
   async function generateOpenAIImg({ original_image, total_mask, prompt }) {
+    generatePromise.value = 'loading'
     try {
       promiseLoadImageLabel.value = 'loading'
       const response = await fetch('http://localhost:5555/edit-image', {
@@ -166,6 +170,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
       return null // Optional: consistently return on error
     } finally {
       promiseLoadImageLabel.value = 'finished' // Ensures it always updates
+      generatePromise.value = 'finished'
     }
   }
 
@@ -177,6 +182,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     total_mask,
     prompt,
   }) {
+    generatePromise.value = 'loading'
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
 
     try {
@@ -205,6 +211,8 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     } catch (error) {
       console.error('Error generating image:', error)
       alert('Image generation failed. Please try again.')
+    } finally {
+      generatePromise.value = 'finished'
     }
   }
   //when mousedown, detect if the pressed area belong to any of the boxes, if so, highlight the boxes
