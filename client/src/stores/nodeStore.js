@@ -44,7 +44,10 @@ export const useNode = defineStore('nodes', () => {
   const nodeYB = ref(0) // Bottom boundary
   const nodeYT = ref(0) // Top boundary
   const offsetY = ref(0)
-
+  const selectedIndices = ref([])
+  const selectedBranchId = ref('')
+  const lastSelectedIndex = ref(null)
+  const ctrlPressed = ref(false)
   // Payloads and temporary data
   const selectionPayload = ref({})
   const currentColorPenInfo = ref({})
@@ -402,7 +405,7 @@ export const useNode = defineStore('nodes', () => {
 
             console.log('Generated prompt:', prompt)
             selectionPayload.value.prompt = prompt
-            //imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+            imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
           }
 
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
@@ -591,13 +594,13 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     try {
       // Uncomment when object detection is ready
-      // const result = await generationStore.whatIsObject(
-      //   selectionPayload.value.lassoBoundUrl,
-      //   propsAltered,
-      // )
-      // adjObjectText = result.adjObjectText
-      // objectText = result.objectText
-      // delete selectionPayload.value.lassoBoundUrl
+      const result = await generationStore.whatIsObject(
+        selectionPayload.value.lassoBoundUrl,
+        propsAltered,
+      )
+      adjObjectText = result.adjObjectText
+      objectText = result.objectText
+      delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)
       return []
@@ -676,5 +679,10 @@ export const useNode = defineStore('nodes', () => {
     undo,
     redo,
     addOnExistingAlt,
+
+    selectedIndices,
+    selectedBranchId,
+    lastSelectedIndex,
+    ctrlPressed,
   }
 })

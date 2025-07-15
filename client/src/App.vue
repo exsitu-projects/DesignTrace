@@ -56,7 +56,6 @@
         :z="alt.z"
         :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
         :requestForLasso="requestForLasso"
-        @mousedown="allUtilStore.nodeOnDrag = false"
         @mouseup="
           mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
         "
@@ -118,7 +117,6 @@ const nodeCanvasRefs = reactive({}) // { [altId]: componentRef }
 const nodeStore = useNode()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
-const selectedBranchId = ref('')
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
@@ -134,14 +132,12 @@ const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
-const selectedIndices = ref([])
-const lastSelectedIndex = ref(null)
-const ctrlPressed = ref(false)
+
 /* example async — not used right now */
 function confirmNodes() {
-  console.log(selectedIndices.value)
-  nodeStore.updateParents(selectedIndices.value, selectedBranchId.value)
-  selectedIndices.value = []
+  console.log(nodeStore.selectedIndices)
+  nodeStore.updateParents(nodeStore.selectedIndices, nodeStore.selectedBranchId)
+  nodeStore.selectedIndices = []
 }
 function deleteAlt(altId) {
   nodeStore.nodeBranchList.forEach((branch) => {
@@ -151,54 +147,28 @@ function deleteAlt(altId) {
   })
 }
 
-function handleClick(altId, branchId) {
-  if (allUtilStore.nodeOnDrag) {
-    allUtilStore.nodeOnDrag = false // always reset
-    return
-  }
-  if (ctrlPressed.value) {
-    // Toggle selection
-    const idx = selectedIndices.value.indexOf(altId)
-    if (idx > -1) {
-      selectedIndices.value.splice(idx, 1)
-    } else {
-      selectedIndices.value.push(altId)
-    }
-  } else {
-    // Single selection
-    const idx = selectedIndices.value.indexOf(altId)
-    if (idx > -1) {
-      selectedIndices.value = []
-    } else {
-      selectedIndices.value = [altId]
-    }
-  }
-  selectedBranchId.value = branchId
-  lastSelectedIndex.value = altId
-}
-
 function isSelected(altId) {
-  return selectedIndices.value.includes(altId)
+  return nodeStore.selectedIndices.includes(altId)
 }
 
-const nodesSelected = computed(() => selectedIndices.value.length > 0)
+const nodesSelected = computed(() => nodeStore.selectedIndices.length > 0)
 
 function handleKeyDown(e) {
   const tag = document.activeElement?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
 
   if (e.key === 'Control') {
-    ctrlPressed.value = true
+    nodeStore.ctrlPressed = true
     return
   }
 
-  if ((e.key === 'Delete' || e.key === 'Backspace') && lastSelectedIndex.value != null) {
-    const canvasComp = nodeCanvasRefs[lastSelectedIndex.value]
+  if ((e.key === 'Delete' || e.key === 'Backspace') && nodeStore.lastSelectedIndex != null) {
+    const canvasComp = nodeCanvasRefs[nodesStore.lastSelectedIndex]
     canvasComp?.deleteSelectedObjects?.()
   }
 }
 function handleKeyUp(e) {
-  if (e.key === 'Control') ctrlPressed.value = false
+  if (e.key === 'Control') nodeStore.ctrlPressed = false
 }
 function setActiveNodeCanvas(el, altId) {
   if (el) {
@@ -262,11 +232,6 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       return
     }
   }
-  if (!allUtilStore.nodeOnDrag) {
-    handleClick(altId, branchId)
-  }
-
-  allUtilStore.nodeOnDrag = false
 }
 
 function onDrag(x, y, alt) {
@@ -281,7 +246,7 @@ function onDrag(x, y, alt) {
     position.x = x
     position.y = y
   }
-  selectedIndices.value = []
+  nodeStore.selectedIndices = []
 }
 
 function ensureNodeInView(nodeXL, nodeYT) {

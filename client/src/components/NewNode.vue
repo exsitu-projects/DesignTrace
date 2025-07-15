@@ -1,6 +1,10 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
-    <div class="nodeHandle rounded-top p-1 d-flex align-items-center" style="background: #ededed">
+    <div
+      @click="handleClick(alt.id, alt.branchId)"
+      class="nodeHandle rounded-top p-1 d-flex align-items-center"
+      style="background: #ededed"
+    >
       <!--      @dblclick="clickOnNodeTap()"-->
       <EditableLabel v-model="nodeName" />
 
@@ -394,6 +398,32 @@ onMounted(() => {
     }
   })
 })
+
+function handleClick(altId, branchId) {
+  if (allUtilStore.nodeOnDrag) {
+    allUtilStore.nodeOnDrag = false // always reset
+    return
+  }
+  if (nodeStore.ctrlPressed) {
+    // Toggle selection
+    const idx = nodeStore.selectedIndices.indexOf(altId)
+    if (idx > -1) {
+      nodeStore.selectedIndices.splice(idx, 1)
+    } else {
+      nodeStore.selectedIndices.push(altId)
+    }
+  } else {
+    // Single selection
+    const idx = nodeStore.selectedIndices.indexOf(altId)
+    if (idx > -1) {
+      nodeStore.selectedIndices = []
+    } else {
+      nodeStore.selectedIndices = [altId]
+    }
+  }
+  nodeStore.selectedBranchId = branchId
+  nodeStore.lastSelectedIndex = altId
+}
 
 function whiteToTransparent(canvas) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
