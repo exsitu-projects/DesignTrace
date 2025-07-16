@@ -346,6 +346,73 @@ export const useNode = defineStore('nodes', () => {
   }
 
   /**
+   * Generate image based on properties and payload
+   * This extracted function handles the common image generation logic
+   */
+  async function generateImage(properties, propsAltered, adjObjectText, objectText, visiblePropsText, altId) {
+    try {
+      const descriptors = properties.map((p) => `${p.tag} ${p.propName}`);
+      const copiedPayload = { ...selectionPayload.value };
+      let imgUrl = null;
+
+      // Generate appropriate prompt and image based on payload type
+      if (copiedPayload.type === 'full-img') {
+        const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors);
+        console.log('Generated prompt:', prompt);
+
+        copiedPayload.prompt = prompt;
+        copiedPayload.altId = altId;
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload);
+      } else if (copiedPayload.type === 'lasso') {
+        const prompt = imagenPrompt(
+          propsAltered,
+          adjObjectText,
+          objectText,
+          descriptors,
+          visiblePropsText
+        );
+        console.log('Generated prompt:', prompt);
+
+        copiedPayload.prompt = prompt;
+        copiedPayload.altId = altId;
+        console.log(copiedPayload);
+        imgUrl = await generationStore.generateGoogleImg(copiedPayload);
+      }
+
+      if (imgUrl) {
+        addAltImgPayload.value = { url: imgUrl, altId: altId };
+      }
+
+      return imgUrl;
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get object properties from image
+   * This extracted function handles common object detection logic
+   */
+  async function getObjectProperties(imageUrl, propsAltered) {
+    try {
+      const result = await generationStore.excludePropObject(imageUrl, propsAltered);
+      return {
+        adjObjectText: result.adjObjectText,
+        objectText: result.objectText,
+        visiblePropsText: result.visibleProps
+      };
+    } catch (error) {
+      console.error('Object detection failed:', error);
+      return {
+        adjObjectText: '',
+        objectText: '',
+        visiblePropsText: ''
+      };
+    }
+  }
+
+  /**
    * Add a new alt to a node with optional image generation
    */
   async function addAlt(
@@ -362,87 +429,56 @@ export const useNode = defineStore('nodes', () => {
     propsAltered = '',
     visiblePropsText = '',
   ) {
-    let imgUrl = null
+    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId);
+    const prevNode = branch?.nodes.find((n) => n.id === nodeId);
+    const newNode = branch?.nodes.find((n) => n.id === nextNodeId);
+    let imgUrl = null;
 
-    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    const prevNode = branch.nodes.find((n) => n.id === nodeId)
-    const newNode = branch.nodes.find((n) => n.id === nextNodeId)
+    if (!branch || !prevNode) {
+      console.warn('Required branch or node not found');
+      return null;
+    }
 
-    // if (!branch || !prevNode || !newNode) {
-    //   console.warn('Required branch or node not found')
-    //   return null
-    // }
-
-    const newAlt = createAlt([altObj], nodeBranchId, index, posX, posY, prevAltId, nextNodeId)
+    const newAlt = createAlt([altObj], nodeBranchId, index, posX, posY, prevAltId, nextNodeId);
 
     // Handle alt with previous connection
     if (prevAltId) {
-      newNode.alts.push(newAlt)
-      const prevAlt = prevNode.alts.find((alt) => alt.id === prevAltId)
+      if (newNode) {
+        newNode.alts.push(newAlt);
+        const prevAlt = prevNode.alts.find((alt) => alt.id === prevAltId);
 
-      if (prevAlt) {
-        // Create bidirectional links
-        const edge = { fromAltId: prevAltId, toAltId: newAlt.id }
-        prevAlt.edges.push(edge)
-        prevAlt.visibleEdges.push(edge)
-        prevAlt.nextAltId.push(newAlt.id)
+        if (prevAlt) {
+          // Create bidirectional links
+          const edge = { fromAltId: prevAltId, toAltId: newAlt.id };
+          prevAlt.edges.push(edge);
+          prevAlt.visibleEdges.push(edge);
+          prevAlt.nextAltId.push(newAlt.id);
+        }
       }
 
       // Generate image if properties are specified
       if (propsAltered && adjObjectText && objectText) {
-        try {
-          const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
-          const copiedPayload = { ...selectionPayload.value }
-
-          // magic quill for lasso, openai api for full image
-          if (copiedPayload.type === 'full-img') {
-            const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
-            console.log('Generated prompt:', prompt)
-            copiedPayload.prompt = prompt
-            copiedPayload.altId = newAlt.id
-            //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
-            imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
-          } else if (copiedPayload.type === 'lasso') {
-            // const guess_prompt = await generationStore.guessPrompt({
-            //   original_image: copiedPayload.original_image,
-            //   add_color_image: copiedPayload.add_color_image,
-            //   add_edge_image: copiedPayload.add_edge_image,
-            // })
-            // console.log('guess_prompt', guess_prompt)
-            // const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
-            const prompt = imagenPrompt(
-              propsAltered,
-              adjObjectText,
-              objectText,
-              descriptors,
-              visiblePropsText,
-            )
-
-            console.log('Generated prompt:', prompt)
-            copiedPayload.prompt = prompt
-            copiedPayload.altId = newAlt.id
-            console.log(copiedPayload)
-            imgUrl = await generationStore.generateGoogleImg(copiedPayload)
-            //imgUrl = await generationStore.generateMaskedImg(copiedPayload)
-          }
-
-          addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
-        } catch (error) {
-          console.error('Image generation failed:', error)
-        }
+        imgUrl = await generateImage(
+          newAlt.properties,
+          propsAltered,
+          adjObjectText,
+          objectText,
+          visiblePropsText,
+          newAlt.id
+        );
       }
     } else {
       // Handle first alt in branch
       const isFirstAltInBranch =
-        branch.nodes.length > 0 && branch.nodes[0].id === nodeId && prevNode.alts.length === 0
+        branch.nodes.length > 0 && branch.nodes[0].id === nodeId && prevNode.alts.length === 0;
 
       if (isFirstAltInBranch) {
-        branch.parents.push(newAlt.id)
+        branch.parents.push(newAlt.id);
       }
-      prevNode.alts.push(newAlt)
+      prevNode.alts.push(newAlt);
     }
 
-    return imgUrl
+    return imgUrl;
   }
 
   // ===== CANVAS DATA MANAGEMENT =====
@@ -452,17 +488,17 @@ export const useNode = defineStore('nodes', () => {
    */
   const canvasDataPromise = (requestAltId) =>
     new Promise((resolve) => {
-      resolveCanvasData = resolve
-      requestCanvasData.value.status = true
-      requestCanvasData.value.altId = requestAltId
-    })
+      resolveCanvasData = resolve;
+      requestCanvasData.value.status = true;
+      requestCanvasData.value.altId = requestAltId;
+    });
 
   /**
    * Receive and resolve canvas data
    */
   function receiveCanvasData(data) {
-    resolveCanvasData?.(data)
-    requestCanvasData.value.status = false
+    resolveCanvasData?.(data);
+    requestCanvasData.value.status = false;
   }
 
   // ===== MULTIPLE ALT MANAGEMENT =====
@@ -471,11 +507,11 @@ export const useNode = defineStore('nodes', () => {
    * Calculate layout for multiple alts
    */
   function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts) {
-    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1)
-    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1)
-    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING
+    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1);
+    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1);
+    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING;
 
-    return { maxY, minY, x }
+    return { maxY, minY, x };
   }
 
   /**
@@ -483,12 +519,16 @@ export const useNode = defineStore('nodes', () => {
    */
   function adjustPositionsForBounds(branch, minY) {
     if (minY < 0) {
-      offsetY.value = -minY
-      branch.nodes.forEach((node) => node.alts.forEach((alt) => (alt.position.y += offsetY.value)))
+      offsetY.value = -minY;
+      branch.nodes.forEach((node) => node.alts.forEach((alt) => (alt.position.y += offsetY.value)));
     } else {
-      offsetY.value = 0
+      offsetY.value = 0;
     }
   }
+
+  /**
+   * Update properties of an existing alt and generate a new image
+   */
   async function addOnExistingAlt(
     altObjs,
     nodeBranchId,
@@ -497,70 +537,47 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    selectionPayload.value = await canvasDataPromise(currentAltId)
-    const alt = findAlt(currentAltId)
+    // Wait for canvas data
+    selectionPayload.value = await canvasDataPromise(currentAltId);
+    const alt = findAlt(currentAltId);
 
-    if (alt.properties.length && alt.properties[0].length === 0) {
-      alt.properties.splice(0, alt.properties.length, ...altObjs) // Replace all elements
-    } else {
-      alt.properties.push(...altObjs) // Add to existing elements
+    if (!alt) {
+      console.warn(`Alt with ID ${currentAltId} not found`);
+      return;
     }
+
+    // Update properties array
+    if (alt.properties.length && alt.properties[0].length === 0) {
+      alt.properties.splice(0, alt.properties.length, ...altObjs); // Replace all elements
+    } else {
+      alt.properties.push(...altObjs); // Add to existing elements
+    }
+
+    // Get unique property names
     const propsAltered = altObjs
       .map((obj) => obj.propName)
-      .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
-      .join(', ')
+      .filter((value, index, array) => array.indexOf(value) === index)
+      .join(', ');
 
-    let adjObjectText = ''
-    let objectText = ''
-    let visiblePropsText = ''
-    try {
-      // Uncomment when object detection is ready
-      const result = await generationStore.excludePropObject(
-        selectionPayload.value.lassoBoundUrl,
-        propsAltered,
-      )
-      adjObjectText = result.adjObjectText
-      objectText = result.objectText
-      visiblePropsText = result.visibleProps
-    } catch (error) {
-      console.error('Object detection failed:', error)
-      return []
+    // Get object properties from image
+    const { adjObjectText, objectText, visiblePropsText } = await getObjectProperties(
+      selectionPayload.value.lassoBoundUrl,
+      propsAltered
+    );
+
+    if (!adjObjectText || !objectText) {
+      return;
     }
-    const descriptors = alt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
-    const copiedPayload = { ...selectionPayload.value }
-    let imgUrl
-    // magic quill for lasso, openai api for full image
-    if (copiedPayload.type === 'full-img') {
-      const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
-      console.log('Generated prompt:', prompt)
-      copiedPayload.prompt = prompt
-      imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
-    } else if (copiedPayload.type === 'lasso') {
-      // const guess_prompt = await generationStore.guessPrompt({
-      //   original_image: selectionPayload.value.original_image,
-      //   add_color_image: selectionPayload.value.add_color_image,
-      //   add_edge_image: selectionPayload.value.add_edge_image,
-      // })
-      // console.log('guess_prompt', guess_prompt)
-      // const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
 
-      const prompt = imagenPrompt(
-        propsAltered,
-        adjObjectText,
-        objectText,
-        descriptors,
-        visiblePropsText,
-      )
-
-      console.log('Generated prompt:', prompt)
-      copiedPayload.prompt = prompt
-      copiedPayload.altId = alt.id
-      console.log(copiedPayload)
-      imgUrl = await generationStore.generateGoogleImg(copiedPayload)
-
-      //imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
-    }
-    addAltImgPayload.value = { url: imgUrl, altId: currentAltId }
+    // Generate new image
+    await generateImage(
+      alt.properties,
+      propsAltered,
+      adjObjectText,
+      objectText,
+      visiblePropsText,
+      currentAltId
+    );
   }
   function updateAltPos(maxY, minY, x, node) {
     const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
