@@ -6,9 +6,10 @@ export const useGeneration = defineStore('generation', () => {
   const img2imgOut = ref({ src: '' })
   const txt2imgOut = ref({ src: '' })
   const detectedObjects = ref([])
-  const generatePromise = ref('')
+  const loadingStatus = ref('')
   const promiseLoadImageLabel = ref('')
   const shouldTriggerT2I = ref(false)
+  const currentGenId = ref('')
   const generationParams = {
     ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
     auto_save: false,
@@ -55,8 +56,8 @@ Limit the first description to 10 words or fewer.
 Be specific, expressive, and grounded in what’s visible.
 
 Return only the two phrases, separated by a colon. Do not explain or add anything else.`
-  function setGeneratePromise(promiseState) {
-    generatePromise.value = promiseState
+  function setloadingStatus(promiseState) {
+    loadingStatus.value = promiseState
   }
   function triggerT2I() {
     shouldTriggerT2I.value = true
@@ -145,9 +146,10 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     }
   }
 
-  async function generateOpenAIImg({ original_image, total_mask, prompt }) {
-    generatePromise.value = 'loading'
+  async function generateOpenAIImg({ original_image, total_mask, prompt, altId }) {
+    loadingStatus.value = 'loading'
     try {
+      currentGenId.value = altId
       promiseLoadImageLabel.value = 'loading'
       const response = await fetch('http://localhost:5555/edit-image', {
         method: 'POST',
@@ -170,7 +172,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
       return null // Optional: consistently return on error
     } finally {
       promiseLoadImageLabel.value = 'finished' // Ensures it always updates
-      generatePromise.value = 'finished'
+      loadingStatus.value = 'finished'
     }
   }
 
@@ -181,8 +183,10 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     remove_edge_image,
     total_mask,
     prompt,
+    altId,
   }) {
-    generatePromise.value = 'loading'
+    loadingStatus.value = 'loading'
+    currentGenId.value = altId
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
 
     try {
@@ -212,7 +216,7 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
       console.error('Error generating image:', error)
       alert('Image generation failed. Please try again.')
     } finally {
-      generatePromise.value = 'finished'
+      loadingStatus.value = 'finished'
     }
   }
   //when mousedown, detect if the pressed area belong to any of the boxes, if so, highlight the boxes
@@ -224,16 +228,16 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     describeImage,
     promiseLoadImageLabel,
     generateMaskedImg,
-    generatePromise,
+    loadingStatus,
     detectedObjects,
     storeDetection,
     img2imgOut,
     txt2imgOut,
-    setGeneratePromise,
     propValSysPrompt,
     whatIsObject,
     objSysPrompt,
     guessPrompt,
     generateOpenAIImg,
+    currentGenId,
   }
 })

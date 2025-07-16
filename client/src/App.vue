@@ -80,7 +80,7 @@
       :draggable="true"
       :drag-handle="'.handle'"
       class="design-space-container"
-      @dragging="onDrag"
+      @dragging="(x, y) => onDrag(x, y)"
     >
       <div class="header handle small fw-bolder">
         Palette
@@ -98,7 +98,7 @@
 
 <script setup>
 /* external libs / helpers */
-import { ref, reactive, onMounted, nextTick, computed } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed, toRaw } from 'vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 
 /* components */
@@ -192,27 +192,14 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       [{ tag: 'Red',   propName: 'color' },
       { tag: 'Green', propName: 'color' },
       { tag: 'Blue',  propName: 'color' },]}*/
+      const objContent = toRaw(objectStore.obj.content).slice()
+      objectStore.obj = {}
       if (allUtilStore.isStepLock) {
-        await nodeStore.addOnExistingAlt(
-          objectStore.obj.content,
-          branchId,
-          nodeId,
-          altPosX,
-          altPosY,
-          altId,
-        )
+        await nodeStore.addOnExistingAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
       } else {
-        await nodeStore.addMultAlt(
-          objectStore.obj.content,
-          branchId,
-          nodeId,
-          altPosX,
-          altPosY,
-          altId,
-        )
+        await nodeStore.addMultAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
       }
 
-      objectStore.obj = {}
       objectStore.dragState = 'finishedDragging'
       requestForLasso.value = false
       return
@@ -247,7 +234,7 @@ function onDrag(x, y, alt) {
     position.y = y
   }
   nodeStore.selectedIndices = []
-}
+} ////TODO: Image on free canvas might also needs to be handled here
 
 function ensureNodeInView(nodeXL, nodeYT) {
   const draggingXR = nodeXL + nodeStore.nodeW

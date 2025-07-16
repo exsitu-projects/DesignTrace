@@ -7,7 +7,7 @@
     >
       <!--      @dblclick="clickOnNodeTap()"-->
       <EditableLabel v-model="nodeName" />
-
+      {{ alt.id }}
       <!-- Undo/Redo Controls -->
       <div class="d-flex align-items-center gap-1 ms-2">
         <button
@@ -55,7 +55,9 @@
 
     <div @click.stop class="m-auto" ref="canvasContainer">
       <div
-        v-show="generationStore.generatePromise === 'loading'"
+        v-show="
+          generationStore.currentGenId === alt.id && generationStore.loadingStatus === 'loading'
+        "
         class="position-absolute top-50 start-50 translate-middle"
       >
         <div class="spinner-border" role="status">
@@ -64,7 +66,9 @@
       </div>
 
       <canvas
-        v-show="generationStore.generatePromise !== 'loading'"
+        v-show="
+          generationStore.currentGenId !== alt.id || generationStore.loadingStatus !== 'loading'
+        "
         ref="canvasEl"
         class="inset-border"
         :width="canvasW"
@@ -707,6 +711,9 @@ watch(
         saveState()
       } catch (error) {
         console.error('Failed to add image to canvas:', error)
+      } finally {
+        allUtilStore.isColorPen = false
+        allUtilStore.isLassoMode = false // reset both modes
       }
     }
 

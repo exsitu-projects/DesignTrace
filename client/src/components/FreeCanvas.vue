@@ -76,14 +76,11 @@ import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import ColorPicker from '@/components/colorPicker.vue'
-const generationStore = useGeneration()
-const { generatePromise, setGeneratePromise } = useGeneration()
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const nodeStore = useNode()
 const layoutStore = useLayout()
-const wrapper = ref(null)
 const $ = (id) => document.getElementById(id)
 let isLasso = false
 let points = []
@@ -425,38 +422,6 @@ onMounted(() => {
         objectStore.obj.type = 'image'
         objectStore.dragState = 'startDragging'
       }
-
-      const activeObjects = canvas.getActiveObjects() // Gets current multi-selection
-      const activeObject = canvas.getActiveObject()
-      const targetSize = 512
-
-      // if (activeObjects.length > 0) {
-      //   const bounds = activeObject.getBoundingRect(true) // `true` includes stroke
-      //   const scale = targetSize / Math.max(bounds.width, bounds.height)
-      //   // Multi-selection exists (Shift/Cmd + Click)
-      //   objectStore.dragObjects = activeObjects.map((obj) => ({
-      //     id: obj.idInUpload,
-      //     fabricObj: obj, // Reference to the Fabric object
-      //     originalPos: { ...obj.oCoords }, // Save initial position
-      //     left: (obj.oCoords.tl.x - bounds.left) * scale,
-      //     top: (obj.oCoords.tl.y - bounds.top) * scale,
-      //     scaleX: (obj.scaleX ?? 1) * scale,
-      //     scaleY: (obj.scaleY ?? 1) * scale,
-      //   }))
-      // } else if (e.target) {
-      //   // Single object selected
-      //   objectStore.dragObjects = [
-      //     {
-      //       id: e.target.idInUpload,
-      //       fabricObj: e.target,
-      //       originalPos: { ...e.target.oCoords },
-      //     },
-      //   ]
-      // } else {
-      //   // Clicked on empty space → clear selection
-      //   objectStore.dragObjects = []
-      // }
-      // console.log(objectStore.dragObjects)
     },
   })
   brushes.vline.getPatternSrc = function () {

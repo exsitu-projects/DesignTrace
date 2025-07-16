@@ -387,25 +387,28 @@ export const useNode = defineStore('nodes', () => {
       if (propsAltered && adjObjectText && objectText) {
         try {
           const descriptors = newAlt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
+          const copiedPayload = { ...selectionPayload.value }
 
           // magic quill for lasso, openai api for full image
-          if (selectionPayload.value.type === 'full-img') {
+          if (copiedPayload.type === 'full-img') {
             const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
             console.log('Generated prompt:', prompt)
-            selectionPayload.value.prompt = prompt
-            //imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
-          } else if (selectionPayload.value.type === 'lasso') {
+            copiedPayload.prompt = prompt
+            copiedPayload.altId = newAlt.id
+            imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+          } else if (copiedPayload.type === 'lasso') {
             const guess_prompt = await generationStore.guessPrompt({
-              original_image: selectionPayload.value.original_image,
-              add_color_image: selectionPayload.value.add_color_image,
-              add_edge_image: selectionPayload.value.add_edge_image,
+              original_image: copiedPayload.original_image,
+              add_color_image: copiedPayload.add_color_image,
+              add_edge_image: copiedPayload.add_edge_image,
             })
             console.log('guess_prompt', guess_prompt)
             const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
 
             console.log('Generated prompt:', prompt)
-            selectionPayload.value.prompt = prompt
-            imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+            copiedPayload.prompt = prompt
+            copiedPayload.altId = newAlt.id
+            imgUrl = await generationStore.generateMaskedImg(copiedPayload)
           }
 
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
@@ -502,7 +505,6 @@ export const useNode = defineStore('nodes', () => {
       )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
-      delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)
       return []
@@ -600,7 +602,6 @@ export const useNode = defineStore('nodes', () => {
       )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
-      delete selectionPayload.value.lassoBoundUrl
     } catch (error) {
       console.error('Object detection failed:', error)
       return []
