@@ -341,6 +341,10 @@ export const useNode = defineStore('nodes', () => {
     return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
   }
 
+  function imagenPrompt(propsAltered, adjObjectText, objectText, descriptors, visiblePropsText) {
+    return `Change to the ${propsAltered} of ${descriptors.join(' and ')} of ${objectText} while keeping its ${visiblePropsText} in ${adjObjectText} .`
+  }
+
   /**
    * Add a new alt to a node with optional image generation
    */
@@ -356,6 +360,7 @@ export const useNode = defineStore('nodes', () => {
     adjObjectText = '',
     objectText = '',
     propsAltered = '',
+    visiblePropsText = '',
   ) {
     let imgUrl = null
 
@@ -395,20 +400,30 @@ export const useNode = defineStore('nodes', () => {
             console.log('Generated prompt:', prompt)
             copiedPayload.prompt = prompt
             copiedPayload.altId = newAlt.id
+            //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
             imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
           } else if (copiedPayload.type === 'lasso') {
-            const guess_prompt = await generationStore.guessPrompt({
-              original_image: copiedPayload.original_image,
-              add_color_image: copiedPayload.add_color_image,
-              add_edge_image: copiedPayload.add_edge_image,
-            })
-            console.log('guess_prompt', guess_prompt)
-            const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
+            // const guess_prompt = await generationStore.guessPrompt({
+            //   original_image: copiedPayload.original_image,
+            //   add_color_image: copiedPayload.add_color_image,
+            //   add_edge_image: copiedPayload.add_edge_image,
+            // })
+            // console.log('guess_prompt', guess_prompt)
+            // const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
+            const prompt = imagenPrompt(
+              propsAltered,
+              adjObjectText,
+              objectText,
+              descriptors,
+              visiblePropsText,
+            )
 
             console.log('Generated prompt:', prompt)
             copiedPayload.prompt = prompt
             copiedPayload.altId = newAlt.id
-            imgUrl = await generationStore.generateMaskedImg(copiedPayload)
+            console.log(copiedPayload)
+            imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+            //imgUrl = await generationStore.generateMaskedImg(copiedPayload)
           }
 
           addAltImgPayload.value = { url: imgUrl, altId: newAlt.id }
@@ -497,37 +512,53 @@ export const useNode = defineStore('nodes', () => {
 
     let adjObjectText = ''
     let objectText = ''
+    let visiblePropsText = ''
     try {
       // Uncomment when object detection is ready
-      const result = await generationStore.whatIsObject(
+      const result = await generationStore.excludePropObject(
         selectionPayload.value.lassoBoundUrl,
         propsAltered,
       )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
+      visiblePropsText = result.visibleProps
     } catch (error) {
       console.error('Object detection failed:', error)
       return []
     }
     const descriptors = alt.properties.map((p) => `${p.tag} ${p.propName}`) // e.g. cream white color
+    const copiedPayload = { ...selectionPayload.value }
     let imgUrl
     // magic quill for lasso, openai api for full image
-    if (selectionPayload.value.type === 'full-img') {
+    if (copiedPayload.type === 'full-img') {
       const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
       console.log('Generated prompt:', prompt)
-      selectionPayload.value.prompt = prompt
-      imgUrl = await generationStore.generateOpenAIImg(selectionPayload.value)
-    } else if (selectionPayload.value.type === 'lasso') {
-      const guess_prompt = await generationStore.guessPrompt({
-        original_image: selectionPayload.value.original_image,
-        add_color_image: selectionPayload.value.add_color_image,
-        add_edge_image: selectionPayload.value.add_edge_image,
-      })
-      console.log('guess_prompt', guess_prompt)
-      const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
+      copiedPayload.prompt = prompt
+      imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+    } else if (copiedPayload.type === 'lasso') {
+      // const guess_prompt = await generationStore.guessPrompt({
+      //   original_image: selectionPayload.value.original_image,
+      //   add_color_image: selectionPayload.value.add_color_image,
+      //   add_edge_image: selectionPayload.value.add_edge_image,
+      // })
+      // console.log('guess_prompt', guess_prompt)
+      // const prompt = magicQPrompt(propsAltered, guess_prompt, objectText, descriptors)
+
+      const prompt = imagenPrompt(
+        propsAltered,
+        adjObjectText,
+        objectText,
+        descriptors,
+        visiblePropsText,
+      )
+
       console.log('Generated prompt:', prompt)
-      selectionPayload.value.prompt = prompt
-      imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
+      copiedPayload.prompt = prompt
+      copiedPayload.altId = alt.id
+      console.log(copiedPayload)
+      imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+
+      //imgUrl = await generationStore.generateMaskedImg(selectionPayload.value)
     }
     addAltImgPayload.value = { url: imgUrl, altId: currentAltId }
   }
@@ -594,14 +625,16 @@ export const useNode = defineStore('nodes', () => {
     // Object detection (currently disabled)
     let adjObjectText = ''
     let objectText = ''
+    let visiblePropsText = ''
     try {
       // Uncomment when object detection is ready
-      const result = await generationStore.whatIsObject(
+      const result = await generationStore.excludePropObject(
         selectionPayload.value.lassoBoundUrl,
         propsAltered,
       )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
+      visiblePropsText = result.visibleProps
     } catch (error) {
       console.error('Object detection failed:', error)
       return []
@@ -623,6 +656,7 @@ export const useNode = defineStore('nodes', () => {
         adjObjectText,
         objectText,
         propsAltered,
+        visiblePropsText,
       )
       urls.push(url)
     }

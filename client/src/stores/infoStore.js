@@ -27,6 +27,15 @@ export const useInfoStore = defineStore('infoStore', () => {
         { uid: uid(), tag: 'Polyester' },
       ],
     },
+    {
+      name: 'Sleeve Style',
+      color: '#000',
+      tags: [
+        { uid: uid(), tag: 'Lantern Sleeve' },
+        { uid: uid(), tag: 'Slim Sleeve' },
+        { uid: uid(), tag: 'Kimono Sleeve' },
+      ],
+    },
   ])
 
   const addRow = () => {

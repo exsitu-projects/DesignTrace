@@ -12,3 +12,4 @@ dist
 client/dist
 MagicQuill/LLaVA
 static/
+.env

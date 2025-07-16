@@ -56,9 +56,23 @@ Limit the first description to 10 words or fewer.
 Be specific, expressive, and grounded in what’s visible.
 
 Return only the two phrases, separated by a colon. Do not explain or add anything else.`
-  function setloadingStatus(promiseState) {
-    loadingStatus.value = promiseState
-  }
+
+  const nonPropsSysPrompt = `You are a visual description assistant.
+
+The user will provide an image and optionally specify a visual property to exclude (e.g., color, texture).
+
+Your task is to write three short outputs, separated by a colon:
+
+1. Describe the primary object using all the visual property (e.g., color, texture, material, pattern, shape, structure, surface detail) except the excluded property. The output should be a comma-separated list of properties, such as "red, wooden, wood, floral patched, curvy, smooth, T-shape". Describe only what is concretely observable — avoid abstract or subjective terms like "elegant" or "nice".
+
+2. The name of the primary object alone.
+
+3. List all the visual property categories (e.g., color, texture, material, pattern, shape, structure, surface detail) except the excluded property. The output should be a comma-separated list of properties, such as "color, texture, material, pattern, shape, structure, surface detail".
+
+Use natural language, not a list of keywords. Limit the first description to 20 words or fewer. Be specific, expressive, and grounded in visual details.
+
+Return only the three phrases, separated by colon. Do not explain or add anything else.`
+
   function triggerT2I() {
     shouldTriggerT2I.value = true
   }
@@ -118,6 +132,24 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     }
   }
 
+  async function excludePropObject(lassoBoundUrl, propsString) {
+    try {
+      const raw = await describeImage(lassoBoundUrl, propsString, nonPropsSysPrompt)
+      console.log(raw)
+
+      const [adjPart = '', objPart = '', visibleProps = ''] = raw.split(':').map((s) => s.trim())
+      if (!raw || typeof raw !== 'string') {
+        throw new Error('describeImage returned empty or non‑string')
+      }
+      return {
+        adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
+        objectText: objPart, // e.g. "sofa"
+        visibleProps: visibleProps, // e.g. "color, texture, material, pattern, shape, structure, surface detail"
+      }
+    } finally {
+    }
+  }
+
   async function guessPrompt({ original_image, add_color_image, add_edge_image }) {
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
 
@@ -172,6 +204,35 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
       return null // Optional: consistently return on error
     } finally {
       promiseLoadImageLabel.value = 'finished' // Ensures it always updates
+      loadingStatus.value = 'finished'
+    }
+  }
+
+  async function generateGoogleImg({ original_image, total_mask, prompt, altId }) {
+    try {
+      loadingStatus.value = 'loading'
+      currentGenId.value = altId
+      const response = await fetch('http://localhost:5555/gen-img-imagen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ original_image, total_mask, prompt }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        // return result.result
+        console.log(result)
+        return result.filepath
+      } else {
+        console.log(result.error)
+        return null // Optional: explicitly return null on error
+      }
+    } catch (err) {
+      console.log(err.message)
+      return null // Optional: consistently return on error
+    } finally {
       loadingStatus.value = 'finished'
     }
   }
@@ -238,6 +299,8 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
     objSysPrompt,
     guessPrompt,
     generateOpenAIImg,
+    generateGoogleImg,
     currentGenId,
+    excludePropObject,
   }
 })
