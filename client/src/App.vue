@@ -163,7 +163,7 @@ function handleKeyDown(e) {
   }
 
   if ((e.key === 'Delete' || e.key === 'Backspace') && nodeStore.lastSelectedIndex != null) {
-    const canvasComp = nodeCanvasRefs[nodesStore.lastSelectedIndex]
+    const canvasComp = nodeCanvasRefs[nodeStore.lastSelectedIndex]
     canvasComp?.deleteSelectedObjects?.()
   }
 }

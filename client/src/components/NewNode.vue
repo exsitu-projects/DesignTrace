@@ -6,8 +6,8 @@
       style="background: #ededed"
     >
       <!--      @dblclick="clickOnNodeTap()"-->
-      <EditableLabel v-model="nodeName" />
-      {{ alt.id }}
+      <!--      <EditableLabel v-model="nodeName" />-->
+      <!--      {{ alt.id }}-->
       <!-- Undo/Redo Controls -->
       <div class="d-flex align-items-center gap-1 ms-2">
         <button
@@ -54,29 +54,28 @@
     </div>
 
     <div @click.stop class="m-auto position-relative" ref="canvasContainer">
-  <!-- Spinner positioned absolutely inside the container -->
-  <div
-    v-show="
-      generationStore.currentGenId === alt.id &&
-      generationStore.loadingStatus === 'loading'
-    "
-    class="position-absolute top-50 start-50 translate-middle"
-    style="z-index: 10;"
-  >
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-  </div>
+      <!-- Spinner positioned absolutely inside the container -->
+      <div
+        v-show="
+          generationStore.currentGenId === alt.id && generationStore.loadingStatus === 'loading'
+        "
+        class="position-absolute top-50 start-50 translate-middle"
+        style="z-index: 10"
+      >
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
 
-  <!-- Canvas stays behind the spinner -->
-  <canvas
-    ref="canvasEl"
-    class="inset-border"
-    :width="canvasW"
-    :height="canvasW"
-    style="z-index: 1;"
-  ></canvas>
-</div>
+      <!-- Canvas stays behind the spinner -->
+      <canvas
+        ref="canvasEl"
+        class="inset-border"
+        :width="canvasW"
+        :height="canvasW"
+        style="z-index: 1"
+      ></canvas>
+    </div>
   </div>
 </template>
 

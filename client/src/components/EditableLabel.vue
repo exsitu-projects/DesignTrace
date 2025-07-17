@@ -1,4 +1,3 @@
-<!-- components/EditableLabel.vue -->
 <template>
   <span
     tabindex="0"
@@ -8,34 +7,50 @@
     style="min-width: 50px; min-height: 20px"
   >
     <img v-if="props.thumbnail" :src="props.thumbnail" alt="thumb" class="thumb-icon" />
+
     <template v-if="isEditing">
       <input
         v-model="text"
+        ref="input"
         class="form-control form-control-sm m-auto border-0 p-0"
-        style="min-height: auto"
+        :style="{ minHeight: 'auto', maxWidth: '500px', width: inputWidth + 'px' }"
         @keyup.enter="save"
         @blur="save"
       />
+      <!-- hidden span to measure text width -->
+      <span ref="sizer" class="invisible position-absolute" style="white-space: pre">{{
+        text || ' '
+      }}</span>
     </template>
-    <template v-else class="m-auto">
-      {{ modelValue }}
+
+    <template v-else>
+      <span
+        class="text-truncate d-inline-block"
+        style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"
+      >
+        {{ modelValue }}
+      </span>
     </template>
   </span>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-const model = defineModel()
+import { ref, watch, nextTick } from 'vue'
 
+const model = defineModel()
 const emit = defineEmits(['update:modelValue', 'delete-label'])
+
 const props = defineProps({
-  type: String, // Your extra prop
+  type: String,
   index: Number,
   thumbnail: { type: String, default: null },
 })
 
 const isEditing = ref(false)
 const text = ref('')
+const inputWidth = ref(50)
+
+const sizer = ref(null)
 
 watch(
   () => model.value,
@@ -44,9 +59,23 @@ watch(
   },
 )
 
+watch(text, () => {
+  updateWidth()
+})
+
+const updateWidth = () => {
+  nextTick(() => {
+    if (sizer.value) {
+      const width = sizer.value.offsetWidth + 10
+      inputWidth.value = Math.min(Math.max(width, 50), 500)
+    }
+  })
+}
+
 const startEditing = () => {
   isEditing.value = true
   text.value = model.value
+  updateWidth()
 }
 
 const onKeyDown = (e) => {
@@ -60,13 +89,14 @@ const save = () => {
   isEditing.value = false
 }
 </script>
+
 <style>
 .thumb-icon {
   width: 20px;
   height: 20px;
-  border-radius: 8px; /* nice rounded corners, but not a circle */
-  object-fit: cover; /* 👈 show the real-size image pixels */
-  object-position: center; /* or 'center' if you prefer */
+  border-radius: 8px;
+  object-fit: cover;
+  object-position: center;
   margin-right: 0.5rem;
   align-self: center;
 }

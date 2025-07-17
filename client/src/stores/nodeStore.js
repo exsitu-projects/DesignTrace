@@ -2,35 +2,16 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useGeneration } from '@/stores/generationStore.js'
 
+/**
+ * Node Store - Manages the node structure for the design application
+ *
+ * Data Structure Hierarchy:
+ * - nodeBranchList: Collection of branches (forest)
+ *   - nodeBranch: A branch containing connected nodes
+ *     - node: A point on the branch containing alternatives
+ *       - alt: Smallest unit - an "alternative" design
+ */
 export const useNode = defineStore('nodes', () => {
-  /* ----------------------------------------------------------
-   Data‑structure overview
-   ----------------------------------------------------------
-
-   nodeBranchList              (array)  [the whole forest]
-   ├── nodeBranch              (object) [a single branch]
-   │   ├── node                (object) [a point on the branch]
-   │   │   ├── alt             (object) [smallest unit — an “alternative”]
-   │   │   └── alt
-   │   └── node
-   │       └── alt
-   └── nodeBranch
-       └── node
-           └── alt
-
-   Legend
-   ──────
-   nodeBranchList : collection of *node branches* (like a list of branches)
-   nodeBranch     : contains several *nodes* that are connected in order
-   node           : can hold several *alts*
-   alt            : ≪ smallest / leaf level ≫
-
-*/
-  const nodeBranchList = ref([])
-
-  const currentBranchId = ref(null)
-  const currentNodeId = ref(null)
-  const layerPayload = ref(null)
   // ===== CONSTANTS =====
   const CANVAS_WIDTH = 300
   const NODE_WIDTH = CANVAS_WIDTH + 20
@@ -39,15 +20,27 @@ export const useNode = defineStore('nodes', () => {
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
 
-  // Layout and positioning
+  // ===== STATE =====
+  // Core data structure
+  const nodeBranchList = ref([])
+
+  // Current selections and positions
+  const currentBranchId = ref(null)
+  const currentNodeId = ref(null)
+  const layerPayload = ref(null)
+
+  // Layout boundaries
   const nodeXR = ref(0) // Right boundary
   const nodeYB = ref(0) // Bottom boundary
   const nodeYT = ref(0) // Top boundary
-  const offsetY = ref(0)
+  const offsetY = ref(0) // Vertical offset for positioning
+
+  // Selection state
   const selectedIndices = ref([])
   const selectedBranchId = ref('')
   const lastSelectedIndex = ref(null)
   const ctrlPressed = ref(false)
+
   // Payloads and temporary data
   const selectionPayload = ref({})
   const currentColorPenInfo = ref({})
@@ -64,6 +57,8 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Find an alt by its ID across all branches and nodes
+   * @param {string} altId - The ID of the alt to find
+   * @returns {Object|undefined} - The found alt object or undefined
    */
   function findAlt(altId) {
     const allAlts = nodeBranchList.value.flatMap((branch) =>
@@ -74,6 +69,9 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Generate a unique ID with timestamp and optional suffix
+   * @param {string} prefix - The prefix for the ID
+   * @param {string} suffix - Optional suffix for the ID
+   * @returns {string} - A unique ID
    */
   function generateId(prefix, suffix = '') {
     return `${prefix}_${Date.now()}${suffix}`
@@ -81,6 +79,10 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Calculate layout boundaries and update positioning refs
+   * @param {number} x - The x coordinate
+   * @param {number} y - The y coordinate
+   * @param {number} nodeWidth - The width of the node
+   * @param {number} nodeHeight - The height of the node
    */
   function updateLayoutBoundaries(x, y, nodeWidth = NODE_WIDTH, nodeHeight = NODE_HEIGHT) {
     nodeXR.value = Math.max(nodeXR.value, x + nodeWidth)
@@ -92,11 +94,14 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Save the canvas state for a specific alt
+   * @param {string} altId - ID of the alt to save state for
+   * @param {string} canvasState - JSON string representation of canvas state
    */
   function saveState(altId, canvasState) {
     const alt = findAlt(altId)
     if (!alt) return
 
+    // Initialize history if it doesn't exist
     if (!alt.history) {
       alt.history = {
         undoStack: [],
@@ -104,17 +109,21 @@ export const useNode = defineStore('nodes', () => {
       }
     }
 
+    // Add current state to undo stack
     alt.history.undoStack.push(canvasState)
     alt.history.redoStack = [] // Clear redo stack on new action
 
-    // Limit undo stack size
-    if (alt.history.undoStack.length > 50) {
+    // Limit undo stack size to prevent memory issues
+    const MAX_HISTORY = 50
+    if (alt.history.undoStack.length > MAX_HISTORY) {
       alt.history.undoStack.shift()
     }
   }
 
   /**
    * Undo the last action for a specific alt
+   * @param {string} altId - ID of the alt to perform undo on
+   * @returns {string|null} - Previous state or null if undo not possible
    */
   function undo(altId) {
     const alt = findAlt(altId)
@@ -130,6 +139,8 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Redo the last undone action for a specific alt
+   * @param {string} altId - ID of the alt to perform redo on
+   * @returns {string|null} - Redone state or null if redo not possible
    */
   function redo(altId) {
     const alt = findAlt(altId)
@@ -147,6 +158,7 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Add a new node branch to the forest
+   * @returns {Object} - The newly created branch
    */
   function addNodeBranch() {
     const newBranch = {
@@ -155,8 +167,10 @@ export const useNode = defineStore('nodes', () => {
       parents: [],
       steps: [],
     }
+
     currentBranchId.value = newBranch.id
     nodeBranchList.value.push(newBranch)
+
     return newBranch
   }
 
@@ -164,6 +178,7 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Set the right boundary position
+   * @param {number} newVal - New right boundary value
    */
   function setNodeXR(newVal) {
     nodeXR.value = newVal
@@ -171,6 +186,7 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Set the bottom boundary position
+   * @param {number} newVal - New bottom boundary value
    */
   function setNodeYB(newVal) {
     nodeYB.value = newVal
@@ -180,6 +196,10 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Add a new node to a specific branch
+   * @param {string} nodeBranchId - ID of the branch to add node to
+   * @param {number} midXPos - X position of the node
+   * @param {number} midYPos - Y position of the node
+   * @returns {Object|null} - The newly created node or null if branch not found
    */
   function addNode(nodeBranchId, midXPos = INITIAL_NODE_X, midYPos = INITIAL_NODE_Y) {
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
@@ -204,6 +224,7 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Set lasso information for a specific alt
+   * @param {Object} lassoPayload - Payload containing lasso information
    */
   function setCurrentLassoInfo(lassoPayload) {
     const alt = findAlt(lassoPayload.altId)
@@ -216,20 +237,26 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Apply color pen effect and generate new image
+   * @param {Object} colorPenPayload - Payload containing color pen information
+   * @returns {string|null} - URL of the generated image or null if generation failed
    */
   async function applyColorPen(colorPenPayload) {
     currentColorPenInfo.value = colorPenPayload
     let imgUrl = null
 
     try {
+      // Get prompt suggestion based on images
       const output = await generationStore.guessPrompt({
         original_image: colorPenPayload.original_image,
         add_color_image: colorPenPayload.add_color_image,
         add_edge_image: colorPenPayload.add_edge_image,
       })
 
+      // Generate the image with the prompt
       currentColorPenInfo.value.prompt = output
       imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
+
+      // Update payload for rendering
       addAltImgPayload.value = {
         url: imgUrl,
         altId: colorPenPayload.altId,
@@ -245,6 +272,8 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Update parent relationships and visibility for selected alts
+   * @param {string[]} selectedAltIdArr - Array of selected alt IDs
+   * @param {string} branchId - ID of the branch to update
    */
   function updateParents(selectedAltIdArr, branchId) {
     const branch = nodeBranchList.value.find((b) => b.id === branchId)
@@ -253,10 +282,11 @@ export const useNode = defineStore('nodes', () => {
       return
     }
 
+    // Get all alts in the branch and all alts in previous steps
     const allAlts = branch.nodes.flatMap((n) => n.alts)
     const allAltsInSteps = branch.steps.flatMap((step) => step)
 
-    // Hide alts that are not previously selected (not in steps)
+    // Step 1: Hide alts that were not previously selected
     for (const alt of allAlts) {
       if (!allAltsInSteps.includes(alt.id)) {
         alt.visible = false
@@ -264,12 +294,12 @@ export const useNode = defineStore('nodes', () => {
       }
     }
 
-    // Update steps with current parents
+    // Step 2: Update steps with current parents
     branch.steps.push([...branch.parents])
 
     const newParents = []
 
-    // Process each selected alt
+    // Step 3: Process each selected alt
     for (const altId of selectedAltIdArr) {
       const childAlt = allAlts.find((a) => a.id === altId)
       if (!childAlt) continue
@@ -277,7 +307,7 @@ export const useNode = defineStore('nodes', () => {
       // Make selected alt visible
       childAlt.visible = true
 
-      // Find the closest parent in branch.parents
+      // Step 4: Find the closest parent in branch.parents
       let currentChild = altId
       let currentParent = childAlt.prevAltId
 
@@ -287,7 +317,7 @@ export const useNode = defineStore('nodes', () => {
         currentParent = currentChildAlt?.prevAltId || null
       }
 
-      // Create edge from parent to selected alt
+      // Step 5: Create edge from parent to selected alt if parent exists
       if (currentParent) {
         const parentAlt = allAlts.find((a) => a.id === currentParent)
         if (parentAlt) {
@@ -302,6 +332,7 @@ export const useNode = defineStore('nodes', () => {
       newParents.push(altId)
     }
 
+    // Step 6: Update branch parents with new selection
     branch.parents = newParents
   }
 
@@ -309,6 +340,14 @@ export const useNode = defineStore('nodes', () => {
 
   /**
    * Create a new alt object with default properties
+   * @param {Object} altObj - Alt properties object
+   * @param {string} nodeBranchId - Branch ID
+   * @param {number} index - Index for ID generation
+   * @param {number} posX - X position
+   * @param {number} posY - Y position
+   * @param {string|null} prevAltId - Previous alt ID for connections
+   * @param {string|null} nodeId - Node ID
+   * @returns {Object} New alt object
    */
   function createAlt(altObj, nodeBranchId, index, posX, posY, prevAltId = null, nodeId = null) {
     return {
@@ -331,89 +370,141 @@ export const useNode = defineStore('nodes', () => {
   }
 
   /**
-   * Generate a prompt for alt generation
+   * Generate a prompt for OpenAI image generation
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} adjObjectText - Object adjectives from detection
+   * @param {string} objectText - Object name from detection
+   * @param {string[]} descriptors - Array of property descriptions
+   * @returns {string} Formatted prompt
    */
   function openAIPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     return `Change the ${propsAltered} of the ${adjObjectText} ${objectText} into ${descriptors.join(' and ')} while other visual properties remain the same.`
   }
 
+  /**
+   * Generate a prompt for MagicQuill image generation
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} guessPrompt - Additional context for prompt
+   * @param {string} objectText - Object name from detection
+   * @param {string[]} descriptors - Array of property descriptions
+   * @returns {string} Formatted prompt
+   */
   function magicQPrompt(propsAltered, guessPrompt, objectText, descriptors) {
     return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
   }
 
+  /**
+   * Generate a prompt for Imagen image generation
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} adjObjectText - Object adjectives from detection
+   * @param {string} objectText - Object name from detection
+   * @param {string[]} descriptors - Array of property descriptions
+   * @param {string} visiblePropsText - Properties to preserve
+   * @returns {string} Formatted prompt
+   */
   function imagenPrompt(propsAltered, adjObjectText, objectText, descriptors, visiblePropsText) {
-    return `Change to the ${propsAltered} of ${descriptors.join(' and ')} of ${objectText} while keeping its ${visiblePropsText} in ${adjObjectText} .`
+    return `Change to the ${descriptors.join(' and ')} of ${objectText} while keeping its ${visiblePropsText} in ${adjObjectText}.`
   }
 
   /**
    * Generate image based on properties and payload
    * This extracted function handles the common image generation logic
+   * @param {Array} properties - Array of property objects
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} adjObjectText - Object adjectives from detection
+   * @param {string} objectText - Object name from detection
+   * @param {string} visiblePropsText - Properties to preserve
+   * @param {string} altId - Alt ID for the generated image
+   * @returns {Promise<string|null>} URL of generated image or null if failed
    */
-  async function generateImage(properties, propsAltered, adjObjectText, objectText, visiblePropsText, altId) {
+  async function generateImage(
+    properties,
+    propsAltered,
+    adjObjectText,
+    objectText,
+    visiblePropsText,
+    altId,
+  ) {
     try {
-      const descriptors = properties.map((p) => `${p.tag} ${p.propName}`);
-      const copiedPayload = { ...selectionPayload.value };
-      let imgUrl = null;
+      const descriptors = properties.map((p) => `${p.tag} ${p.propName}`)
+      const copiedPayload = { ...selectionPayload.value }
+      let imgUrl = null
 
       // Generate appropriate prompt and image based on payload type
       if (copiedPayload.type === 'full-img') {
-        const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors);
-        console.log('Generated prompt:', prompt);
+        const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
+        console.log('Generated prompt:', prompt)
 
-        copiedPayload.prompt = prompt;
-        copiedPayload.altId = altId;
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload);
+        copiedPayload.prompt = prompt
+        copiedPayload.altId = altId
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = imagenPrompt(
           propsAltered,
           adjObjectText,
           objectText,
           descriptors,
-          visiblePropsText
-        );
-        console.log('Generated prompt:', prompt);
+          visiblePropsText,
+        )
+        console.log('Generated prompt:', prompt)
 
-        copiedPayload.prompt = prompt;
-        copiedPayload.altId = altId;
-        console.log(copiedPayload);
-        imgUrl = await generationStore.generateGoogleImg(copiedPayload);
+        copiedPayload.prompt = prompt
+        copiedPayload.altId = altId
+        console.log(copiedPayload)
+        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
-        addAltImgPayload.value = { url: imgUrl, altId: altId };
+        addAltImgPayload.value = { url: imgUrl, altId: altId }
       }
 
-      return imgUrl;
+      return imgUrl
     } catch (error) {
-      console.error('Image generation failed:', error);
-      return null;
+      console.error('Image generation failed:', error)
+      return null
     }
   }
 
   /**
    * Get object properties from image
    * This extracted function handles common object detection logic
+   * @param {string} imageUrl - URL of the image to analyze
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @returns {Promise<Object>} Object with detected properties
    */
   async function getObjectProperties(imageUrl, propsAltered) {
     try {
-      const result = await generationStore.excludePropObject(imageUrl, propsAltered);
+      const result = await generationStore.excludePropObject(imageUrl, propsAltered)
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
-        visiblePropsText: result.visibleProps
-      };
+        visiblePropsText: result.visibleProps,
+      }
     } catch (error) {
-      console.error('Object detection failed:', error);
+      console.error('Object detection failed:', error)
       return {
         adjObjectText: '',
         objectText: '',
-        visiblePropsText: ''
-      };
+        visiblePropsText: '',
+      }
     }
   }
 
   /**
    * Add a new alt to a node with optional image generation
+   * @param {Object} altObj - Alt properties object
+   * @param {string} nodeBranchId - Branch ID
+   * @param {string} nodeId - Node ID
+   * @param {number} index - Index for ID generation
+   * @param {string|null} nextNodeId - Next node ID
+   * @param {number} posX - X position (default: INITIAL_NODE_X)
+   * @param {number} posY - Y position (default: INITIAL_NODE_Y)
+   * @param {string|null} prevAltId - Previous alt ID for connections
+   * @param {string} adjObjectText - Object adjectives from detection
+   * @param {string} objectText - Object name from detection
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} visiblePropsText - Properties to preserve
+   * @returns {Promise<string|null>} URL of generated image or null if failed
    */
   async function addAlt(
     altObj,
@@ -429,30 +520,33 @@ export const useNode = defineStore('nodes', () => {
     propsAltered = '',
     visiblePropsText = '',
   ) {
-    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId);
-    const prevNode = branch?.nodes.find((n) => n.id === nodeId);
-    const newNode = branch?.nodes.find((n) => n.id === nextNodeId);
-    let imgUrl = null;
+    // Find relevant branch and nodes
+    const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
+    const prevNode = branch?.nodes.find((n) => n.id === nodeId)
+    const newNode = branch?.nodes.find((n) => n.id === nextNodeId)
+    let imgUrl = null
 
     if (!branch || !prevNode) {
-      console.warn('Required branch or node not found');
-      return null;
+      console.warn('Required branch or node not found')
+      return null
     }
 
-    const newAlt = createAlt([altObj], nodeBranchId, index, posX, posY, prevAltId, nextNodeId);
+    // Create the new alt object
+    const newAlt = createAlt([altObj], nodeBranchId, index, posX, posY, prevAltId, nextNodeId)
 
     // Handle alt with previous connection
     if (prevAltId) {
       if (newNode) {
-        newNode.alts.push(newAlt);
-        const prevAlt = prevNode.alts.find((alt) => alt.id === prevAltId);
+        // Add to new node
+        newNode.alts.push(newAlt)
+        const prevAlt = prevNode.alts.find((alt) => alt.id === prevAltId)
 
         if (prevAlt) {
-          // Create bidirectional links
-          const edge = { fromAltId: prevAltId, toAltId: newAlt.id };
-          prevAlt.edges.push(edge);
-          prevAlt.visibleEdges.push(edge);
-          prevAlt.nextAltId.push(newAlt.id);
+          // Create bidirectional links between alts
+          const edge = { fromAltId: prevAltId, toAltId: newAlt.id }
+          prevAlt.edges.push(edge)
+          prevAlt.visibleEdges.push(edge)
+          prevAlt.nextAltId.push(newAlt.id)
         }
       }
 
@@ -464,70 +558,101 @@ export const useNode = defineStore('nodes', () => {
           adjObjectText,
           objectText,
           visiblePropsText,
-          newAlt.id
-        );
+          newAlt.id,
+        )
       }
     } else {
       // Handle first alt in branch
       const isFirstAltInBranch =
-        branch.nodes.length > 0 && branch.nodes[0].id === nodeId && prevNode.alts.length === 0;
+        branch.nodes.length > 0 && branch.nodes[0].id === nodeId && prevNode.alts.length === 0
 
       if (isFirstAltInBranch) {
-        branch.parents.push(newAlt.id);
+        branch.parents.push(newAlt.id)
       }
-      prevNode.alts.push(newAlt);
+      prevNode.alts.push(newAlt)
     }
 
-    return imgUrl;
+    return imgUrl
   }
 
   // ===== CANVAS DATA MANAGEMENT =====
 
   /**
    * Create a promise to request canvas data for a specific alt
+   * @param {string} requestAltId - Alt ID for which to request canvas data
+   * @returns {Promise<Object>} Promise resolving to canvas data
    */
   const canvasDataPromise = (requestAltId) =>
     new Promise((resolve) => {
-      resolveCanvasData = resolve;
-      requestCanvasData.value.status = true;
-      requestCanvasData.value.altId = requestAltId;
-    });
+      resolveCanvasData = resolve
+      requestCanvasData.value.status = true
+      requestCanvasData.value.altId = requestAltId
+    })
 
   /**
    * Receive and resolve canvas data
+   * @param {Object} data - The canvas data to resolve
    */
   function receiveCanvasData(data) {
-    resolveCanvasData?.(data);
-    requestCanvasData.value.status = false;
+    resolveCanvasData?.(data)
+    requestCanvasData.value.status = false
   }
 
   // ===== MULTIPLE ALT MANAGEMENT =====
 
   /**
    * Calculate layout for multiple alts
+   * @param {number} currentNodeX - X position of current node
+   * @param {number} currentNodeY - Y position of current node
+   * @param {number} numAlts - Number of alts to calculate layout for
+   * @returns {Object} Layout coordinates
    */
   function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts) {
-    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1);
-    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1);
-    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING;
+    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1)
+    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1)
+    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING
 
-    return { maxY, minY, x };
+    return { maxY, minY, x }
   }
 
   /**
    * Adjust positions if nodes would go above y=0
+   * @param {Object} branch - Branch object
+   * @param {number} minY - Minimum Y position
    */
   function adjustPositionsForBounds(branch, minY) {
     if (minY < 0) {
-      offsetY.value = -minY;
-      branch.nodes.forEach((node) => node.alts.forEach((alt) => (alt.position.y += offsetY.value)));
+      offsetY.value = -minY
+      branch.nodes.forEach((node) => node.alts.forEach((alt) => (alt.position.y += offsetY.value)))
     } else {
-      offsetY.value = 0;
+      offsetY.value = 0
+    }
+  }
+
+  /**
+   * Update positions of alt nodes in layout
+   * @param {number} maxY - Maximum Y coordinate
+   * @param {number} minY - Minimum Y coordinate
+   * @param {number} x - X coordinate
+   * @param {Object} node - Node object containing alts
+   */
+  function updateAltPos(maxY, minY, x, node) {
+    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
+    for (let i = 0; i < visibleNodeList.length; i++) {
+      const alt = visibleNodeList[i]
+      alt.position.x = x
+      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
     }
   }
 
   /**
    * Update properties of an existing alt and generate a new image
+   * @param {Array} altObjs - Array of alt property objects
+   * @param {string} nodeBranchId - Branch ID
+   * @param {string} nodeId - Node ID
+   * @param {number} currentNodeX - X position of current node
+   * @param {number} currentNodeY - Y position of current node
+   * @param {string} currentAltId - Current alt ID
    */
   async function addOnExistingAlt(
     altObjs,
@@ -537,58 +662,58 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    // Wait for canvas data
-    selectionPayload.value = await canvasDataPromise(currentAltId);
-    const alt = findAlt(currentAltId);
+    // Step 1: Wait for canvas data
+    selectionPayload.value = await canvasDataPromise(currentAltId)
+    const alt = findAlt(currentAltId)
 
     if (!alt) {
-      console.warn(`Alt with ID ${currentAltId} not found`);
-      return;
+      console.warn(`Alt with ID ${currentAltId} not found`)
+      return
     }
 
-    // Update properties array
+    // Step 2: Update properties array
     if (alt.properties.length && alt.properties[0].length === 0) {
-      alt.properties.splice(0, alt.properties.length, ...altObjs); // Replace all elements
+      alt.properties.splice(0, alt.properties.length, ...altObjs) // Replace all elements
     } else {
-      alt.properties.push(...altObjs); // Add to existing elements
+      alt.properties.push(...altObjs) // Add to existing elements
     }
 
-    // Get unique property names
+    // Step 3: Get unique property names
     const propsAltered = altObjs
       .map((obj) => obj.propName)
       .filter((value, index, array) => array.indexOf(value) === index)
-      .join(', ');
+      .join(', ')
 
-    // Get object properties from image
+    // Step 4: Get object properties from image
     const { adjObjectText, objectText, visiblePropsText } = await getObjectProperties(
       selectionPayload.value.lassoBoundUrl,
-      propsAltered
-    );
+      propsAltered,
+    )
 
     if (!adjObjectText || !objectText) {
-      return;
+      return
     }
 
-    // Generate new image
+    // Step 5: Generate new image
     await generateImage(
       alt.properties,
       propsAltered,
       adjObjectText,
       objectText,
       visiblePropsText,
-      currentAltId
-    );
+      currentAltId,
+    )
   }
-  function updateAltPos(maxY, minY, x, node) {
-    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
-    for (let i = 0; i < visibleNodeList.length; i++) {
-      const alt = visibleNodeList[i]
-      alt.position.x = x
-      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
-    }
-  }
+
   /**
    * Add multiple alts to a node with automatic layout
+   * @param {Array} altObjs - Array of alt property objects
+   * @param {string} nodeBranchId - Branch ID
+   * @param {string} nodeId - Node ID
+   * @param {number} currentNodeX - X position of current node
+   * @param {number} currentNodeY - Y position of current node
+   * @param {string} currentAltId - Current alt ID
+   * @returns {Promise<Array>} Array of generated image URLs
    */
   async function addMultAlt(
     altObjs,
@@ -598,16 +723,19 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    // Wait for canvas data
+    // Step 1: Wait for canvas data
     selectionPayload.value = await canvasDataPromise(currentAltId)
 
+    // Step 2: Find branch and node
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
-    const prevNode = branch.nodes.find((n) => n.id === nodeId)
+    const prevNode = branch?.nodes.find((n) => n.id === nodeId)
 
     if (!branch || !prevNode) {
       console.warn('Required branch or node not found')
       return []
     }
+
+    // Step 3: Calculate total alts length
     let updatedAltLength
     let newNode
     if (!('nextNodeId' in prevNode)) {
@@ -617,34 +745,32 @@ export const useNode = defineStore('nodes', () => {
       updatedAltLength = newNode.alts.filter((alt) => alt.visible !== false).length + altObjs.length
     }
 
+    // Step 4: Calculate layout and adjust positions
     const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, updatedAltLength)
-
-    // Adjust positions if needed
     adjustPositionsForBounds(branch, minY)
 
-    // Create or use existing next node
+    // Step 5: Create or use existing next node
     if (!('nextNodeId' in prevNode)) {
       newNode = addNode(nodeBranchId, x, (maxY + minY) / 2 + offsetY.value)
       prevNode.nextNodeId = currentNodeId.value
     }
 
-    // Update boundaries
+    // Step 6: Update canvas boundaries
     nodeYT.value = minY + offsetY.value
     nodeYB.value = Math.max(maxY + NODE_HEIGHT, nodeYB.value) + offsetY.value
     nodeXR.value = Math.max(nodeXR.value, x + NODE_WIDTH)
 
-    // Prepare properties string for object detection
+    // Step 7: Prepare properties for object detection
     const propsAltered = altObjs
       .map((obj) => obj.propName)
       .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
       .join(', ')
 
-    // Object detection (currently disabled)
+    // Step 8: Perform object detection
     let adjObjectText = ''
     let objectText = ''
     let visiblePropsText = ''
     try {
-      // Uncomment when object detection is ready
       const result = await generationStore.excludePropObject(
         selectionPayload.value.lassoBoundUrl,
         propsAltered,
@@ -657,7 +783,7 @@ export const useNode = defineStore('nodes', () => {
       return []
     }
 
-    // Generate alts sequentially
+    // Step 9: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
       const y = maxY - NODE_HEIGHT * i + offsetY.value
@@ -678,6 +804,7 @@ export const useNode = defineStore('nodes', () => {
       urls.push(url)
     }
 
+    // Step 10: Update alt positions
     updateAltPos(maxY, minY, x, newNode)
 
     return urls
@@ -693,48 +820,47 @@ export const useNode = defineStore('nodes', () => {
     nodeH: NODE_HEIGHT,
     canvasW: CANVAS_WIDTH,
 
-    // State
+    // State Management
     layerPayload,
     nodeBranchList,
     currentNodeId,
     currentBranchId,
     addAltImgPayload,
     requestCanvasData,
-
-    // Layout functions
-    setNodeXR,
-    setNodeYB,
-
-    // Branch management
-    addNodeBranch,
-
-    // Node management
-    addNode,
-
-    // Alt management
-    addAlt,
-    addMultAlt,
-
-    // Lasso and color pen
-    setCurrentLassoInfo,
-    applyColorPen,
-
-    // Canvas data
-    canvasDataPromise,
-    receiveCanvasData,
-
-    // Parent management
-    updateParents,
-
-    // History management
-    saveState,
-    undo,
-    redo,
-    addOnExistingAlt,
-
     selectedIndices,
     selectedBranchId,
     lastSelectedIndex,
     ctrlPressed,
+
+    // Layout Functions
+    setNodeXR,
+    setNodeYB,
+
+    // Branch Management
+    addNodeBranch,
+
+    // Node Management
+    addNode,
+
+    // Alt Management
+    addAlt,
+    addMultAlt,
+    addOnExistingAlt,
+
+    // Canvas Data Management
+    canvasDataPromise,
+    receiveCanvasData,
+
+    // Parent Management
+    updateParents,
+
+    // History Management
+    saveState,
+    undo,
+    redo,
+
+    // Lasso and Color Pen
+    setCurrentLassoInfo,
+    applyColorPen,
   }
 })

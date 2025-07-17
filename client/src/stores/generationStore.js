@@ -29,17 +29,17 @@ export const useGeneration = defineStore('generation', () => {
 
   const propValSysPrompt = `You are a visual description assistant.
 
-The user will give you one visual property (like color, texture, or material) and an image.
+The user provides an image and a feature to describe — it can be a visual feature (like layout, color, font, texture, material) or a semantic feature (like landmark, object, architecture).
 
-Your task is to write a concise, vivid description of that property as clearly seen in the image.
+Your task is to describe only that feature in vivid, natural language, focusing on specific, visible details.
+ Do **not** start with phrases like “The layout shows...” or “The color is...” — only write the raw description.
+ No full sentences. No subjective words like “beautiful” or “elegant.”
+ Use phrases like: “centered bold serif title, small icon bottom-right,” or “light grainy texture, vertical brush strokes.”
+ Use up to **15 words**. Be specific, expressive, and spatially grounded.
+Be precise and spatially grounded (e.g., where a logo is placed, how a fabric folds, etc.).
 
-Use natural language, not a list of keywords.
-Limit your response to 8 words or fewer.
-Use adjectives or phrases like “shell-like,” “light reflections,” “wood grain,” etc.
-Be specific, expressive, and grounded in what’s visible.
-If the property is not visible, respond only with “none”.
-
-Return only the description. Do not explain or add anything else.`
+Return only the description. No labels, no lists, no explanation.
+`
 
   const objSysPrompt = `You are a visual description assistant.
 
@@ -59,19 +59,18 @@ Return only the two phrases, separated by a colon. Do not explain or add anythin
 
   const nonPropsSysPrompt = `You are a visual description assistant.
 
-The user will provide an image and optionally specify a visual property to exclude (e.g., color, texture).
+The user will provide an image and may optionally specify a visual property to exclude (e.g., color, texture).
 
-Your task is to write three short outputs, separated by a colon:
+Your task is to return exactly three outputs, separated by colons **with no extra colons inside**:
 
-1. Describe the primary object using all the visual property (e.g., color, texture, material, pattern, shape, structure, surface detail) except the excluded property. The output should be a comma-separated list of properties, such as "red, wooden, wood, floral patched, curvy, smooth, T-shape". Describe only what is concretely observable — avoid abstract or subjective terms like "elegant" or "nice".
+1. A comma-separated list of clearly visible visual properties of the primary object, excluding the specified property. Use only concrete, observable details (e.g., "wooden, smooth, floral patched, curvy, T-shape"). Do not include subjective or abstract terms.
 
-2. The name of the primary object alone.
+2. The name of the primary object only (e.g., "chair", "backpack").
 
-3. List all the visual property categories (e.g., color, texture, material, pattern, shape, structure, surface detail) except the excluded property. The output should be a comma-separated list of properties, such as "color, texture, material, pattern, shape, structure, surface detail".
+3. A comma-separated list of all applicable visual property categories that were used in the first output (e.g., color, texture, material, pattern, shape, structure, surface detail).
 
-Use natural language, not a list of keywords. Limit the first description to 20 words or fewer. Be specific, expressive, and grounded in visual details.
-
-Return only the three phrases, separated by colon. Do not explain or add anything else.`
+Limit the first description to 20 words or fewer. Make sure to return exactly three parts, where each part is separated by **a colon**. Do not include any explanation or additional punctuation.
+`
 
   function triggerT2I() {
     shouldTriggerT2I.value = true
