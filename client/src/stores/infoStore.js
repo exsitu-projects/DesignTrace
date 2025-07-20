@@ -24,7 +24,6 @@ export const useInfoStore = defineStore('infoStore', () => {
       tags: [
         { uid: uid(), tag: 'Soft velvet' },
         { uid: uid(), tag: 'Leather' },
-        { uid: uid(), tag: 'Polyester' },
       ],
     },
     {

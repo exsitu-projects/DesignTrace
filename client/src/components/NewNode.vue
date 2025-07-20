@@ -835,18 +835,6 @@ async function redo(event) {
 </script>
 
 <style scoped>
-.node {
-  width: v-bind(nodeW);
-  height: v-bind(nodeH);
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
 .inset-border {
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -855,10 +843,38 @@ async function redo(event) {
     inset 0 0 0 3px rgba(255, 255, 255, 0.82);
 }
 
-.node-tags {
-  min-height: 30px;
+.node {
+  width: v-bind(nodeW);
+  height: v-bind(nodeH); /* fixed height */
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden; /* prevent internal overflow from expanding node */
+}
+
+.node-tags {
+  display: flex;
+  flex-wrap: nowrap; /* no wrapping, keep single line */
+  overflow-x: auto; /* horizontal scroll if overflow */
+  gap: 0.25rem;
+  width: 100%; /* force full container width */
+  box-sizing: border-box;
+  padding: 0.5rem;
+  /* optionally set a fixed height */
+  height: 2.5rem; /* adjust to fit your tag buttons nicely */
+  align-items: center; /* vertically center buttons */
+}
+
+.node-tags button {
+  flex-shrink: 1; /* allow shrinking inside the flex container */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 8rem;
+  min-width: 2.5rem; /* optional: prevent buttons too small */
 }
 </style>

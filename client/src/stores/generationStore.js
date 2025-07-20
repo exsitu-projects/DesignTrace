@@ -34,8 +34,8 @@ The user provides an image and a feature to describe — it can be a visual feat
 Your task is to describe only that feature in vivid, natural language, focusing on specific, visible details.
  Do **not** start with phrases like “The layout shows...” or “The color is...” — only write the raw description.
  No full sentences. No subjective words like “beautiful” or “elegant.”
- Use phrases like: “centered bold serif title, small icon bottom-right,” or “light grainy texture, vertical brush strokes.”
- Use up to **15 words**. Be specific, expressive, and spatially grounded.
+ Use phrases like: “centered bold serif title, small icon bottom-right,” or “Fuji Mountain in sunny days”, or “light grainy texture, vertical brush strokes.”
+ Use up to **15 words**.
 Be precise and spatially grounded (e.g., where a logo is placed, how a fabric folds, etc.).
 
 Return only the description. No labels, no lists, no explanation.

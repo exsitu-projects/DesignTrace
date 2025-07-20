@@ -56,7 +56,7 @@ def mask_gen_img_imagen():
         reference_image=Image(image_bytes=mask_bytes, mime_type='image/png'),
         config=MaskReferenceConfig(
             mask_mode="MASK_MODE_USER_PROVIDED",
-            mask_dilation=0.01,
+            mask_dilation=0.02,
         ),
     )
 
@@ -70,7 +70,6 @@ def mask_gen_img_imagen():
     )
 
     gen_image = image.generated_images[0].image
-    print(gen_image)
     gen_image.save(output_file)
 
     return jsonify({"message": "File saved", "filepath": static_to_base64(output_file)})
