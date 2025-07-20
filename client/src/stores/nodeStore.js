@@ -254,7 +254,7 @@ export const useNode = defineStore('nodes', () => {
 
       // Generate the image with the prompt
       currentColorPenInfo.value.prompt = output
-      imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
+      //imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
 
       // Update payload for rendering
       addAltImgPayload.value = {
@@ -285,11 +285,12 @@ export const useNode = defineStore('nodes', () => {
     // Get all alts in the branch and all alts in previous steps
     const allAlts = branch.nodes.flatMap((n) => n.alts)
     const allAltsInSteps = branch.steps.flatMap((step) => step)
-
+    console.log(allAltsInSteps)
     // Step 1: Hide alts that were not previously selected
     for (const alt of allAlts) {
       if (!allAltsInSteps.includes(alt.id)) {
         alt.visible = false
+        //alt.position = { x: 0, y: 0 } // Reset position
         alt.visibleEdges = []
       }
     }
@@ -437,7 +438,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = imagenPrompt(
           propsAltered,
@@ -451,7 +452,7 @@ export const useNode = defineStore('nodes', () => {
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
         console.log(copiedPayload)
-        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+        //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -474,7 +475,8 @@ export const useNode = defineStore('nodes', () => {
    */
   async function getObjectProperties(imageUrl, propsAltered) {
     try {
-      const result = await generationStore.excludePropObject(imageUrl, propsAltered)
+      const result = ''
+      //const result = await generationStore.excludePropObject(imageUrl, propsAltered)
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
@@ -552,14 +554,14 @@ export const useNode = defineStore('nodes', () => {
 
       // Generate image if properties are specified
       if (propsAltered && adjObjectText && objectText) {
-        imgUrl = await generateImage(
-          newAlt.properties,
-          propsAltered,
-          adjObjectText,
-          objectText,
-          visiblePropsText,
-          newAlt.id,
-        )
+        // imgUrl = await generateImage(
+        //   newAlt.properties,
+        //   propsAltered,
+        //   adjObjectText,
+        //   objectText,
+        //   visiblePropsText,
+        //   newAlt.id,
+        // )
       }
     } else {
       // Handle first alt in branch
@@ -771,10 +773,11 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     let visiblePropsText = ''
     try {
-      const result = await generationStore.excludePropObject(
-        selectionPayload.value.lassoBoundUrl,
-        propsAltered,
-      )
+      const result = ''
+      //const result = await generationStore.excludePropObject(
+      //   selectionPayload.value.lassoBoundUrl,
+      //   propsAltered,
+      // )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
       visiblePropsText = result.visibleProps

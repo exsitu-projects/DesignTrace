@@ -135,7 +135,6 @@ const position = reactive({ x: 20, y: 20 })
 
 /* example async — not used right now */
 function confirmNodes() {
-  console.log(nodeStore.selectedIndices)
   nodeStore.updateParents(nodeStore.selectedIndices, nodeStore.selectedBranchId)
   nodeStore.selectedIndices = []
 }

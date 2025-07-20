@@ -5,6 +5,7 @@
       class="nodeHandle rounded-top p-1 d-flex align-items-center"
       style="background: #ededed"
     >
+      {{ alt.id }}
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
       <!--      {{ alt.id }}-->
@@ -178,7 +179,6 @@ onMounted(() => {
 
   // Save initial canvas state for undo functionality
   setTimeout(() => {
-    console.log('Saving initial canvas state')
     saveState()
   }, 100)
 

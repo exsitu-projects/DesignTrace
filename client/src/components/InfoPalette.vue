@@ -94,7 +94,6 @@ const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
 
 const handleDragStart = (e, tagObj, propName, thumbnail) => {
   objectStore.dragState = 'startDragging'
-  console.log(thumbnail)
   if ('uid' in tagObj) {
     //meaning this is one tag being dragged
     objectStore.obj = {
