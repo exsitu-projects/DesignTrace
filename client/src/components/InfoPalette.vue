@@ -17,6 +17,8 @@
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
+        :isPropertyName="true"
+        @property-name-finalized="(propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)"
       ></EditableLabel
       ><span
         v-show="hoveredRowIndex === rowIdx && objectStore.obj && objectStore.obj.type === 'image'"

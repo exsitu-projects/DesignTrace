@@ -28,9 +28,32 @@ export const useGeneration = defineStore('generation', () => {
   }
 
   // Simple function to log when property name is finalized
-  const onPropertyNameFinalized = (propertyName, rowIndex) => {
-    console.log(`Property name finalized: "${propertyName}" at row ${rowIndex}`)
-    // You can add more logic here later, like triggering generation, analytics, etc.
+  const onPropertyNameFinalized = async (propertyName, rowIndex) => {
+    try {
+      const prompt =
+        'Please give three common examples for the visual attribute ' +
+        propertyName +
+        '. Return only the values, separated by colons. No explanation.'
+      const response = await fetch('http://localhost:5555/sample-properties', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        console.log(result.output)
+        return result.output
+      } else {
+        console.log(result.error)
+        return null // Optional: explicitly return null on error
+      }
+    } catch (err) {
+      console.log(err.message)
+      return null // Optional: consistently return on error
+    }
   }
 
   const propValSysPrompt = `You are a visual description assistant.

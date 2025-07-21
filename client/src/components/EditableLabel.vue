@@ -38,12 +38,13 @@
 import { ref, watch, nextTick } from 'vue'
 
 const model = defineModel()
-const emit = defineEmits(['update:modelValue', 'delete-label'])
+const emit = defineEmits(['update:modelValue', 'delete-label', 'property-name-finalized'])
 
 const props = defineProps({
   type: String,
   index: Number,
   thumbnail: { type: String, default: null },
+  isPropertyName: { type: Boolean, default: false },
 })
 
 const isEditing = ref(false)
@@ -86,6 +87,12 @@ const onKeyDown = (e) => {
 
 const save = () => {
   emit('update:modelValue', text.value)
+  
+  // Only emit property-name-finalized if this is specifically a property name EditableLabel
+  if (props.isPropertyName && text.value !== 'Attribute' && text.value.trim() !== '') {
+    emit('property-name-finalized', text.value)
+  }
+  
   isEditing.value = false
 }
 </script>

@@ -201,6 +201,31 @@ def merge_everything():
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
+
+@app.route('/sample-properties', methods=['POST'])
+def sample_properties():
+    json_data = request.get_json()
+    prompt = json_data.get('prompt', '')
+
+    try:
+
+        response = client.responses.create(
+            model="gpt-4.1-nano",
+            input=prompt
+        )
+        # Process result
+        print(response.output_text)
+
+        return jsonify({
+
+            "output": response.output_text,
+        })
+
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
 @app.route('/text-to-image', methods=['POST'])
 def text_to_image():
     json_data = request.get_json()
