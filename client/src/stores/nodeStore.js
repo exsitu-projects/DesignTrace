@@ -166,6 +166,7 @@ export const useNode = defineStore('nodes', () => {
       nodes: [],
       parents: [],
       steps: [],
+      collapsedAltIds: [],
     }
 
     currentBranchId.value = newBranch.id
@@ -275,6 +276,8 @@ export const useNode = defineStore('nodes', () => {
    * @param {string[]} selectedAltIdArr - Array of selected alt IDs
    * @param {string} branchId - ID of the branch to update
    */
+  // NOTE: Change variable name: 'visible' to 'hidden'
+  // It no longer means visible since we are hidding alts under parents
   function updateParents(selectedAltIdArr, branchId) {
     const branch = nodeBranchList.value.find((b) => b.id === branchId)
     if (!branch) {
@@ -284,100 +287,149 @@ export const useNode = defineStore('nodes', () => {
 
     // Get all alts in the branch and all alts in previous steps
     const allAlts = branch.nodes.flatMap((n) => n.alts)
-    const allAltIds = branch.nodes.flatMap((n) => n.alts.map((alt) => alt.id))
     const allAltsInSteps = branch.steps.flatMap((step) => step)
-    const unselectedUnStepAltIdArr = allAltIds.filter(
-      (id) => !selectedAltIdArr.includes(id) && !allAltsInSteps.includes(id),
-    )
-
-    console.log(allAltsInSteps)
-    // Step 1: Hide alts that were not previously selected
-    for (const alt of allAlts) {
-      if (!allAltsInSteps.includes(alt.id)) {
-        //alt.visible = false
-        //alt.position = { x: 0, y: 0 } // Reset position
-        alt.visibleEdges = []
-      } else {
-        for (let i = alt.visibleEdges.length - 1; i >= 0; i--) {
-          if (unselectedUnStepAltIdArr.includes(alt.visibleEdges[i].toAltId)) {
-            alt.visibleEdges.splice(i, 1)
-          }
-        }
-      }
-
-      if (branch.parents.includes(alt.id)) {
-        // If alt is a parent, clear edges
-        //alt.visible = true // Ensure all alts are visible if they are parents
-        alt.visibleEdges = []
-      }
-    }
 
     const newParents = []
 
-    // Step 3: Process each selected alt
-    for (const altId of selectedAltIdArr) {
-      const childAlt = allAlts.find((a) => a.id === altId)
-      if (!childAlt) continue
+    for (const alt of allAlts) {
+      // iterate through all alts, if it is hidden/visible, means that we have visited it before,
+      // then we dont need to visit it again
+      if (alt.collapse === true) {
+        // If an alt is not included in steps, means we have not visited this alt
+        if (!allAltsInSteps.includes(alt.id)) {
+          let childAlt = alt
+          let currentChildId = alt.id
+          let currentParentId = childAlt.prevAltId
+          // While the parent of current alt is not in steps, then we need to search the parent of parent
 
-      // Make selected alt visible
-      childAlt.visible = true
+          while (currentParentId && !allAltsInSteps.includes(currentParentId)) {
+            // here we move to the parent of parent
+            // This might looks odd, but it makes sense because since the currentparent is not in steps,
+            // so we need to keep searching from here
+            childAlt = allAlts.find((a) => a.id === currentParentId)
+            childAlt.collapse = false
 
-      // Step 4: Find the closest parent in branch.parents
-      let currentChild = altId
-      let currentParent = childAlt.prevAltId
+            console.log(childAlt.id)
+            childAlt.visibleEdges = childAlt.visibleEdges.filter(
+              (edge) => edge.toAltId !== currentChildId,
+            )
+            currentChildId = currentParentId
+            // IO dont know if this assignment works or not
+            // Right now, we have currentChildId = currentParentId
+            // Update CurrParentID, so we move forward to check if the parent of childAlt is inside steps
+            currentParentId = childAlt?.prevAltId || null
+          }
+          // Remove the visibleEdge from currentParent (a parent in steps) to the alt that we are looking at
+          const parentAlt = allAlts.find((a) => a.id === currentParentId)
+          parentAlt.visibleEdges = parentAlt.visibleEdges.filter(
+            (edge) => edge.toAltId !== currentChildId,
+          )
+          // Then we are still in the for loop, we need to know if alt is slected or not:
+          if (selectedAltIdArr.includes(alt.id)) {
+            alt.collapse = true
+            if (parentAlt) {
+              // parentAlt.visible = true
+              parentAlt.visibleEdges.push({
+                fromAltId: currentParentId,
+                toAltId: alt.id,
+              })
+            }
+          } else {
+            branch.collapsedAltIds.push(alt.id)
+            console.log(branch.collapsedAltIds)
+            // console.log('allAltsInSteps', allAltsInSteps)
+            if (branch.collapsedAltIds.includes(alt.id) && !allAltsInSteps.includes(alt.id)) {
+              // unselected alt, so we move it to the parentAlt position
+              alt.collapse = false
 
-      while (currentParent && !branch.parents.includes(currentParent)) {
-        const currentChildAlt = allAlts.find((a) => a.id === currentChild)
-        currentChild = currentParent
-        currentParent = currentChildAlt?.prevAltId || null
-      }
+              // Count how many other collapsed alts are already stacked at this parent's position
+              const stackedAltsAtParent = branch.collapsedAltIds.filter((collapsedId) => {
+                const collapsedAlt = allAlts.find((a) => a.id === collapsedId)
+                return (
+                  collapsedAlt &&
+                  collapsedAlt.id !== alt.id &&
+                  collapsedAlt.prevAltId === alt.prevAltId
+                )
+              }).length
 
-      // Step 5: Create edge from parent to selected alt if parent exists
-      if (currentParent) {
-        const parentAlt = allAlts.find((a) => a.id === currentParent)
-        if (parentAlt) {
-          parentAlt.visible = true
-          parentAlt.visibleEdges.push({
-            fromAltId: currentParent,
-            toAltId: altId,
-          })
+              const stackOffset = 35 // pixels between each stacked card
+
+              // Position at parent's location with stacking
+              alt.position.x = parentAlt.position.x + stackedAltsAtParent * 3 // slight horizontal offset
+              alt.position.y = parentAlt.position.y - (30 + stackedAltsAtParent * stackOffset) // stack vertically above parent
+              alt.z = parentAlt.z - 1 - stackedAltsAtParent // layer below parent, with proper ordering
+            }
+          }
+
+          newParents.push(alt.id)
         }
       }
-      // for (const altId of unselectedUnStepAltIdArr) {
-      //   console.log('unselectedUnStepAltIdArr', unselectedUnStepAltIdArr)
-      //   const childAlt = allAlts.find((a) => a.id === altId)
-      //   if (!childAlt) continue
-      //
-      //   // Make selected alt visible
-      //   childAlt.visible = true
-      //
-      //   // Step 4: Find the closest parent in branch.parents
-      //   let currentChildId = altId
-      //   let currentParentId = childAlt.prevAltId
-      //
-      //   while (currentParentId && !branch.parents.includes(currentParentId)) {
-      //     const currentChildAlt = allAlts.find((a) => a.id === currentChildId)
-      //     currentChildId = currentParentId
-      //     currentParentId = currentChildAlt?.prevAltId || null
-      //     console.log('currentParentId', currentParentId)
-      //   }
-      //
-      //   const currentParent = allAlts.find((a) => a.id === currentParentId)
-      //   // console.log('childAlt', childAlt)
-      //   // console.log('currentChildAlt', currentChildAlt)
-      //   childAlt.position.x = currentChildAlt.position.x // Reset position
-      //   childAlt.position.y = currentChildAlt.position.y - 10
-      //   childAlt.z = currentChildAlt.z - 1
-      // }
-
-      newParents.push(altId)
+      branch.parents.push(newParents)
+      branch.steps.push(newParents)
     }
-
-    // Step 6: Update branch parents with new selection
-    branch.parents = newParents
-    // Step 2: Update steps with current parents
-    branch.steps.push(newParents)
   }
+  // const childAlt = allAlts.find((a) => a.id === altId)
+  // if (!childAlt) continue
+
+  // // Make selected alt visible
+  // childAlt.visible = true
+
+  // // Step 4: Find the closest parent in branch.parents
+  // let currentChild = altId
+  // let currentParent = childAlt.prevAltId
+
+  // while (currentParent && !branch.parents.includes(currentParent)) {
+  //   const currentChildAlt = allAlts.find((a) => a.id === currentChild)
+  //   currentChild = currentParent
+  //   currentParent = currentChildAlt?.prevAltId || null
+  // }
+
+  // // Step 5: Create edge from parent to selected alt if parent exists
+  // if (currentParent) {
+  //   const parentAlt = allAlts.find((a) => a.id === currentParent)
+  //   if (parentAlt) {
+  //     parentAlt.visible = true
+  //     parentAlt.visibleEdges.push({
+  //       fromAltId: currentParent,
+  //       toAltId: altId,
+  //     })
+  //   }
+  // }
+  // for (const altId of unselectedUnStepAltIdArr) {
+  //   console.log('unselectedUnStepAltIdArr', unselectedUnStepAltIdArr)
+  //   const childAlt = allAlts.find((a) => a.id === altId)
+  //   if (!childAlt) continue
+  //
+  //   // Make selected alt visible
+  //   childAlt.visible = true
+  //
+  //   // Step 4: Find the closest parent in branch.parents
+  //   let currentChildId = altId
+  //   let currentParentId = childAlt.prevAltId
+  //
+  //   while (currentParentId && !branch.parents.includes(currentParentId)) {
+  //     const currentChildAlt = allAlts.find((a) => a.id === currentChildId)
+  //     currentChildId = currentParentId
+  //     currentParentId = currentChildAlt?.prevAltId || null
+  //     console.log('currentParentId', currentParentId)
+  //   }
+  //
+  //   const currentParent = allAlts.find((a) => a.id === currentParentId)
+  //   // console.log('childAlt', childAlt)
+  //   // console.log('currentChildAlt', currentChildAlt)
+  //   childAlt.position.x = currentChildAlt.position.x // Reset position
+  //   childAlt.position.y = currentChildAlt.position.y - 10
+  //   childAlt.z = currentChildAlt.z - 1
+  // }
+
+  //     newParents.push(altId)
+  //   }
+
+  //   // Step 6: Update branch parents with new selection
+  //   branch.parents = newParents
+  //   // Step 2: Update steps with current parents
+  //   branch.steps.push(newParents)
+  // }
 
   // ===== ALT MANAGEMENT =====
 
@@ -409,6 +461,7 @@ export const useNode = defineStore('nodes', () => {
         undoStack: [],
         redoStack: [],
       },
+      collapse: true,
     }
   }
 
@@ -681,14 +734,15 @@ export const useNode = defineStore('nodes', () => {
    * @param {number} x - X coordinate
    * @param {Object} node - Node object containing alts
    */
-  function updateAltPos(maxY, minY, x, node) {
-    const visibleNodeList = node.alts.filter((alt) => alt.visible !== false)
-    for (let i = 0; i < visibleNodeList.length; i++) {
-      const alt = visibleNodeList[i]
-      alt.position.x = x
-      alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
-    }
-  }
+  // function updateAltPos(maxY, minY, x, node, branch) {
+  //   // const visibleNodeList = node.alts.filter((alt) => !branch.collapsedAltIds.includes(alt.id))
+  //   // const visibleNodeList = node.alts.filter((alt) => alt.collapse !== false)
+  //   // for (let i = 0; i < visibleNodeList.length; i++) {
+  //   //   const alt = visibleNodeList[i]
+  //   //   alt.position.x = x
+  //   //   alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
+  //   // }
+  // }
 
   /**
    * Update properties of an existing alt and generate a new image
@@ -787,7 +841,9 @@ export const useNode = defineStore('nodes', () => {
       updatedAltLength = altObjs.length
     } else {
       newNode = branch.nodes.find((n) => n.id === prevNode.nextNodeId)
-      updatedAltLength = newNode.alts.filter((alt) => alt.visible !== false).length + altObjs.length
+      console.log('use existing ', prevNode.id)
+      updatedAltLength =
+        newNode.alts.filter((alt) => alt.collapse !== false).length + altObjs.length
     }
 
     // Step 4: Calculate layout and adjust positions
@@ -851,7 +907,7 @@ export const useNode = defineStore('nodes', () => {
     }
 
     // Step 10: Update alt positions
-    updateAltPos(maxY, minY, x, newNode)
+    // updateAltPos(maxY, minY, x, newNode, branch)
 
     return urls
   }

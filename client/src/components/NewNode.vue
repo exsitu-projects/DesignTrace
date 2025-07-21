@@ -5,7 +5,20 @@
       class="nodeHandle rounded-top p-1 d-flex align-items-center"
       style="background: #ededed"
     >
-      {{ alt.id }}
+      <div class="node-tags p-2">
+        <button
+          v-for="property in alt.properties"
+          :key="property.tag"
+          class="btn btn-sm btn-outline-dark mx-1"
+        >
+          <img
+            v-show="property.thumbnail"
+            :src="property.thumbnail"
+            alt="thumb"
+            class="thumb-icon"
+          />{{ property.tag }}
+        </button>
+      </div>
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
       <!--      {{ alt.id }}-->
@@ -37,20 +50,6 @@
         class="btn btn-outline-dark btn-sm ms-auto"
       >
         Transform
-      </button>
-    </div>
-    <div class="node-tags p-2">
-      <button
-        v-for="property in alt.properties"
-        :key="property.tag"
-        class="btn btn-sm btn-outline-dark mx-1"
-      >
-        <img
-          v-show="property.thumbnail"
-          :src="property.thumbnail"
-          alt="thumb"
-          class="thumb-icon"
-        />{{ property.tag }}
       </button>
     </div>
 
@@ -859,7 +858,6 @@ async function redo(event) {
 .node-tags {
   display: flex;
   flex-wrap: nowrap; /* no wrapping, keep single line */
-  overflow-x: auto; /* horizontal scroll if overflow */
   gap: 0.25rem;
   width: 100%; /* force full container width */
   box-sizing: border-box;
