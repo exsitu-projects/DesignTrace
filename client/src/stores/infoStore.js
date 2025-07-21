@@ -10,31 +10,31 @@ export const useInfoStore = defineStore('infoStore', () => {
   const promiseThumbnailUpdate = ref('')
   const currentUID = ref('')
   const rows = ref([
-    {
-      name: 'Color',
-      color: '#000',
-      tags: [
-        { uid: uid(), tag: 'Cream white' },
-        { uid: uid(), tag: 'Dusty rose' },
-      ],
-    },
-    {
-      name: 'Material',
-      color: '#000',
-      tags: [
-        { uid: uid(), tag: 'Soft velvet' },
-        { uid: uid(), tag: 'Leather' },
-      ],
-    },
-    {
-      name: 'Sleeve Style',
-      color: '#000',
-      tags: [
-        { uid: uid(), tag: 'Lantern Sleeve' },
-        { uid: uid(), tag: 'Slim Sleeve' },
-        { uid: uid(), tag: 'Kimono Sleeve' },
-      ],
-    },
+    // {
+    //   name: 'Color',
+    //   color: '#000',
+    //   tags: [
+    //     { uid: uid(), tag: 'Cream white' },
+    //     { uid: uid(), tag: 'Dusty rose' },
+    //   ],
+    // },
+    // {
+    //   name: 'Material',
+    //   color: '#000',
+    //   tags: [
+    //     { uid: uid(), tag: 'Soft velvet' },
+    //     { uid: uid(), tag: 'Leather' },
+    //   ],
+    // },
+    // {
+    //   name: 'Sleeve Style',
+    //   color: '#000',
+    //   tags: [
+    //     { uid: uid(), tag: 'Lantern Sleeve' },
+    //     { uid: uid(), tag: 'Slim Sleeve' },
+    //     { uid: uid(), tag: 'Kimono Sleeve' },
+    //   ],
+    // },
   ])
 
   const addRow = () => {

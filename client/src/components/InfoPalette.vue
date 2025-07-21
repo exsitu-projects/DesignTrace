@@ -6,7 +6,7 @@
       :key="rowIdx"
       class="d-flex flex-column flex-md-row align-items-start mb-2"
       @mouseenter="hoveredRowIndex = rowIdx"
-      @mouseleave="hoveredRowIndex = null"
+      @mouseleave="hoveredRowIndex = null; hideGhostTagsWithDelay()"
     >
       <!-- Editable property name tag (not draggable) -->
 
@@ -62,9 +62,29 @@
 
         <!-- footer (adds a tag) -->
         <template #footer>
-          <button class="btn btn-sm btn-outline-secondary me-1 mb-1" @click="addTag(rowIdx)">
+          <button 
+            class="btn btn-sm btn-outline-secondary me-1 mb-1" 
+            @click="addTag(rowIdx)"
+            @mouseenter="showGhostTags(rowIdx)"
+            @mouseleave="hideGhostTagsWithDelay"
+          >
             +
           </button>
+          
+          <!-- Ghost tag suggestions -->
+          <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
+            <span 
+              v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)" 
+              :key="`ghost-${rowIdx}-${index}`"
+              class="badge bg-light text-muted border me-1 mb-1 ghost-tag"
+              style="opacity: 0.6; cursor: pointer; border-style: dashed !important;"
+              @click="addGhostTag(rowIdx, ghostTag)"
+              @mouseenter="cancelGhostTagHiding"
+              @mouseleave="hideGhostTagsWithDelay"
+            >
+              {{ ghostTag }}
+            </span>
+          </template>
         </template>
       </draggable>
     </div>
@@ -96,8 +116,56 @@ const objectStore = useObject()
 const generationStore = useGeneration()
 const { rows } = storeToRefs(infoStore)
 const hoveredRowIndex = ref(null)
+const hoveredAddButton = ref(null) // Track which row's add button is hovered
 const popoverButton = ref(null)
 let currentPopover = null
+let ghostTagTimeout = null // Timeout for ghost tag hiding
+
+// Ghost tag suggestions
+const ghostTags = ['red', 'yellow', 'green']
+
+// Get remaining ghost tags for a specific row (excluding already used ones)
+const getRemainingGhostTags = (rowIdx) => {
+  if (!rows.value[rowIdx]) return []
+  
+  const usedTags = rows.value[rowIdx].tags.map(tag => tag.tag.toLowerCase())
+  const remainingTags = ghostTags.filter(ghostTag => 
+    !usedTags.includes(ghostTag.toLowerCase())
+  )
+  
+  return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
+}
+
+// Functions to handle ghost tag visibility with delay
+const showGhostTags = (rowIdx) => {
+  // Clear any existing timeout
+  if (ghostTagTimeout) {
+    clearTimeout(ghostTagTimeout)
+    ghostTagTimeout = null
+  }
+  hoveredAddButton.value = rowIdx
+}
+
+const hideGhostTagsWithDelay = () => {
+  // Clear any existing timeout
+  if (ghostTagTimeout) {
+    clearTimeout(ghostTagTimeout)
+  }
+  
+  // Set a delay before hiding ghost tags
+  ghostTagTimeout = setTimeout(() => {
+    hoveredAddButton.value = null
+    ghostTagTimeout = null
+  }, 200) // 200ms delay
+}
+
+const cancelGhostTagHiding = () => {
+  // Cancel the hiding timeout if mouse enters ghost tag area
+  if (ghostTagTimeout) {
+    clearTimeout(ghostTagTimeout)
+    ghostTagTimeout = null
+  }
+}
 
 // Function to handle attribute selection
 const selectAttribute = (attributeName) => {
@@ -141,6 +209,19 @@ const createPopoverContent = () => {
 const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
 const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
+
+// Handle clicking on ghost tags
+const addGhostTag = (rowIdx, tagText) => {
+  // Add a new tag to the row
+  addTag(rowIdx)
+  // Set the tag text to the ghost tag text
+  if (rows.value[rowIdx] && rows.value[rowIdx].tags.length > 0) {
+    const lastTagIndex = rows.value[rowIdx].tags.length - 1
+    rows.value[rowIdx].tags[lastTagIndex].tag = tagText
+  }
+  // Clear hover state to hide remaining ghost tags
+  hoveredAddButton.value = null
+}
 
 const handleDragStart = (e, tagObj, propName, thumbnail) => {
   objectStore.dragState = 'startDragging'
