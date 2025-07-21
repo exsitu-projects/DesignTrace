@@ -27,6 +27,12 @@ export const useGeneration = defineStore('generation', () => {
     scheduler: 'karras',
   }
 
+  // Simple function to log when property name is finalized
+  const onPropertyNameFinalized = (propertyName, rowIndex) => {
+    console.log(`Property name finalized: "${propertyName}" at row ${rowIndex}`)
+    // You can add more logic here later, like triggering generation, analytics, etc.
+  }
+
   const propValSysPrompt = `You are a visual description assistant.
 
 The user provides an image and a feature to describe — it can be a visual feature (like layout, color, font, texture, material) or a semantic feature (like landmark, object, architecture).
@@ -301,5 +307,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly th
     generateGoogleImg,
     currentGenId,
     excludePropObject,
+    onPropertyNameFinalized,
   }
 })

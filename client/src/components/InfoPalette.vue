@@ -6,7 +6,7 @@
       :key="rowIdx"
       class="d-flex flex-column flex-md-row align-items-start mb-2"
       @mouseenter="hoveredRowIndex = rowIdx"
-      @mouseleave="hoveredRowIndex = null; hideGhostTagsWithDelay()"
+      @mouseleave="((hoveredRowIndex = null), hideGhostTagsWithDelay())"
     >
       <!-- Editable property name tag (not draggable) -->
 
@@ -62,22 +62,22 @@
 
         <!-- footer (adds a tag) -->
         <template #footer>
-          <button 
-            class="btn btn-sm btn-outline-secondary me-1 mb-1" 
+          <button
+            class="btn btn-sm btn-outline-secondary me-1 mb-1"
             @click="addTag(rowIdx)"
             @mouseenter="showGhostTags(rowIdx)"
             @mouseleave="hideGhostTagsWithDelay"
           >
             +
           </button>
-          
+
           <!-- Ghost tag suggestions -->
           <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
-            <span 
-              v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)" 
+            <span
+              v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
               :key="`ghost-${rowIdx}-${index}`"
               class="badge bg-light text-muted border me-1 mb-1 ghost-tag"
-              style="opacity: 0.6; cursor: pointer; border-style: dashed !important;"
+              style="opacity: 0.6; cursor: pointer; border-style: dashed !important"
               @click="addGhostTag(rowIdx, ghostTag)"
               @mouseenter="cancelGhostTagHiding"
               @mouseleave="hideGhostTagsWithDelay"
@@ -109,7 +109,7 @@ import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { onMounted, ref, nextTick } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
 const infoStore = useInfoStore()
 const objectStore = useObject()
@@ -127,12 +127,10 @@ const ghostTags = ['red', 'yellow', 'green']
 // Get remaining ghost tags for a specific row (excluding already used ones)
 const getRemainingGhostTags = (rowIdx) => {
   if (!rows.value[rowIdx]) return []
-  
-  const usedTags = rows.value[rowIdx].tags.map(tag => tag.tag.toLowerCase())
-  const remainingTags = ghostTags.filter(ghostTag => 
-    !usedTags.includes(ghostTag.toLowerCase())
-  )
-  
+
+  const usedTags = rows.value[rowIdx].tags.map((tag) => tag.tag.toLowerCase())
+  const remainingTags = ghostTags.filter((ghostTag) => !usedTags.includes(ghostTag.toLowerCase()))
+
   return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
 }
 
@@ -151,7 +149,7 @@ const hideGhostTagsWithDelay = () => {
   if (ghostTagTimeout) {
     clearTimeout(ghostTagTimeout)
   }
-  
+
   // Set a delay before hiding ghost tags
   ghostTagTimeout = setTimeout(() => {
     hoveredAddButton.value = null
@@ -173,6 +171,9 @@ const selectAttribute = (attributeName) => {
   if (rows.value.length > 0) {
     const lastRowIndex = rows.value.length - 1
     rows.value[lastRowIndex].name = attributeName
+
+    // Call the generation store function when property name is finalized
+    generationStore.onPropertyNameFinalized(attributeName, lastRowIndex)
   }
 
   // Close the popover
