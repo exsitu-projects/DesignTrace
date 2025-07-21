@@ -77,7 +77,6 @@
       class="btn btn-sm btn-light"
       role="button"
       data-bs-trigger="focus"
-      title="Dismissible popover"
       >+ Add Attributes</a
     >
   </div>
@@ -90,8 +89,8 @@ import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { onMounted, ref } from 'vue'
-import { Popover } from 'bootstrap'
+import { onMounted, ref, nextTick } from 'vue'
+import { Tooltip, Popover } from 'bootstrap'
 const infoStore = useInfoStore()
 const objectStore = useObject()
 const generationStore = useGeneration()
@@ -117,7 +116,16 @@ const selectAttribute = (attributeName) => {
 // Function to generate popover HTML content
 const createPopoverContent = () => {
   return `
-    <div class="p-1">
+    <div class="p-2">
+      <div class="mb-2">
+        <input
+          type="text"
+          class="form-control form-control-sm"
+          id="customAttributeInput"
+          placeholder="Type attribute..."
+        >
+        <small class="text-muted mt-1 d-block">Or choose:</small>
+      </div>
       <div class="d-flex flex-column gap-1">
         <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Color Palette">🎨 Color Palette</button>
         <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Primary Font">🗛 Primary Font</button>
@@ -161,30 +169,128 @@ const handleDragStart = (e, tagObj, propName, thumbnail) => {
     objectStore.obj = { type: 'property', content: content }
   }
 }
+// Simple click-outside directive implementation
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutsideHandler = (event) => {
+      if (!(el === event.target || el.contains(event.target))) {
+        binding.value(event)
+      }
+    }
+    document.addEventListener('click', el._clickOutsideHandler)
+  },
+  unmounted(el) {
+    document.removeEventListener('click', el._clickOutsideHandler)
+  },
+}
+
 onMounted(() => {
   // Initialize Bootstrap tooltips and popovers
   setTimeout(() => {
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new Tooltip(tooltipTriggerEl)
+    })
+
     // Initialize custom popover with function-generated content
     if (popoverButton.value) {
       currentPopover = new Popover(popoverButton.value, {
         content: createPopoverContent(),
         html: true,
         sanitize: false,
-        trigger: 'focus',
-        title: 'Attribute Inspiration',
+        trigger: 'click',
       })
 
-      // Add event listener for attribute button clicks
+      // Add event listeners for attribute button interactions
       popoverButton.value.addEventListener('shown.bs.popover', () => {
-        // Wait for popover content to be rendered, then add click listeners
+        // Wait for popover content to be rendered, then add event listeners
         setTimeout(() => {
+          // Handle custom text input
+          const customInput = document.getElementById('customAttributeInput')
+          if (customInput) {
+            // Real-time input update
+            customInput.addEventListener('input', (e) => {
+              const inputValue = e.target.value.trim()
+              if (inputValue && rows.value.length > 0) {
+                const lastRowIndex = rows.value.length - 1
+                rows.value[lastRowIndex].name = inputValue
+              } else if (rows.value.length > 0) {
+                const lastRowIndex = rows.value.length - 1
+                rows.value[lastRowIndex].name = 'Attribute'
+              }
+            })
+
+            // Commit on Enter key
+            customInput.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                const inputValue = e.target.value.trim()
+                if (inputValue) {
+                  selectAttribute(inputValue)
+                }
+              }
+            })
+
+            // Auto-focus the input
+            setTimeout(() => {
+              if (customInput && document.contains(customInput)) {
+                customInput.focus()
+              }
+            }, 100)
+          }
+
           const attributeButtons = document.querySelectorAll('.attribute-btn')
           attributeButtons.forEach((button) => {
-            button.addEventListener('click', (e) => {
-              const attributeName = e.target.getAttribute('data-attribute')
+            const attributeName = button.getAttribute('data-attribute')
+
+            // Hover to preview (only if input is empty)
+            button.addEventListener('mouseenter', () => {
+              if (!customInput || !customInput.value.trim()) {
+                if (rows.value.length > 0) {
+                  const lastRowIndex = rows.value.length - 1
+                  rows.value[lastRowIndex].name = attributeName
+                }
+              }
+            })
+
+            // Click to select
+            button.addEventListener('click', () => {
               selectAttribute(attributeName)
             })
           })
+
+          // Reset when mouse leaves the popover area (only if input is empty)
+          const popoverContent = document.querySelector('.popover-body')
+          if (popoverContent) {
+            popoverContent.addEventListener('mouseleave', () => {
+              if (!customInput || !customInput.value.trim()) {
+                if (rows.value.length > 0) {
+                  const lastRowIndex = rows.value.length - 1
+                  rows.value[lastRowIndex].name = 'Attribute'
+                }
+              }
+            })
+          }
+
+          // Add click-outside handler to dismiss popover
+          const handleClickOutside = (event) => {
+            const popoverElement = document.querySelector('.popover')
+            const triggerElement = popoverButton.value
+
+            if (
+              popoverElement &&
+              !popoverElement.contains(event.target) &&
+              !triggerElement.contains(event.target)
+            ) {
+              currentPopover.hide()
+              document.removeEventListener('click', handleClickOutside)
+            }
+          }
+
+          // Add the click-outside listener with a small delay
+          setTimeout(() => {
+            document.addEventListener('click', handleClickOutside)
+          }, 100)
         }, 50)
       })
     }
