@@ -39,13 +39,13 @@ export const useInfoStore = defineStore('infoStore', () => {
 
   const addRow = () => {
     rows.value.push({
-      name: 'Property',
+      name: 'Attribute',
       color: '#6c757d',
       tags: [],
     })
   }
 
-  const addTag = (rowIdx, label = 'New') => {
+  const addTag = (rowIdx, label = '') => {
     const row = rows.value[rowIdx]
     currentUID.value = uid()
     if (row) row.tags.push({ uid: currentUID.value, tag: label })

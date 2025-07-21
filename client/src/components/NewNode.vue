@@ -36,7 +36,7 @@
         <button
           @click="redo($event)"
           :disabled="redoStack.length === 0"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm btn-outline-secondary me-1"
           title="Redo"
           @mouseup.stop
         >
@@ -53,7 +53,7 @@
       </button>
     </div>
 
-    <div @click.stop class="m-auto position-relative" ref="canvasContainer">
+    <div @click.stop class="my-2 m-auto position-relative" ref="canvasContainer">
       <!-- Spinner positioned absolutely inside the container -->
       <div
         v-show="
@@ -70,7 +70,7 @@
       <!-- Canvas stays behind the spinner -->
       <canvas
         ref="canvasEl"
-        class="inset-border"
+        class="border border-1 rounded rounded-1 shadow-sm"
         :width="canvasW"
         :height="canvasW"
         style="z-index: 1"
@@ -82,6 +82,7 @@
 <script setup>
 import { computed, markRaw, onMounted, ref, watch, defineEmits } from 'vue'
 import * as fabric from 'fabric'
+import { Tooltip } from 'bootstrap'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
@@ -847,14 +848,6 @@ async function redo(event) {
 </script>
 
 <style scoped>
-.inset-border {
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.25),
-    inset 0 0 0 3px rgba(255, 255, 255, 0.82);
-}
-
 .node {
   width: v-bind(nodeW);
   height: v-bind(nodeH); /* fixed height */

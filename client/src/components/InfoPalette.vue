@@ -70,7 +70,16 @@
     </div>
 
     <!-- Add new property row -->
-    <button class="btn btn-sm btn-light" @click="addRow">+ Add property</button>
+    <a
+      ref="popoverButton"
+      tabindex="0"
+      @click="addRow"
+      class="btn btn-sm btn-light"
+      role="button"
+      data-bs-trigger="focus"
+      title="Dismissible popover"
+      >+ Add Attributes</a
+    >
   </div>
 </template>
 
@@ -81,12 +90,45 @@ import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { Popover } from 'bootstrap'
 const infoStore = useInfoStore()
 const objectStore = useObject()
 const generationStore = useGeneration()
 const { rows } = storeToRefs(infoStore)
 const hoveredRowIndex = ref(null)
+const popoverButton = ref(null)
+let currentPopover = null
+
+// Function to handle attribute selection
+const selectAttribute = (attributeName) => {
+  // Update the last (newly added) row's name with the selected attribute
+  if (rows.value.length > 0) {
+    const lastRowIndex = rows.value.length - 1
+    rows.value[lastRowIndex].name = attributeName
+  }
+
+  // Close the popover
+  if (currentPopover) {
+    currentPopover.hide()
+  }
+}
+
+// Function to generate popover HTML content
+const createPopoverContent = () => {
+  return `
+    <div class="p-1">
+      <div class="d-flex flex-column gap-1">
+        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Color Palette">🎨 Color Palette</button>
+        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Primary Font">🗛 Primary Font</button>
+        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Graphic Design Layout">💠 Graphic Design Layout</button>
+        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Visual Contrast">🖼️ Visual Contrast</button>
+        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Landmark">📍 Landmark</button>
+      </div>
+    </div>
+  `.trim()
+}
+
 /* Thin wrappers that call store actions */
 const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
@@ -119,6 +161,44 @@ const handleDragStart = (e, tagObj, propName, thumbnail) => {
     objectStore.obj = { type: 'property', content: content }
   }
 }
+onMounted(() => {
+  // Initialize Bootstrap tooltips and popovers
+  setTimeout(() => {
+    // Initialize custom popover with function-generated content
+    if (popoverButton.value) {
+      currentPopover = new Popover(popoverButton.value, {
+        content: createPopoverContent(),
+        html: true,
+        sanitize: false,
+        trigger: 'focus',
+        title: 'Attribute Inspiration',
+      })
+
+      // Add event listener for attribute button clicks
+      popoverButton.value.addEventListener('shown.bs.popover', () => {
+        // Wait for popover content to be rendered, then add click listeners
+        setTimeout(() => {
+          const attributeButtons = document.querySelectorAll('.attribute-btn')
+          attributeButtons.forEach((button) => {
+            button.addEventListener('click', (e) => {
+              const attributeName = e.target.getAttribute('data-attribute')
+              selectAttribute(attributeName)
+            })
+          })
+        }, 50)
+      })
+    }
+
+    // Initialize other popovers (if any)
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+    popoverTriggerList.forEach((popoverTriggerEl) => {
+      new Popover(popoverTriggerEl, {
+        html: true,
+        sanitize: false,
+      })
+    })
+  }, 100)
+})
 
 const handleMouseUp = async (rowIdx, propName) => {
   if (objectStore.dragState !== 'startDragging') return
