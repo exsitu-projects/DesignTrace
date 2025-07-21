@@ -10,6 +10,8 @@ export const useGeneration = defineStore('generation', () => {
   const promiseLoadImageLabel = ref('')
   const shouldTriggerT2I = ref(false)
   const currentGenId = ref('')
+  const ghostTagsPerRow = ref({}) // Store ghost tags for each row by rowIndex
+  const ghostTagsLoading = ref({}) // Track loading state for each row
   const generationParams = {
     ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
     auto_save: false,
@@ -27,8 +29,11 @@ export const useGeneration = defineStore('generation', () => {
     scheduler: 'karras',
   }
 
-  // Simple function to log when property name is finalized
+  // Function to generate and store ghost tags when property name is finalized
   const onPropertyNameFinalized = async (propertyName, rowIndex) => {
+    // Set loading state for this row
+    ghostTagsLoading.value[rowIndex] = true
+    
     try {
       const prompt =
         'Please give three common examples for the visual attribute ' +
@@ -44,16 +49,34 @@ export const useGeneration = defineStore('generation', () => {
       const result = await response.json()
 
       if (response.ok) {
-        console.log(result.output)
+        console.log(`Ghost tags for "${propertyName}":`, result.output)
+        
+        // Parse the colon-separated result and store it for this row
+        const ghostTags = result.output.split(':').map(tag => tag.trim()).filter(tag => tag.length > 0)
+        ghostTagsPerRow.value[rowIndex] = ghostTags
+        
         return result.output
       } else {
         console.log(result.error)
-        return null // Optional: explicitly return null on error
+        return null
       }
     } catch (err) {
       console.log(err.message)
-      return null // Optional: consistently return on error
+      return null
+    } finally {
+      // Clear loading state for this row
+      ghostTagsLoading.value[rowIndex] = false
     }
+  }
+  
+  // Function to get ghost tags for a specific row
+  const getGhostTagsForRow = (rowIndex) => {
+    return ghostTagsPerRow.value[rowIndex] || []
+  }
+  
+  // Function to check if ghost tags are loading for a specific row
+  const isGhostTagsLoading = (rowIndex) => {
+    return ghostTagsLoading.value[rowIndex] || false
   }
 
   const propValSysPrompt = `You are a visual description assistant.
@@ -331,5 +354,8 @@ Limit the first description to 20 words or fewer. Make sure to return exactly th
     currentGenId,
     excludePropObject,
     onPropertyNameFinalized,
+    getGhostTagsForRow,
+    ghostTagsPerRow,
+    isGhostTagsLoading,
   }
 })

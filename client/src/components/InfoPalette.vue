@@ -75,7 +75,19 @@
 
           <!-- Ghost tag suggestions -->
           <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
+            <!-- Show spinner while loading ghost tags -->
+            <div
+              v-if="generationStore.isGhostTagsLoading(rowIdx)"
+              class="spinner-border spinner-border-sm text-muted me-1 mb-1"
+              style="width: 1rem; height: 1rem"
+              role="status"
+            >
+              <span class="visually-hidden">Loading ghost tags...</span>
+            </div>
+            
+            <!-- Show ghost tags when loaded -->
             <span
+              v-else
               v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
               :key="`ghost-${rowIdx}-${index}`"
               class="badge bg-light text-muted border me-1 mb-1 ghost-tag"
@@ -123,15 +135,18 @@ const popoverButton = ref(null)
 let currentPopover = null
 let ghostTagTimeout = null // Timeout for ghost tag hiding
 
-// Ghost tag suggestions
-const ghostTags = ['red', 'yellow', 'green']
-
 // Get remaining ghost tags for a specific row (excluding already used ones)
 const getRemainingGhostTags = (rowIdx) => {
   if (!rows.value[rowIdx]) return []
 
+  // Only show ghost tags if we have API results for this row
+  const dynamicGhostTags = generationStore.getGhostTagsForRow(rowIdx)
+  if (dynamicGhostTags.length === 0) {
+    return [] // No ghost tags until API responds
+  }
+
   const usedTags = rows.value[rowIdx].tags.map((tag) => tag.tag.toLowerCase())
-  const remainingTags = ghostTags.filter((ghostTag) => !usedTags.includes(ghostTag.toLowerCase()))
+  const remainingTags = dynamicGhostTags.filter((ghostTag) => !usedTags.includes(ghostTag.toLowerCase()))
 
   return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
 }
