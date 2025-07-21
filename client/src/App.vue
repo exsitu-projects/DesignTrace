@@ -51,7 +51,7 @@
         :key="alt.id"
         :x="alt.position.x"
         :y="alt.position.y"
-        :w="'auto'"
+        :w="nodeStore.nodeW"
         :h="'auto'"
         :z="alt.z"
         :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"

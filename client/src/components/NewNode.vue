@@ -5,7 +5,7 @@
       class="nodeHandle rounded-top p-1 d-flex align-items-center"
       style="background: #ededed"
     >
-      <div class="node-tags p-2">
+      <div class="node-tags p-2" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
         <button
           v-for="property in alt.properties"
           :key="property.tag"
@@ -23,7 +23,7 @@
       <!--      <EditableLabel v-model="nodeName" />-->
       <!--      {{ alt.id }}-->
       <!-- Undo/Redo Controls -->
-      <div class="d-flex align-items-center gap-1 ms-2">
+      <div class="d-flex align-items-center gap-1 ms-auto">
         <button
           @click="undo($event)"
           :disabled="undoStack.length <= 1"
@@ -100,6 +100,7 @@ const props = defineProps({
 })
 const canvasEl = ref(null)
 const nodeEl = ref(null)
+const nodeTagsRef = ref(null)
 let fabricCanvas = null
 const { alt } = props
 const $ = (id) => document.getElementById(id)
@@ -154,6 +155,18 @@ function updateCursor() {
     fill: allUtilStore.brush.color,
   })
   cursor.dirty = true // force re‑render
+}
+
+function handleHorizontalScroll(event) {
+  // Convert vertical wheel scroll to horizontal scroll
+  if (nodeTagsRef.value && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+    event.preventDefault() // Prevent page scrolling
+    event.stopPropagation() // Stop event bubbling
+
+    // Scroll horizontally instead of vertically
+    const scrollAmount = event.deltaY * 0.5 // Adjust scroll sensitivity
+    nodeTagsRef.value.scrollLeft += scrollAmount
+  }
 }
 onMounted(() => {
   fabricCanvas = markRaw(
@@ -855,24 +868,54 @@ async function redo(event) {
   overflow: hidden; /* prevent internal overflow from expanding node */
 }
 
+.nodeHandle {
+  width: 100%; /* constrain to parent width */
+  max-width: 100%; /* don't exceed node width */
+  overflow: hidden; /* prevent expansion */
+}
+
 .node-tags {
   display: flex;
   flex-wrap: nowrap; /* no wrapping, keep single line */
   gap: 0.25rem;
-  width: 100%; /* force full container width */
+  flex: 1; /* take available space but don't expand parent */
+  max-width: calc(100% - 50px); /* leave space for undo/redo buttons */
   box-sizing: border-box;
   padding: 0.5rem;
   /* optionally set a fixed height */
   height: 2.5rem; /* adjust to fit your tag buttons nicely */
   align-items: center; /* vertically center buttons */
+  overflow-x: auto; /* enable horizontal scrolling */
+  overflow-y: hidden; /* hide vertical scrolling */
+  scrollbar-width: thin; /* Firefox - show thin scrollbar */
+  scrollbar-color: #cbd5e0 transparent; /* Firefox - thumb and track colors */
+}
+
+/* Custom scrollbar for WebKit browsers */
+.node-tags::-webkit-scrollbar {
+  height: 6px; /* height for horizontal scrollbar */
+}
+
+.node-tags::-webkit-scrollbar-track {
+  background: transparent; /* light gray track */
+  border-radius: 3px;
+}
+
+.node-tags::-webkit-scrollbar-thumb {
+  background: #cbd5e0; /* medium gray thumb */
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.node-tags::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0; /* darker gray on hover */
 }
 
 .node-tags button {
-  flex-shrink: 1; /* allow shrinking inside the flex container */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 8rem;
-  min-width: 2.5rem; /* optional: prevent buttons too small */
+  flex-shrink: 0; /* prevent buttons from shrinking */
+  white-space: nowrap; /* keep text on single line */
+  /* Remove overflow/ellipsis to show full text */
+  min-width: fit-content; /* button fits its content */
+  padding: 0.25rem 0.5rem; /* consistent padding */
 }
 </style>
