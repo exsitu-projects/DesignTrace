@@ -4,7 +4,7 @@
     @dblclick="startEditing"
     @keydown="onKeyDown($event)"
     class="btn btn-sm btn-light position-relative d-inline-flex"
-    style="min-width: 50px; min-height: 20px"
+    style="min-width: 50px; min-height: 20px; pointer-events: auto"
   >
     <img v-if="props.thumbnail" :src="props.thumbnail" alt="thumb" class="thumb-icon" />
 

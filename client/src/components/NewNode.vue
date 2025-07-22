@@ -5,18 +5,31 @@
       class="nodeHandle rounded-top p-1 d-flex align-items-center"
       style="background: #ededed"
     >
-      <div
-        class="node-tags p-2"
-        ref="nodeTagsRef"
-        @wheel="handleHorizontalScroll"
-        v-for="property in alt.properties"
-        :key="property.tag"
-      >
-        <EditableLabel
-          class="btn-outline-dark mx-1"
-          v-model="property.tag"
-          v-bind="property.thumbnail ? { thumbnail: property.thumbnail } : {}"
-        ></EditableLabel>
+      <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
+        <button
+          v-for="(property, propIndex) in alt.properties"
+          :key="property.tag"
+          class="btn btn-sm btn-outline-dark mx-1"
+          @dblclick.stop="startEditingTag(propIndex)"
+        >
+          <img
+            v-show="property.thumbnail"
+            :src="property.thumbnail"
+            alt="thumb"
+            class="thumb-icon"
+          />
+          <span v-if="editingTagIndex !== propIndex">{{ property.tag }}</span>
+          <input
+            v-else
+            v-model="editingTagText"
+            @blur="saveTagEdit"
+            @keyup.enter="saveTagEdit"
+            @keyup.escape="cancelTagEdit"
+            @click.stop
+            class="tag-input"
+            :ref="el => tagInputRefs[propIndex] = el"
+          />
+        </button>
       </div>
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
@@ -87,7 +100,7 @@
 </template>
 
 <script setup>
-import { computed, markRaw, onMounted, onBeforeUnmount, ref, watch, defineEmits } from 'vue'
+import { computed, markRaw, onMounted, onBeforeUnmount, ref, watch, defineEmits, nextTick } from 'vue'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -134,6 +147,11 @@ const strokesBoundUrl = ref('')
 let path = null
 let lassoStart = false
 let startPointer = null
+
+// Tag editing state
+const editingTagIndex = ref(null)
+const editingTagText = ref('')
+const tagInputRefs = ref([])
 const fabricCanvasW = ref(0) // reactive refs
 const fabricCanvasH = ref(0)
 const lassoPayload = ref({})
@@ -475,6 +493,33 @@ function deleteAlt(e) {
   e.preventDefault()
   e.stopPropagation()
   emit('remove')
+}
+
+// Tag editing functions
+function startEditingTag(propIndex) {
+  editingTagIndex.value = propIndex
+  editingTagText.value = alt.properties[propIndex].tag
+  
+  // Focus the input after DOM update
+  nextTick(() => {
+    const inputEl = tagInputRefs.value[propIndex]
+    if (inputEl && typeof inputEl.focus === 'function') {
+      inputEl.focus()
+      inputEl.select() // Select all text
+    }
+  })
+}
+
+function saveTagEdit() {
+  if (editingTagIndex.value !== null && editingTagText.value.trim()) {
+    alt.properties[editingTagIndex.value].tag = editingTagText.value.trim()
+  }
+  cancelTagEdit()
+}
+
+function cancelTagEdit() {
+  editingTagIndex.value = null
+  editingTagText.value = ''
 }
 
 function handleClick(altId, branchId) {
@@ -913,12 +958,28 @@ async function redo(event) {
   box-sizing: border-box;
   padding: 0.5rem;
   /* optionally set a fixed height */
-  height: 2.5rem; /* adjust to fit your tag buttons nicely */
+  height: 3rem; /* adjust to fit your tag buttons nicely */
   align-items: center; /* vertically center buttons */
   overflow-x: auto; /* enable horizontal scrolling */
   overflow-y: hidden; /* hide vertical scrolling */
   scrollbar-width: thin; /* Firefox - show thin scrollbar */
   scrollbar-color: #cbd5e0 transparent; /* Firefox - thumb and track colors */
+}
+
+/* Tag input styling */
+.tag-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  min-width: 20px;
+  max-width: 150px;
 }
 
 /* Custom scrollbar for WebKit browsers */
