@@ -36,11 +36,19 @@
         <button
           @click="redo($event)"
           :disabled="redoStack.length === 0"
-          class="btn btn-sm btn-outline-secondary me-1"
+          class="btn btn-sm btn-outline-secondary"
           title="Redo"
           @mouseup.stop
         >
           ⟳
+        </button>
+        <button
+          @click="deleteAlt($event)"
+          class="btn btn-sm btn-outline-danger"
+          title="Delete Alt"
+          @mouseup.stop
+        >
+          ✕
         </button>
       </div>
 
@@ -441,9 +449,9 @@ onMounted(() => {
 
   // Make canvas focusable and add keyboard handlers
   fabricCanvas.upperCanvasEl.tabIndex = 0
-  
+
   fabricCanvas.upperCanvasEl.addEventListener('keydown', handleCanvasKeyDown)
-  
+
   // Focus canvas when clicked
   fabricCanvas.upperCanvasEl.addEventListener('click', () => {
     fabricCanvas.upperCanvasEl.focus()
@@ -464,6 +472,12 @@ onBeforeUnmount(() => {
     fabricCanvas.upperCanvasEl.removeEventListener('keydown', handleCanvasKeyDown)
   }
 })
+
+function deleteAlt(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  emit('remove')
+}
 
 function handleClick(altId, branchId) {
   if (allUtilStore.nodeOnDrag) {
