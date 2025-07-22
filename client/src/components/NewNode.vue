@@ -5,19 +5,18 @@
       class="nodeHandle rounded-top p-1 d-flex align-items-center"
       style="background: #ededed"
     >
-      <div class="node-tags p-2" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
-        <button
-          v-for="property in alt.properties"
-          :key="property.tag"
-          class="btn btn-sm btn-outline-dark mx-1"
-        >
-          <img
-            v-show="property.thumbnail"
-            :src="property.thumbnail"
-            alt="thumb"
-            class="thumb-icon"
-          />{{ property.tag }}
-        </button>
+      <div
+        class="node-tags p-2"
+        ref="nodeTagsRef"
+        @wheel="handleHorizontalScroll"
+        v-for="property in alt.properties"
+        :key="property.tag"
+      >
+        <EditableLabel
+          class="btn-outline-dark mx-1"
+          v-model="property.tag"
+          v-bind="property.thumbnail ? { thumbnail: property.thumbnail } : {}"
+        ></EditableLabel>
       </div>
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
@@ -90,7 +89,6 @@
 <script setup>
 import { computed, markRaw, onMounted, onBeforeUnmount, ref, watch, defineEmits } from 'vue'
 import * as fabric from 'fabric'
-import { Tooltip } from 'bootstrap'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'

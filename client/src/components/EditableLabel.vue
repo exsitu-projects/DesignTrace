@@ -83,7 +83,6 @@ const startEditing = () => {
   nextTick(() => {
     if (input.value) {
       input.value.focus()
-      console.log('Input element focused')
     }
   })
 }
@@ -96,14 +95,6 @@ const onKeyDown = (e) => {
 
 const save = () => {
   emit('update:modelValue', text.value)
-
-  // Debug logging
-  console.log('EditableLabel save called:', {
-    isPropertyName: props.isPropertyName,
-    textValue: text.value,
-    isNotAttribute: text.value !== 'Attribute',
-    isNotEmpty: text.value.trim() !== '',
-  })
 
   // Only emit property-name-finalized if this is specifically a property name EditableLabel
   if (props.isPropertyName && text.value !== 'Attribute' && text.value.trim() !== '') {

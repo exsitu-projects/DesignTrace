@@ -18,7 +18,9 @@
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
         :isPropertyName="true"
-        @property-name-finalized="(propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)"
+        @property-name-finalized="
+          (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
+        "
       ></EditableLabel
       ><span
         v-show="hoveredRowIndex === rowIdx && objectStore.obj && objectStore.obj.type === 'image'"
@@ -84,7 +86,7 @@
             >
               <span class="visually-hidden">Loading ghost tags...</span>
             </div>
-            
+
             <!-- Show ghost tags when loaded -->
             <span
               v-else
@@ -146,7 +148,9 @@ const getRemainingGhostTags = (rowIdx) => {
   }
 
   const usedTags = rows.value[rowIdx].tags.map((tag) => tag.tag.toLowerCase())
-  const remainingTags = dynamicGhostTags.filter((ghostTag) => !usedTags.includes(ghostTag.toLowerCase()))
+  const remainingTags = dynamicGhostTags.filter(
+    (ghostTag) => !usedTags.includes(ghostTag.toLowerCase()),
+  )
 
   return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
 }
@@ -241,13 +245,13 @@ const addGhostTag = (rowIdx, tagText) => {
   hoveredAddButton.value = null
 }
 
-const handleDragStart = (e, tagObj, propName, thumbnail) => {
+const handleDragStart = (e, tagObj, propName) => {
   objectStore.dragState = 'startDragging'
   if ('uid' in tagObj) {
     //meaning this is one tag being dragged
     objectStore.obj = {
       type: 'tag',
-      content: [{ tag: tagObj.tag, propName: propName, thumbnail: thumbnail.thumbnail }],
+      content: [{ tag: tagObj.tag, propName: propName }],
     }
 
     //{ type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
@@ -267,20 +271,6 @@ const handleDragStart = (e, tagObj, propName, thumbnail) => {
 */
     objectStore.obj = { type: 'property', content: content }
   }
-}
-// Simple click-outside directive implementation
-const vClickOutside = {
-  mounted(el, binding) {
-    el._clickOutsideHandler = (event) => {
-      if (!(el === event.target || el.contains(event.target))) {
-        binding.value(event)
-      }
-    }
-    document.addEventListener('click', el._clickOutsideHandler)
-  },
-  unmounted(el) {
-    document.removeEventListener('click', el._clickOutsideHandler)
-  },
 }
 
 onMounted(() => {

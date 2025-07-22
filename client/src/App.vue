@@ -165,10 +165,10 @@ function handleKeyDown(e) {
   if (e.key === 'Delete' || e.key === 'Backspace') {
     // Try to delete from FreeCanvas first (main canvas objects)
     const freeCanvasDeleted = freeCanvasRef.value?.deleteSelectedObjects?.()
-    
+
     // If no objects were selected on FreeCanvas, delete from selected alt elements
     if (!freeCanvasDeleted && nodeStore.selectedIndices.length > 0) {
-      nodeStore.selectedIndices.forEach(altId => {
+      nodeStore.selectedIndices.forEach((altId) => {
         const canvasComp = nodeCanvasRefs[altId]
         canvasComp?.deleteSelectedObjects?.()
       })
@@ -325,8 +325,8 @@ onMounted(() => {
 .fade-enter-active,
 .fade-leave-active {
   transition:
-    opacity 0.7s ease,
-    transform 0.7s ease;
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
