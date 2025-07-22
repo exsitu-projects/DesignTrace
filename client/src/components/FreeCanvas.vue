@@ -254,6 +254,17 @@ const backwardOneLayer = () => {
   }
 }
 
+const deleteSelectedObjects = () => {
+  const activeObjects = canvas.getActiveObjects()
+  if (activeObjects.length > 0) {
+    activeObjects.forEach((obj) => canvas.remove(obj))
+    canvas.discardActiveObject()
+    canvas.requestRenderAll()
+    return true // Objects were deleted
+  }
+  return false // No objects were deleted
+}
+
 function resizeFabric(newW, newH) {
   canvas.setDimensions({ width: newW, height: newH })
 
@@ -521,6 +532,10 @@ onMounted(() => {
   //
   // // Initial brush update
   // updateBrush()
+})
+
+defineExpose({
+  deleteSelectedObjects,
 })
 </script>
 

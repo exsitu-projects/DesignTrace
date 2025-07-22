@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, markRaw, onMounted, ref, watch, defineEmits } from 'vue'
+import { computed, markRaw, onMounted, onBeforeUnmount, ref, watch, defineEmits } from 'vue'
 import * as fabric from 'fabric'
 import { Tooltip } from 'bootstrap'
 import EditableLabel from './EditableLabel.vue'
@@ -438,6 +438,31 @@ onMounted(() => {
       fabricCanvas.requestRenderAll()
     }
   })
+
+  // Make canvas focusable and add keyboard handlers
+  fabricCanvas.upperCanvasEl.tabIndex = 0
+  
+  fabricCanvas.upperCanvasEl.addEventListener('keydown', handleCanvasKeyDown)
+  
+  // Focus canvas when clicked
+  fabricCanvas.upperCanvasEl.addEventListener('click', () => {
+    fabricCanvas.upperCanvasEl.focus()
+  })
+})
+
+const handleCanvasKeyDown = (e) => {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault()
+    e.stopPropagation()
+    deleteSelectedObjects()
+  }
+}
+
+onBeforeUnmount(() => {
+  // Clean up event listeners
+  if (fabricCanvas?.upperCanvasEl) {
+    fabricCanvas.upperCanvasEl.removeEventListener('keydown', handleCanvasKeyDown)
+  }
 })
 
 function handleClick(altId, branchId) {

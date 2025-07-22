@@ -2,7 +2,7 @@
   <div id="app">
     <!-- wrapper provides the relative positioning context -->
 
-    <FreeCanvas />
+    <FreeCanvas ref="freeCanvasRef" />
     <button
       v-show="nodesSelected"
       @click="confirmNodes"
@@ -113,6 +113,7 @@ import { Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 /* --- store instances --- */
 const nodeCanvasRefs = reactive({}) // { [altId]: componentRef }
+const freeCanvasRef = ref(null)
 
 const nodeStore = useNode()
 const objectStore = useObject()
@@ -161,9 +162,17 @@ function handleKeyDown(e) {
     return
   }
 
-  if ((e.key === 'Delete' || e.key === 'Backspace') && nodeStore.lastSelectedIndex != null) {
-    const canvasComp = nodeCanvasRefs[nodeStore.lastSelectedIndex]
-    canvasComp?.deleteSelectedObjects?.()
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    // Try to delete from FreeCanvas first (main canvas objects)
+    const freeCanvasDeleted = freeCanvasRef.value?.deleteSelectedObjects?.()
+    
+    // If no objects were selected on FreeCanvas, delete from selected alt elements
+    if (!freeCanvasDeleted && nodeStore.selectedIndices.length > 0) {
+      nodeStore.selectedIndices.forEach(altId => {
+        const canvasComp = nodeCanvasRefs[altId]
+        canvasComp?.deleteSelectedObjects?.()
+      })
+    }
   }
 }
 function handleKeyUp(e) {
