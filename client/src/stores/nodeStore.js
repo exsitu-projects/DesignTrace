@@ -841,7 +841,6 @@ export const useNode = defineStore('nodes', () => {
       updatedAltLength = altObjs.length
     } else {
       newNode = branch.nodes.find((n) => n.id === prevNode.nextNodeId)
-      console.log('use existing ', prevNode.id)
       updatedAltLength =
         newNode.alts.filter((alt) => alt.collapse !== false).length + altObjs.length
     }
@@ -889,6 +888,7 @@ export const useNode = defineStore('nodes', () => {
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
       const y = maxY - NODE_HEIGHT * i + offsetY.value
+      altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
       const url = await addAlt(
         altObjs[i],
         nodeBranchId,
