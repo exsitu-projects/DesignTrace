@@ -14,8 +14,8 @@
         ref="input"
         class="form-control form-control-sm m-auto border-0 p-0"
         :style="{ minHeight: 'auto', maxWidth: '500px', width: inputWidth + 'px' }"
-        @keyup.enter="save"
-        @blur="save"
+        @keyup.enter="() => save()"
+        @blur="() => save()"
       />
       <!-- hidden span to measure text width -->
       <span ref="sizer" class="invisible position-absolute" style="white-space: pre">{{
@@ -52,6 +52,7 @@ const text = ref('')
 const inputWidth = ref(50)
 
 const sizer = ref(null)
+const input = ref(null)
 
 watch(
   () => model.value,
@@ -77,6 +78,14 @@ const startEditing = () => {
   isEditing.value = true
   text.value = model.value
   updateWidth()
+
+  // Focus the input element after DOM update
+  nextTick(() => {
+    if (input.value) {
+      input.value.focus()
+      console.log('Input element focused')
+    }
+  })
 }
 
 const onKeyDown = (e) => {
@@ -87,12 +96,20 @@ const onKeyDown = (e) => {
 
 const save = () => {
   emit('update:modelValue', text.value)
-  
+
+  // Debug logging
+  console.log('EditableLabel save called:', {
+    isPropertyName: props.isPropertyName,
+    textValue: text.value,
+    isNotAttribute: text.value !== 'Attribute',
+    isNotEmpty: text.value.trim() !== '',
+  })
+
   // Only emit property-name-finalized if this is specifically a property name EditableLabel
   if (props.isPropertyName && text.value !== 'Attribute' && text.value.trim() !== '') {
     emit('property-name-finalized', text.value)
   }
-  
+
   isEditing.value = false
 }
 </script>

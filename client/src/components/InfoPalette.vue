@@ -330,6 +330,14 @@ onMounted(() => {
               }
             })
 
+            // Commit on blur (when clicking elsewhere)
+            customInput.addEventListener('blur', (e) => {
+              const inputValue = e.target.value.trim()
+              if (inputValue) {
+                selectAttribute(inputValue)
+              }
+            })
+
             // Auto-focus the input
             setTimeout(() => {
               if (customInput && document.contains(customInput)) {
