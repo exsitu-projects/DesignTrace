@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import { Lasso, ArrowBigUpDash, ArrowBigDownDash, SprayCan, Lock, LockOpen } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
+import { Collapse } from 'bootstrap'
+
 import * as fabric from 'fabric'
 const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso'])
 
@@ -9,10 +11,36 @@ const allUtilStore = useAllUtil()
 
 function switchLasso() {
   allUtilStore.switchLassoMode()
+  
+  // Hide color picker when lasso is activated (since lasso and color pen are mutually exclusive)
+  const collapseEl = document.getElementById('collapseExample')
+  const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
+  const isExpanded = collapseEl.classList.contains('show')
+  if (isExpanded) {
+    bsCollapse.hide()
+  }
 }
 
 function switchColorPen() {
   allUtilStore.switchColorPen()
+  
+  // Show color picker when color pen is activated
+  if (allUtilStore.isColorPen) {
+    const collapseEl = document.getElementById('collapseExample')
+    const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
+    const isExpanded = collapseEl.classList.contains('show')
+    if (!isExpanded) {
+      bsCollapse.show()
+    }
+  } else {
+    // Hide color picker when color pen is deactivated
+    const collapseEl = document.getElementById('collapseExample')
+    const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
+    const isExpanded = collapseEl.classList.contains('show')
+    if (isExpanded) {
+      bsCollapse.hide()
+    }
+  }
 }
 
 function switchStepLock() {
@@ -32,10 +60,6 @@ function switchStepLock() {
 
     <button
       :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"
-      data-bs-toggle="collapse"
-      data-bs-target="#collapseExample"
-      aria-expanded="false"
-      aria-controls="collapseExample"
       @click="switchColorPen"
     >
       <SprayCan color="black" :size="15"></SprayCan>

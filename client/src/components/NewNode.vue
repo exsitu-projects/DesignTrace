@@ -2,12 +2,22 @@
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
       @click="handleClick(alt.id, alt.branchId)"
-      class="nodeHandle rounded-top pe-2 d-flex align-items-center"
+      class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
       style="background: #ededed"
     >
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
       <!--      {{ alt.id }}-->
+
+      <!-- Transform Button (appears on the left when needed) -->
+      <button
+        v-show="changeDetected"
+        @click="transformColorStroke"
+        class="btn btn-outline-dark btn-sm ms-2"
+      >
+        Transform
+      </button>
+
       <!-- Undo/Redo Controls -->
       <div class="d-flex align-items-center gap-1 ms-auto">
         <button
@@ -45,14 +55,6 @@
           ✕
         </button>
       </div>
-
-      <button
-        v-show="changeDetected"
-        @click="transformColorStroke"
-        class="btn btn-outline-dark btn-sm ms-auto"
-      >
-        Transform
-      </button>
     </div>
     <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
       <button
@@ -817,7 +819,6 @@ watch(
 watch(
   () => allUtilStore.isColorPen,
   (newVal) => {
-    allUtilStore.isLassoMode = false // force lasso off
     fabricCanvas.isDrawingMode = newVal
     fabricCanvas.forEachObject((obj) => {
       obj.selectable = !newVal
@@ -829,7 +830,6 @@ watch(
 watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
-    allUtilStore.isColorPen = false // force color pen off
     lassoStart = newVal
     fabricCanvas.forEachObject((obj) => {
       obj.selectable = !newVal
