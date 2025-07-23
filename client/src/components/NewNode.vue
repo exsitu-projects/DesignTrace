@@ -58,12 +58,14 @@
       <button
         v-for="(property, propIndex) in alt.properties"
         :key="property.tag"
-        class="btn btn-sm btn-outline-dark mx-1 shadow-none focus-ring-0"
+        style="display: flex; align-items: center"
+        :class="['btn btn-sm mx-1 btn-light', { active: isPropertyActive(property) }]"
+        @click.stop="navigateToPropertyState(property)"
         @dblclick.stop="startEditingTag(propIndex)"
       >
         <div
           v-show="property.thumbnail"
-          class="thumb-icon-wrapper me-1"
+          class="thumb-icon-wrapper me-2"
           :class="{ 'lasso-border': property.thumbnailSource === 'lasso' }"
         >
           <img :src="property.thumbnail" alt="thumb" class="thumb-icon" />
@@ -181,6 +183,17 @@ const canvasUrlWithoutBrush = ref('')
 const isLoadingState = ref(false) // Prevent saving state during undo/redo
 const undoStack = computed(() => alt.history?.undoStack || [])
 const redoStack = computed(() => alt.history?.redoStack || [])
+
+// Function to check if a property button should be active
+const isPropertyActive = (property) => {
+  if (typeof property.historyStateIndex !== 'number' || !alt.history) {
+    return false
+  }
+  // Handle case where currentIndex might not be set (default to latest)
+  const currentIndex =
+    alt.history.currentIndex >= 0 ? alt.history.currentIndex : alt.history.undoStack.length - 1
+  return currentIndex === property.historyStateIndex
+}
 
 const cursor = new fabric.Circle({
   //brush cursor
@@ -949,6 +962,32 @@ async function redo(event) {
     isLoadingState.value = false
   }
 }
+
+async function navigateToPropertyState(property) {
+  if (typeof property.historyStateIndex !== 'number') {
+    console.warn('No history state index found for this property:', property.tag)
+    return
+  }
+
+  try {
+    isLoadingState.value = true
+
+    // Save current state to undo stack before navigating
+    await saveState()
+
+    // Navigate to the specific history state
+    const targetState = nodeStore.navigateToHistoryState(alt.id, property.historyStateIndex)
+    if (targetState) {
+      await loadCanvasState(targetState)
+    } else {
+      console.warn('Failed to navigate to history state index:', property.historyStateIndex)
+    }
+  } catch (error) {
+    console.error('Error navigating to property state:', error)
+  } finally {
+    isLoadingState.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -976,7 +1015,7 @@ async function redo(event) {
   flex-wrap: nowrap; /* no wrapping, keep single line */
   gap: 0.2rem;
   flex: 1; /* take available space but don't expand parent */
-  max-width: calc(100% - 50px); /* leave space for undo/redo buttons */
+  max-width: 100%;
   box-sizing: border-box;
   padding: 0.3rem;
   /* optionally set a fixed height */
@@ -1069,20 +1108,14 @@ async function redo(event) {
   color: #dc3545 !important;
 }
 
-.thumb-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 2px;
-  object-fit: cover;
-  object-position: center;
-  margin-right: 0.5rem;
-  align-self: center;
-}
 .thumb-icon-wrapper {
-  display: inline-block;
-  position: relative; /* needed for ::after */
+  display: inline-flex; /* use flex to center image */
+  justify-content: center;
+  align-items: center;
+  width: 24px; /* slightly larger than image to allow for border */
+  height: 24px;
+  position: relative;
   border-radius: 8px;
-  /* no border here by default */
 }
 
 .thumb-icon-wrapper.lasso-border {
@@ -1090,19 +1123,29 @@ async function redo(event) {
   box-shadow: 0 0 4px rgba(136, 136, 136, 0.3);
 }
 
+.thumb-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  object-fit: cover;
+  object-position: center;
+  margin: 0; /* remove margin-right to avoid offset */
+  display: block;
+}
+
 /* Tail */
 .thumb-icon-wrapper.lasso-border::after {
   content: '';
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 5px;
   border-style: dashed;
   border-width: 2px;
   border-color: transparent transparent #888 #888;
   border-radius: 50% 50% 50% 0;
-  top: 50%;
+  top: 80%;
   left: 100%;
-  transform: translateY(-50%) rotate(0deg);
+  transform: translateY(-50%) rotate(10deg);
   pointer-events: none;
 }
 </style>

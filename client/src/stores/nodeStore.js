@@ -106,17 +106,36 @@ export const useNode = defineStore('nodes', () => {
       alt.history = {
         undoStack: [],
         redoStack: [],
+        currentIndex: -1, // Track current history index
       }
     }
 
     // Add current state to undo stack
     alt.history.undoStack.push(canvasState)
     alt.history.redoStack = [] // Clear redo stack on new action
+    
+    // Update current index to the latest state
+    alt.history.currentIndex = alt.history.undoStack.length - 1
+
+    // Associate pending properties with this history state
+    const currentHistoryIndex = alt.history.undoStack.length - 1
+    alt.properties.forEach((property) => {
+      if (property.pendingHistoryAssociation) {
+        property.historyStateIndex = currentHistoryIndex
+        property.pendingHistoryAssociation = false
+      }
+    })
 
     // Limit undo stack size to prevent memory issues
     const MAX_HISTORY = 50
     if (alt.history.undoStack.length > MAX_HISTORY) {
       alt.history.undoStack.shift()
+      // Adjust all history indices when we shift the stack
+      alt.properties.forEach((property) => {
+        if (typeof property.historyStateIndex === 'number' && property.historyStateIndex > 0) {
+          property.historyStateIndex -= 1
+        }
+      })
     }
   }
 
@@ -133,6 +152,9 @@ export const useNode = defineStore('nodes', () => {
 
     const currentState = alt.history.undoStack.pop()
     alt.history.redoStack.push(currentState)
+    
+    // Update current index
+    alt.history.currentIndex = alt.history.undoStack.length - 1
 
     return alt.history.undoStack[alt.history.undoStack.length - 1]
   }
@@ -150,8 +172,29 @@ export const useNode = defineStore('nodes', () => {
 
     const redoState = alt.history.redoStack.pop()
     alt.history.undoStack.push(redoState)
+    
+    // Update current index
+    alt.history.currentIndex = alt.history.undoStack.length - 1
 
     return redoState
+  }
+
+  /**
+   * Navigate to a specific history state index
+   * @param {string} altId - ID of the alt
+   * @param {number} targetIndex - The history index to navigate to
+   * @returns {string|null} - The target state or null if invalid
+   */
+  function navigateToHistoryState(altId, targetIndex) {
+    const alt = findAlt(altId)
+    if (!alt || !alt.history || targetIndex < 0 || targetIndex >= alt.history.undoStack.length) {
+      return null
+    }
+
+    // Update current index to the target
+    alt.history.currentIndex = targetIndex
+    
+    return alt.history.undoStack[targetIndex]
   }
 
   // ===== BRANCH MANAGEMENT =====
@@ -534,7 +577,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = imagenPrompt(
           propsAltered,
@@ -547,8 +590,8 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        console.log(copiedPayload)
-        //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+
+        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -770,17 +813,21 @@ export const useNode = defineStore('nodes', () => {
       console.warn(`Alt with ID ${currentAltId} not found`)
       return
     }
-    altObjs[0].thumbnail = selectionPayload.value.lassoBoundUrl
-    altObjs[0].thumbnailSource = selectionPayload.value.type || 'lasso' ////TODO: check if this is correct
+    // Step 2: Set thumbnail and source for all properties, and mark them for history association
+    altObjs.forEach((obj) => {
+      obj.thumbnail = selectionPayload.value.lassoBoundUrl
+      obj.thumbnailSource = selectionPayload.value.type || 'lasso'
+      obj.pendingHistoryAssociation = true
+    })
 
-    // Step 2: Update properties array
+    // Step 3: Update properties array
     if (alt.properties.length && alt.properties[0].length === 0) {
       alt.properties.splice(0, alt.properties.length, ...altObjs) // Replace all elements
     } else {
       alt.properties.push(...altObjs) // Add to existing elements
     }
 
-    // Step 3: Get unique property names
+    // Step 4: Get unique property names
     const propsAltered = altObjs
       .map((obj) => obj.propName)
       .filter((value, index, array) => array.indexOf(value) === index)
@@ -971,6 +1018,7 @@ export const useNode = defineStore('nodes', () => {
     saveState,
     undo,
     redo,
+    navigateToHistoryState,
 
     // Lasso and Color Pen
     setCurrentLassoInfo,
