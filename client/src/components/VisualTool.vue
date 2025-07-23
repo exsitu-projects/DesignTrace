@@ -54,15 +54,15 @@ function switchStepLock() {
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
-  <button
-    type="button"
-    @click="switchStepLock()"
-    :class="['btn btn-sm btn-light', { active: allUtilStore.isStepLock }]"
-  >
-    <Lock v-show="allUtilStore.isStepLock" color="black" :size="15" />
-    <LockOpen v-show="!allUtilStore.isStepLock" color="black" :size="15" />
-    Step Lock
-  </button>
+  <!--  <button-->
+  <!--    type="button"-->
+  <!--    @click="switchStepLock()"-->
+  <!--    :class="['btn btn-sm btn-light', { active: allUtilStore.isStepLock }]"-->
+  <!--  >-->
+  <!--    <Lock v-show="allUtilStore.isStepLock" color="black" :size="15" />-->
+  <!--    <LockOpen v-show="!allUtilStore.isStepLock" color="black" :size="15" />-->
+  <!--    Step Lock-->
+  <!--  </button>-->
 </template>
 
 <style scoped></style>

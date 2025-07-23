@@ -2,14 +2,14 @@
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
       @click="handleClick(alt.id, alt.branchId)"
-      class="nodeHandle rounded-top p-1 d-flex align-items-center"
+      class="nodeHandle rounded-top pe-2 d-flex align-items-center"
       style="background: #ededed"
     >
       <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
         <button
           v-for="(property, propIndex) in alt.properties"
           :key="property.tag"
-          class="btn btn-sm btn-outline-dark mx-1"
+          class="btn btn-sm btn-outline-dark mx-1 shadow-none focus-ring-0"
           @dblclick.stop="startEditingTag(propIndex)"
         >
           <img
@@ -27,7 +27,7 @@
             @keyup.escape="cancelTagEdit"
             @click.stop
             class="tag-input"
-            :ref="el => tagInputRefs[propIndex] = el"
+            :ref="(el) => (tagInputRefs[propIndex] = el)"
           />
         </button>
       </div>
@@ -39,7 +39,7 @@
         <button
           @click="undo($event)"
           :disabled="undoStack.length <= 1"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm transparent-btn gray-symbol"
           title="Undo"
           @mouseup.stop
         >
@@ -48,15 +48,23 @@
         <button
           @click="redo($event)"
           :disabled="redoStack.length === 0"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm transparent-btn gray-symbol"
           title="Redo"
           @mouseup.stop
         >
           ⟳
         </button>
         <button
+          @click="switchStepLock(alt.id)"
+          :class="['btn btn-sm ', { active: alt.isStepLock }]"
+          @mouseup.stop
+        >
+          <Lock v-show="alt.isStepLock" class="mb-1" color="gray" :size="13"></Lock>
+          <LockOpen v-show="!alt.isStepLock" class="mb-1" color="gray" :size="13"></LockOpen>
+        </button>
+        <button
           @click="deleteAlt($event)"
-          class="btn btn-sm btn-outline-danger"
+          class="btn btn-sm transparent-btn red-symbol"
           title="Delete Alt"
           @mouseup.stop
         >
@@ -100,7 +108,17 @@
 </template>
 
 <script setup>
-import { computed, markRaw, onMounted, onBeforeUnmount, ref, watch, defineEmits, nextTick } from 'vue'
+import {
+  computed,
+  markRaw,
+  onMounted,
+  onBeforeUnmount,
+  ref,
+  watch,
+  defineEmits,
+  nextTick,
+} from 'vue'
+import { Lock, LockOpen } from 'lucide-vue-next'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -499,7 +517,7 @@ function deleteAlt(e) {
 function startEditingTag(propIndex) {
   editingTagIndex.value = propIndex
   editingTagText.value = alt.properties[propIndex].tag
-  
+
   // Focus the input after DOM update
   nextTick(() => {
     const inputEl = tagInputRefs.value[propIndex]
@@ -520,6 +538,10 @@ function saveTagEdit() {
 function cancelTagEdit() {
   editingTagIndex.value = null
   editingTagText.value = ''
+}
+
+function switchStepLock(altIed) {
+  nodeStore.switchStepLock(altIed)
 }
 
 function handleClick(altId, branchId) {
@@ -952,11 +974,11 @@ async function redo(event) {
 .node-tags {
   display: flex;
   flex-wrap: nowrap; /* no wrapping, keep single line */
-  gap: 0.25rem;
+  gap: 0.2rem;
   flex: 1; /* take available space but don't expand parent */
   max-width: calc(100% - 50px); /* leave space for undo/redo buttons */
   box-sizing: border-box;
-  padding: 0.5rem;
+  padding: 0.3rem;
   /* optionally set a fixed height */
   height: 3rem; /* adjust to fit your tag buttons nicely */
   align-items: center; /* vertically center buttons */
@@ -1008,5 +1030,42 @@ async function redo(event) {
   /* Remove overflow/ellipsis to show full text */
   min-width: fit-content; /* button fits its content */
   padding: 0.25rem 0.5rem; /* consistent padding */
+}
+
+.transparent-btn {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0.25rem 0.5rem;
+}
+
+.transparent-btn:hover,
+.transparent-btn:focus,
+.transparent-btn:active {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.gray-symbol {
+  color: #6c757d !important;
+}
+
+.gray-symbol:hover,
+.gray-symbol:focus,
+.gray-symbol:active {
+  color: #6c757d !important;
+}
+
+.red-symbol {
+  color: #dc3545 !important;
+}
+
+.red-symbol:hover,
+.red-symbol:focus,
+.red-symbol:active {
+  color: #dc3545 !important;
 }
 </style>

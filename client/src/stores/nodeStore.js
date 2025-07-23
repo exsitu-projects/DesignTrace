@@ -255,7 +255,7 @@ export const useNode = defineStore('nodes', () => {
 
       // Generate the image with the prompt
       currentColorPenInfo.value.prompt = output
-      //imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
+      imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
 
       // Update payload for rendering
       addAltImgPayload.value = {
@@ -462,6 +462,7 @@ export const useNode = defineStore('nodes', () => {
         redoStack: [],
       },
       collapse: true,
+      isStepLock: false,
     }
   }
 
@@ -533,7 +534,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = imagenPrompt(
           propsAltered,
@@ -547,7 +548,7 @@ export const useNode = defineStore('nodes', () => {
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
         console.log(copiedPayload)
-        //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -570,8 +571,8 @@ export const useNode = defineStore('nodes', () => {
    */
   async function getObjectProperties(imageUrl, propsAltered) {
     try {
-      const result = ''
-      //const result = await generationStore.excludePropObject(imageUrl, propsAltered)
+      //const result = ''
+      const result = await generationStore.excludePropObject(imageUrl, propsAltered)
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
@@ -649,14 +650,14 @@ export const useNode = defineStore('nodes', () => {
 
       // Generate image if properties are specified
       if (propsAltered && adjObjectText && objectText) {
-        // imgUrl = await generateImage(
-        //   newAlt.properties,
-        //   propsAltered,
-        //   adjObjectText,
-        //   objectText,
-        //   visiblePropsText,
-        //   newAlt.id,
-        // )
+        imgUrl = await generateImage(
+          newAlt.properties,
+          propsAltered,
+          adjObjectText,
+          objectText,
+          visiblePropsText,
+          newAlt.id,
+        )
       }
     } else {
       // Handle first alt in branch
@@ -871,11 +872,11 @@ export const useNode = defineStore('nodes', () => {
     let objectText = ''
     let visiblePropsText = ''
     try {
-      const result = ''
-      //const result = await generationStore.excludePropObject(
-      //   selectionPayload.value.lassoBoundUrl,
-      //   propsAltered,
-      // )
+      //const result = ''
+      const result = await generationStore.excludePropObject(
+        selectionPayload.value.lassoBoundUrl,
+        propsAltered,
+      )
       adjObjectText = result.adjObjectText
       objectText = result.objectText
       visiblePropsText = result.visibleProps
@@ -910,6 +911,13 @@ export const useNode = defineStore('nodes', () => {
     // updateAltPos(maxY, minY, x, newNode, branch)
 
     return urls
+  }
+
+  function switchStepLock(altIed) {
+    const alt = findAlt(altIed)
+    if (alt) {
+      alt.isStepLock = !alt.isStepLock
+    }
   }
 
   // ===== EXPORTED VALUES AND FUNCTIONS =====
@@ -964,5 +972,6 @@ export const useNode = defineStore('nodes', () => {
     // Lasso and Color Pen
     setCurrentLassoInfo,
     applyColorPen,
+    switchStepLock,
   }
 })

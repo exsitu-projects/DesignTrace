@@ -9,7 +9,7 @@
       class="btn btn-sm btn-outline-success m-1 mx-auto"
       style="z-index: 5000; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
     >
-      <Check color="green" :size="15" />&nbsp;Proceed to Next Step
+      <Check color="green" :size="15" />&nbsp;Collapse Other Nodes
     </button>
     <!-- nodes & alts overlay -->
     <svg
@@ -57,7 +57,15 @@
         :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
         :requestForLasso="requestForLasso"
         @mouseup="
-          mouseUpNode(alt.position.x, alt.position.y, alt.branchId, alt.nodeId, alt.id, $event)
+          mouseUpNode(
+            alt.position.x,
+            alt.position.y,
+            alt.branchId,
+            alt.nodeId,
+            alt.id,
+            alt.isStepLock,
+            $event,
+          )
         "
         :draggable="true"
         :drag-handle="'.nodeHandle'"
@@ -190,7 +198,7 @@ function toggleDesignSpace() {
   isDesignSpaceVisible.value = !isDesignSpaceVisible.value
 }
 
-async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
+async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       requestForLasso.value = true
@@ -202,7 +210,7 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, e) {
       { tag: 'Blue',  propName: 'color' },]}*/
       const objContent = toRaw(objectStore.obj.content).slice()
       objectStore.obj = {}
-      if (allUtilStore.isStepLock) {
+      if (altIsStepLock) {
         await nodeStore.addOnExistingAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
       } else {
         await nodeStore.addMultAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
