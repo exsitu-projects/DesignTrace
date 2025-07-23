@@ -5,32 +5,6 @@
       class="nodeHandle rounded-top pe-2 d-flex align-items-center"
       style="background: #ededed"
     >
-      <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
-        <button
-          v-for="(property, propIndex) in alt.properties"
-          :key="property.tag"
-          class="btn btn-sm btn-outline-dark mx-1 shadow-none focus-ring-0"
-          @dblclick.stop="startEditingTag(propIndex)"
-        >
-          <img
-            v-show="property.thumbnail"
-            :src="property.thumbnail"
-            alt="thumb"
-            class="thumb-icon"
-          />
-          <span v-if="editingTagIndex !== propIndex">{{ property.tag }}</span>
-          <input
-            v-else
-            v-model="editingTagText"
-            @blur="saveTagEdit"
-            @keyup.enter="saveTagEdit"
-            @keyup.escape="cancelTagEdit"
-            @click.stop
-            class="tag-input"
-            :ref="(el) => (tagInputRefs[propIndex] = el)"
-          />
-        </button>
-      </div>
       <!--      @dblclick="clickOnNodeTap()"-->
       <!--      <EditableLabel v-model="nodeName" />-->
       <!--      {{ alt.id }}-->
@@ -80,7 +54,33 @@
         Transform
       </button>
     </div>
-
+    <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
+      <button
+        v-for="(property, propIndex) in alt.properties"
+        :key="property.tag"
+        class="btn btn-sm btn-outline-dark mx-1 shadow-none focus-ring-0"
+        @dblclick.stop="startEditingTag(propIndex)"
+      >
+        <div
+          v-show="property.thumbnail"
+          class="thumb-icon-wrapper me-1"
+          :class="{ 'lasso-border': property.thumbnailSource === 'lasso' }"
+        >
+          <img :src="property.thumbnail" alt="thumb" class="thumb-icon" />
+        </div>
+        <span v-if="editingTagIndex !== propIndex">{{ property.tag }}</span>
+        <input
+          v-else
+          v-model="editingTagText"
+          @blur="saveTagEdit"
+          @keyup.enter="saveTagEdit"
+          @keyup.escape="cancelTagEdit"
+          @click.stop
+          class="tag-input"
+          :ref="(el) => (tagInputRefs[propIndex] = el)"
+        />
+      </button>
+    </div>
     <div @click.stop class="my-2 m-auto position-relative" ref="canvasContainer">
       <!-- Spinner positioned absolutely inside the container -->
       <div
@@ -980,7 +980,7 @@ async function redo(event) {
   box-sizing: border-box;
   padding: 0.3rem;
   /* optionally set a fixed height */
-  height: 3rem; /* adjust to fit your tag buttons nicely */
+  height: 2rem; /* adjust to fit your tag buttons nicely */
   align-items: center; /* vertically center buttons */
   overflow-x: auto; /* enable horizontal scrolling */
   overflow-y: hidden; /* hide vertical scrolling */
@@ -1067,5 +1067,42 @@ async function redo(event) {
 .red-symbol:focus,
 .red-symbol:active {
   color: #dc3545 !important;
+}
+
+.thumb-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  object-fit: cover;
+  object-position: center;
+  margin-right: 0.5rem;
+  align-self: center;
+}
+.thumb-icon-wrapper {
+  display: inline-block;
+  position: relative; /* needed for ::after */
+  border-radius: 8px;
+  /* no border here by default */
+}
+
+.thumb-icon-wrapper.lasso-border {
+  border: 2px dashed #888;
+  box-shadow: 0 0 4px rgba(136, 136, 136, 0.3);
+}
+
+/* Tail */
+.thumb-icon-wrapper.lasso-border::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-style: dashed;
+  border-width: 2px;
+  border-color: transparent transparent #888 #888;
+  border-radius: 50% 50% 50% 0;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%) rotate(0deg);
+  pointer-events: none;
 }
 </style>

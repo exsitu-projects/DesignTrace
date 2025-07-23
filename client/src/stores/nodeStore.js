@@ -534,7 +534,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = imagenPrompt(
           propsAltered,
@@ -548,7 +548,7 @@ export const useNode = defineStore('nodes', () => {
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
         console.log(copiedPayload)
-        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+        //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -770,6 +770,8 @@ export const useNode = defineStore('nodes', () => {
       console.warn(`Alt with ID ${currentAltId} not found`)
       return
     }
+    altObjs[0].thumbnail = selectionPayload.value.lassoBoundUrl
+    altObjs[0].thumbnailSource = selectionPayload.value.type || 'lasso' ////TODO: check if this is correct
 
     // Step 2: Update properties array
     if (alt.properties.length && alt.properties[0].length === 0) {
@@ -890,6 +892,7 @@ export const useNode = defineStore('nodes', () => {
     for (let i = 0; i < altObjs.length; i++) {
       const y = maxY - NODE_HEIGHT * i + offsetY.value
       altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
+      altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
       const url = await addAlt(
         altObjs[i],
         nodeBranchId,
