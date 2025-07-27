@@ -33,7 +33,7 @@ export const useGeneration = defineStore('generation', () => {
   const onPropertyNameFinalized = async (propertyName, rowIndex) => {
     // Set loading state for this row
     ghostTagsLoading.value[rowIndex] = true
-    
+
     try {
       const prompt =
         'Please give three common examples for the visual attribute ' +
@@ -50,11 +50,14 @@ export const useGeneration = defineStore('generation', () => {
 
       if (response.ok) {
         console.log(`Ghost tags for "${propertyName}":`, result.output)
-        
+
         // Parse the colon-separated result and store it for this row
-        const ghostTags = result.output.split(':').map(tag => tag.trim()).filter(tag => tag.length > 0)
+        const ghostTags = result.output
+          .split(':')
+          .map((tag) => tag.trim())
+          .filter((tag) => tag.length > 0)
         ghostTagsPerRow.value[rowIndex] = ghostTags
-        
+
         return result.output
       } else {
         console.log(result.error)
@@ -68,12 +71,12 @@ export const useGeneration = defineStore('generation', () => {
       ghostTagsLoading.value[rowIndex] = false
     }
   }
-  
+
   // Function to get ghost tags for a specific row
   const getGhostTagsForRow = (rowIndex) => {
     return ghostTagsPerRow.value[rowIndex] || []
   }
-  
+
   // Function to check if ghost tags are loading for a specific row
   const isGhostTagsLoading = (rowIndex) => {
     return ghostTagsLoading.value[rowIndex] || false
@@ -83,15 +86,15 @@ export const useGeneration = defineStore('generation', () => {
 
 The user provides an image and a feature to describe — it can be a visual feature (like layout, color, font, texture, material) or a semantic feature (like landmark, object, architecture).
 
-Your task is to describe only that feature in vivid, natural language, focusing on specific, visible details.
- Do **not** start with phrases like “The layout shows...” or “The color is...” — only write the raw description.
- No full sentences. No subjective words like “beautiful” or “elegant.”
- Use phrases like: “centered bold serif title, small icon bottom-right,” or “Fuji Mountain in sunny days”, or “light grainy texture, vertical brush strokes.”
- Use up to **15 words**.
-Be precise and spatially grounded (e.g., where a logo is placed, how a fabric folds, etc.).
+Your task is to describe only the specified visual feature in vivid, natural language, using concrete, visible details.
 
-Return only the description. No labels, no lists, no explanation.
-`
+– Do not start with phrases like “The layout shows...” or “The color is...”
+– Do not use full sentences
+– Avoid subjective or abstract terms like “beautiful,” “elegant,” or “modern”
+– Use spatial and material language (e.g., “centered bold serif title,” “light grainy texture, vertical brush strokes”)
+– Be precise and grounded in what’s visible — describe position, structure, texture, shape, color, etc.
+– Limit the response to 10 words or fewer
+– Return only the raw description with no punctuation at the end`
 
   const objSysPrompt = `You are a visual description assistant.
 
@@ -107,22 +110,37 @@ Use natural language, not a list of keywords.
 Limit the first description to 10 words or fewer.
 Be specific, expressive, and grounded in what’s visible.
 
-Return only the two phrases, separated by a colon. Do not explain or add anything else.`
+Return only the two phrases, separated by a colon. Do not include any punctuation at the end. Do not explain or add anything else.
+`
 
   const nonPropsSysPrompt = `You are a visual description assistant.
 
-The user will provide an image and may optionally specify a visual property to exclude (e.g., color, texture).
+The user will provide an image and may optionally specify a visual attribute to exclude (e.g., color, texture, landmark, contrast, layout).
 
-Your task is to return exactly three outputs, separated by colons **with no extra colons inside**:
+Your task is to return exactly four outputs, separated by colons **with no extra colons inside**:
 
-1. A comma-separated list of clearly visible visual properties of the primary object, excluding the specified property. Use only concrete, observable details (e.g., "wooden, smooth, floral patched, curvy, T-shape"). Do not include subjective or abstract terms.
+1. Return a comma-separated list of clearly visible visual properties of the primary object, excluding the specified attribute and excluding any reference to the object itself. Do not include any nouns that name objects, parts, or categories (e.g., “berries,” “stem,” “petals”). Only include directly observable visual traits such as color, texture, material, surface detail, shape, or pattern. Do not invent or infer any traits — describe only what is clearly and unambiguously visible in the image. Avoid all subjective, abstract, or interpretive terms (e.g., “elegant,” “strange”). Return only grounded visual properties in short phrases, no full sentences, and no punctuation at the end.
+
+This should prevent things like:
+
+❌ “green” (when there’s no green)
+
+❌ “two berries”
+
+✅ “matte surface, dark red, bumpy texture, spherical shape”
+
+Let me know if you want a variant with a limit (e.g., max 4 traits) or ordered by perceptual salience.
+
 
 2. The name of the primary object only (e.g., "chair", "backpack").
 
-3. A comma-separated list of all applicable visual property categories that were used in the first output (e.g., color, texture, material, pattern, shape, structure, surface detail).
+3. Provide a visual styling phrase based only on visible characteristics. Start with “in [visual style] style,” followed by the most prominent material, texture, or graphic feature. Do not mention or imply any object. Use only concrete, observable traits. Exclude the user specified visual attribute in text input. No full sentences, no punctuation, no vague or subjective words.
 
-Limit the first description to 20 words or fewer. Make sure to return exactly three parts, where each part is separated by **a colon**. Do not include any explanation or additional punctuation.
+4. Depending on the user's input text prompt, return either 'object' or 'property'. Return 'property' if the input is visual characteristic or attribute, including but not limited to Color Palette, pattern, color, material, texture, shape, visual style, form, layout, lighting, or spatial structure. Return 'object' only if the input refers to a recognizable physical entity such as a specific item, — e.g., “apple,” “Eiffel Tower,” “cat,” or “table.” Do not explain your reasoning — only return 'object' or 'property'.
+Limit the first description to 20 words or fewer. Make sure to return exactly four parts, where each part is separated by **a colon**. Do not include any explanation or additional punctuation.
 `
+
+  // 3. A comma-separated list of all applicable visual property categories that were used in the first output (e.g., color, texture, material, pattern, shape, structure, surface detail).
 
   function triggerT2I() {
     shouldTriggerT2I.value = true
@@ -185,17 +203,20 @@ Limit the first description to 20 words or fewer. Make sure to return exactly th
 
   async function excludePropObject(lassoBoundUrl, propsString) {
     try {
+      console.log(propsString)
       const raw = await describeImage(lassoBoundUrl, propsString, nonPropsSysPrompt)
-      console.log(raw)
 
-      const [adjPart = '', objPart = '', visibleProps = ''] = raw.split(':').map((s) => s.trim())
+      const [adjObjectText = '', objectText = '', visibleProps = '', objOrProp = ''] = raw
+        .split(':')
+        .map((s) => s.trim())
       if (!raw || typeof raw !== 'string') {
         throw new Error('describeImage returned empty or non‑string')
       }
       return {
-        adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
-        objectText: objPart, // e.g. "sofa"
+        adjObjectText: adjObjectText, // e.g. "elegant wooden leather sofa"
+        objectText: objectText, // e.g. "sofa"
         visibleProps: visibleProps, // e.g. "color, texture, material, pattern, shape, structure, surface detail"
+        objOrProp: objOrProp,
       }
     } finally {
     }
@@ -239,7 +260,12 @@ Limit the first description to 20 words or fewer. Make sure to return exactly th
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ original_image, total_mask, prompt }),
+        body: JSON.stringify({
+          original_image,
+          total_mask,
+          prompt,
+        }),
+        //body: JSON.stringify({ original_image, total_mask, prompt }),
       })
       const result = await response.json()
 

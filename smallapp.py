@@ -66,6 +66,8 @@ def mask_gen_img_imagen():
         reference_images=[raw_ref, mask_ref],
         config=EditImageConfig(
             edit_mode="EDIT_MODE_INPAINT_INSERTION",
+            aspect_ratio="1:1",
+            person_generation="DONT_ALLOW",
         ),
     )
 
@@ -274,8 +276,6 @@ def edit_image():
     prompt = json_data.get('prompt', '')
     original_image = json_data.get('original_image')  #  base64
     total_mask = json_data.get('total_mask')  #  base64
-    print(prompt)
-    print(total_mask)
     try:
         original_image_path = "static/assets/original_image.png"
         if original_image.startswith("data:image"):
@@ -290,6 +290,7 @@ def edit_image():
             os.makedirs(os.path.dirname(total_mask_path), exist_ok=True)
             with open(total_mask_path, "wb") as f:
                  f.write(base64.b64decode(total_mask))
+            print('openai edit image with mask')
             result = client.images.edit(
                 model="gpt-image-1", #dall-e-2
                 image=open(original_image_path, "rb"),
@@ -298,6 +299,7 @@ def edit_image():
                 size="1024x1024",
             )
         else:
+            print('openai edit whole image')
             result = client.images.edit(
                 model="gpt-image-1", #dall-e-2
                 image=open(original_image_path, "rb"),

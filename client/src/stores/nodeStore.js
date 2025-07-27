@@ -113,7 +113,7 @@ export const useNode = defineStore('nodes', () => {
     // Add current state to undo stack
     alt.history.undoStack.push(canvasState)
     alt.history.redoStack = [] // Clear redo stack on new action
-    
+
     // Update current index to the latest state
     alt.history.currentIndex = alt.history.undoStack.length - 1
 
@@ -152,7 +152,7 @@ export const useNode = defineStore('nodes', () => {
 
     const currentState = alt.history.undoStack.pop()
     alt.history.redoStack.push(currentState)
-    
+
     // Update current index
     alt.history.currentIndex = alt.history.undoStack.length - 1
 
@@ -172,7 +172,7 @@ export const useNode = defineStore('nodes', () => {
 
     const redoState = alt.history.redoStack.pop()
     alt.history.undoStack.push(redoState)
-    
+
     // Update current index
     alt.history.currentIndex = alt.history.undoStack.length - 1
 
@@ -193,7 +193,7 @@ export const useNode = defineStore('nodes', () => {
 
     // Update current index to the target
     alt.history.currentIndex = targetIndex
-    
+
     return alt.history.undoStack[targetIndex]
   }
 
@@ -539,11 +539,49 @@ export const useNode = defineStore('nodes', () => {
    * @param {string} adjObjectText - Object adjectives from detection
    * @param {string} objectText - Object name from detection
    * @param {string[]} descriptors - Array of property descriptions
-   * @param {string} visiblePropsText - Properties to preserve
+   * @param {string} visibleProps - Properties to preserve
+   * @param objOrProp
    * @returns {string} Formatted prompt
    */
-  function imagenPrompt(propsAltered, adjObjectText, objectText, descriptors, visiblePropsText) {
-    return `Change to the ${descriptors.join(' and ')} of ${objectText} while keeping its ${visiblePropsText} in ${adjObjectText}.`
+
+  function openAIMaskPrompt(
+    propsAltered,
+    adjObjectText,
+    objectText,
+    descriptors,
+    visibleProps,
+    objOrProp,
+  ) {
+    return (
+      'Transform the selected ' +
+      objectText +
+      ' in the mask to ' +
+      `${descriptors.join(' and ')}` +
+      ' in the same style, keeping its ' +
+      visibleProps +
+      '. Keep other unmasked parts of the image intact.'
+    )
+  }
+  function imagenPrompt(
+    propsAltered,
+    adjObjectText,
+    objectText,
+    descriptors,
+    visibleProps,
+    objOrProp,
+  ) {
+    console.log('objOrProp', objOrProp)
+    if (objOrProp === 'object') {
+      return (
+        `${descriptors.join(' and ')}, in ` + visibleProps
+        //+ ' in the style of ' + adjObjectText
+      )
+    } else if (objOrProp === 'property') {
+      //return `Transform the ${objectText} in the masked area to be ${descriptors.join(' and ')} and focus on the ${adjObjectText}.`
+      return `Change to ${descriptors.join(' and ')} ${objectText} while keeping its ${visibleProps}.`
+    }
+
+    //return 'an apple illustration'
   }
 
   /**
@@ -553,7 +591,8 @@ export const useNode = defineStore('nodes', () => {
    * @param {string} propsAltered - Comma-separated property names being altered
    * @param {string} adjObjectText - Object adjectives from detection
    * @param {string} objectText - Object name from detection
-   * @param {string} visiblePropsText - Properties to preserve
+   * @param {string} visibleProps - Properties to preserve
+   * @param objOrProp
    * @param {string} altId - Alt ID for the generated image
    * @returns {Promise<string|null>} URL of generated image or null if failed
    */
@@ -562,7 +601,8 @@ export const useNode = defineStore('nodes', () => {
     propsAltered,
     adjObjectText,
     objectText,
-    visiblePropsText,
+    visibleProps,
+    objOrProp,
     altId,
   ) {
     try {
@@ -579,19 +619,21 @@ export const useNode = defineStore('nodes', () => {
         copiedPayload.altId = altId
         imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
-        const prompt = imagenPrompt(
+        const prompt = openAIMaskPrompt(
           propsAltered,
           adjObjectText,
           objectText,
           descriptors,
-          visiblePropsText,
+          visibleProps,
+          objOrProp,
         )
+        //'Transform the selected strawberry in the mask to banana in the same style, while keeping other unmasked parts of the packaging intact'
         console.log('Generated prompt:', prompt)
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-
-        imgUrl = await generationStore.generateGoogleImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateGoogleImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -619,14 +661,16 @@ export const useNode = defineStore('nodes', () => {
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
-        visiblePropsText: result.visibleProps,
+        visibleProps: result.visibleProps,
+        objOrProp: result.objOrProp,
       }
     } catch (error) {
       console.error('Object detection failed:', error)
       return {
         adjObjectText: '',
         objectText: '',
-        visiblePropsText: '',
+        visibleProps: '',
+        objOrProp: '',
       }
     }
   }
@@ -641,10 +685,11 @@ export const useNode = defineStore('nodes', () => {
    * @param {number} posX - X position (default: INITIAL_NODE_X)
    * @param {number} posY - Y position (default: INITIAL_NODE_Y)
    * @param {string|null} prevAltId - Previous alt ID for connections
-   * @param {string} adjObjectText - Object adjectives from detection
-   * @param {string} objectText - Object name from detection
    * @param {string} propsAltered - Comma-separated property names being altered
-   * @param {string} visiblePropsText - Properties to preserve
+   * @param adjObjectText
+   * @param objectText
+   * @param visibleProps
+   * @param objOrProp
    * @returns {Promise<string|null>} URL of generated image or null if failed
    */
   async function addAlt(
@@ -656,10 +701,11 @@ export const useNode = defineStore('nodes', () => {
     posX = INITIAL_NODE_X,
     posY = INITIAL_NODE_Y,
     prevAltId = null,
+    propsAltered = '',
     adjObjectText = '',
     objectText = '',
-    propsAltered = '',
-    visiblePropsText = '',
+    visibleProps = '',
+    objOrProp = '',
   ) {
     // Find relevant branch and nodes
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
@@ -698,7 +744,8 @@ export const useNode = defineStore('nodes', () => {
           propsAltered,
           adjObjectText,
           objectText,
-          visiblePropsText,
+          visibleProps,
+          objOrProp,
           newAlt.id,
         )
       }
@@ -834,7 +881,7 @@ export const useNode = defineStore('nodes', () => {
       .join(', ')
 
     // Step 4: Get object properties from image
-    const { adjObjectText, objectText, visiblePropsText } = await getObjectProperties(
+    const { adjObjectText, objectText, visibleProps, objOrProp } = await getObjectProperties(
       selectionPayload.value.lassoBoundUrl,
       propsAltered,
     )
@@ -842,14 +889,14 @@ export const useNode = defineStore('nodes', () => {
     if (!adjObjectText || !objectText) {
       return
     }
-
     // Step 5: Generate new image
     await generateImage(
       alt.properties,
       propsAltered,
       adjObjectText,
       objectText,
-      visiblePropsText,
+      visibleProps,
+      objOrProp,
       currentAltId,
     )
   }
@@ -916,24 +963,10 @@ export const useNode = defineStore('nodes', () => {
       .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
       .join(', ')
 
-    // Step 8: Perform object detection
-    let adjObjectText = ''
-    let objectText = ''
-    let visiblePropsText = ''
-    try {
-      //const result = ''
-      const result = await generationStore.excludePropObject(
-        selectionPayload.value.lassoBoundUrl,
-        propsAltered,
-      )
-      adjObjectText = result.adjObjectText
-      objectText = result.objectText
-      visiblePropsText = result.visibleProps
-    } catch (error) {
-      console.error('Object detection failed:', error)
-      return []
-    }
-
+    const { adjObjectText, objectText, visibleProps, objOrProp } = await getObjectProperties(
+      selectionPayload.value.lassoBoundUrl,
+      propsAltered,
+    )
     // Step 9: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
@@ -949,10 +982,11 @@ export const useNode = defineStore('nodes', () => {
         x,
         y,
         currentAltId,
+        propsAltered,
         adjObjectText,
         objectText,
-        propsAltered,
-        visiblePropsText,
+        visibleProps,
+        objOrProp,
       )
       urls.push(url)
     }

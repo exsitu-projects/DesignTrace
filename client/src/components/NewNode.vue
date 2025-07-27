@@ -356,46 +356,46 @@ onMounted(() => {
         if (pathStr.value) {
           // uncomment to use google imagen api for inpainting
           // Create canvas same size as original
-          const alphaMaskCanvas = document.createElement('canvas')
-          alphaMaskCanvas.width = fabricCanvas.width
-          alphaMaskCanvas.height = fabricCanvas.height
-          const alphaCtx = alphaMaskCanvas.getContext('2d')
-
-          // Fill the whole canvas black (opaque)
-          alphaCtx.fillStyle = 'black'
-          alphaCtx.fillRect(0, 0, alphaMaskCanvas.width, alphaMaskCanvas.height)
-
-          // Cut out the lasso region (make transparent)
-          alphaCtx.globalCompositeOperation = 'destination-out'
-          const lasPath = new Path2D(pathStr.value)
-          alphaCtx.fillStyle = 'white' // Any color, since it's being cut out
-          alphaCtx.fill(lasPath)
-
-          // Set back to default blending mode
-          alphaCtx.globalCompositeOperation = 'source-over'
-
-          // Final result: lasso = transparent, rest = black (opaque)
-          totalEdgeUrl.value = alphaMaskCanvas.toDataURL('image/png')
-          console.log(totalEdgeUrl.value)
-          // uncomment to use openai api for inpainting (masks not working well with 4.1 api)
-          // const erasePath = new fabric.Path(pathStr.value, {
-          //   absolutePositioned: true,
-          //   globalCompositeOperation: 'destination-out', // <-- eraser mode
-          //   fill: 'black', // fill is needed even if transparent
-          //   strokeWidth: 0,
-          //   selectable: false,
-          //   evented: false,
-          //   objectCaching: false, // do NOT cache or it’ll clip edges
-          // })
+          // const alphaMaskCanvas = document.createElement('canvas')
+          // alphaMaskCanvas.width = fabricCanvas.width
+          // alphaMaskCanvas.height = fabricCanvas.height
+          // const alphaCtx = alphaMaskCanvas.getContext('2d')
           //
-          // // Add the path to canvas (which erases underlying content)
-          // fabricCanvas.add(erasePath)
-          // fabricCanvas.remove(path)
-          // fabricCanvas.requestRenderAll()
-          // totalEdgeUrl.value = fabricCanvas.toDataURL()
+          // // Fill the whole canvas black (opaque)
+          // alphaCtx.fillStyle = 'black'
+          // alphaCtx.fillRect(0, 0, alphaMaskCanvas.width, alphaMaskCanvas.height)
+          //
+          // // Cut out the lasso region (make transparent)
+          // alphaCtx.globalCompositeOperation = 'destination-out'
+          // const lasPath = new Path2D(pathStr.value)
+          // alphaCtx.fillStyle = 'white' // Any color, since it's being cut out
+          // alphaCtx.fill(lasPath)
+          //
+          // // Set back to default blending mode
+          // alphaCtx.globalCompositeOperation = 'source-over'
+          //
+          // // Final result: lasso = transparent, rest = black (opaque)
+          // totalEdgeUrl.value = alphaMaskCanvas.toDataURL('image/png')
           // console.log(totalEdgeUrl.value)
-          // fabricCanvas.add(path)
-          // fabricCanvas.remove(erasePath) // gone from the display list
+          // uncomment to use openai api for inpainting (masks not working well with 4.1 api)
+          const erasePath = new fabric.Path(pathStr.value, {
+            absolutePositioned: true,
+            globalCompositeOperation: 'destination-out', // <-- eraser mode
+            fill: 'black', // fill is needed even if transparent
+            strokeWidth: 0,
+            selectable: false,
+            evented: false,
+            objectCaching: false, // do NOT cache or it’ll clip edges
+          })
+
+          // Add the path to canvas (which erases underlying content)
+          fabricCanvas.add(erasePath)
+          fabricCanvas.remove(path)
+          fabricCanvas.requestRenderAll()
+          totalEdgeUrl.value = fabricCanvas.toDataURL()
+          console.log(totalEdgeUrl.value)
+          fabricCanvas.add(path)
+          fabricCanvas.remove(erasePath) // gone from the display list
 
           // uncomment to use magic quill for inpainting
           // const lassoMaskCan = document.createElement('canvas')

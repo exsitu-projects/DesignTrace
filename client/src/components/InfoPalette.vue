@@ -212,16 +212,16 @@ const createPopoverContent = () => {
           type="text"
           class="form-control form-control-sm"
           id="customAttributeInput"
-          placeholder="Type attribute..."
+          placeholder="Type any attribute..."
         >
-        <small class="text-muted mt-1 d-block">Or choose:</small>
+        <small class="text-muted mt-1 d-block">Or choose from:</small>
       </div>
-      <div class="d-flex flex-column gap-1">
-        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Color Palette">🎨 Color Palette</button>
-        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Primary Font">🗛 Primary Font</button>
-        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Graphic Design Layout">💠 Graphic Design Layout</button>
-        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Visual Contrast">🖼️ Visual Contrast</button>
-        <button class="btn btn-sm btn-light attribute-btn" style="height: 2rem;" data-attribute="Landmark">📍 Landmark</button>
+      <div class="d-flex flex-wrap gap-1">
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;" data-attribute="Color Palette">🎨 Color Palette</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Primary Font">🗛 Primary Font</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Graphic Design Layout">💠 Graphic Design Layout</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Visual Contrast">🖼️ Visual Contrast</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Landmark">📍 Landmark</button>
       </div>
     </div>
   `.trim()
