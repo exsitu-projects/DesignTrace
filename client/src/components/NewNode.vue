@@ -1,6 +1,7 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
+      v-if="alt.collapse"
       @click="handleClick(alt.id, alt.branchId)"
       class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
       style="background: #ededed"
@@ -56,7 +57,7 @@
         </button>
       </div>
     </div>
-    <div class="node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
+    <div class="nodeHandle node-tags" ref="nodeTagsRef" @wheel="handleHorizontalScroll">
       <button
         v-for="(property, propIndex) in alt.properties"
         :key="property.tag"
