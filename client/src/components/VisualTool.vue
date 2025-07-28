@@ -12,12 +12,15 @@ const allUtilStore = useAllUtil()
 function switchLasso() {
   allUtilStore.switchLassoMode()
   
-  // Hide color picker when lasso is activated (since lasso and color pen are mutually exclusive)
-  const collapseEl = document.getElementById('collapseExample')
-  const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
-  const isExpanded = collapseEl.classList.contains('show')
-  if (isExpanded) {
-    bsCollapse.hide()
+  // Hide color picker when lasso is activated (after the toggle)
+  if (allUtilStore.isLassoMode) {
+    setTimeout(() => {
+      const collapseEl = document.getElementById('collapseExample')
+      if (collapseEl && collapseEl.classList.contains('show')) {
+        const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
+        bsCollapse.hide()
+      }
+    }, 10) // Small delay to ensure toggle has completed
   }
 }
 

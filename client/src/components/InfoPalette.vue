@@ -270,10 +270,8 @@ const updateCursorTooltip = () => {
     isLassoMode.value = true
     document.body.classList.add('lasso-cursor-global')
     
-    // Activate the real lasso tool in allUtilStore
-    if (!allUtilStore.isLassoMode) {
-      allUtilStore.isLassoMode = true
-    }
+    // TODO: Temporarily disabled lasso integration for debugging
+    // allUtilStore.isLassoMode = true
   } else {
     // No tags selected, exit lasso mode
     exitLassoMode()
@@ -564,10 +562,8 @@ const exitLassoMode = () => {
   // Remove global cursor style
   document.body.classList.remove('lasso-cursor-global')
   
-  // Deactivate the real lasso tool in allUtilStore
-  if (allUtilStore.isLassoMode) {
-    allUtilStore.isLassoMode = false
-  }
+  // TODO: Temporarily disabled lasso integration for debugging
+  // allUtilStore.isLassoMode = false
 }
 
 // Function to handle property name click
@@ -589,10 +585,8 @@ const handlePropertyNameClick = (rowIdx, row) => {
   // Add global cursor style to body
   document.body.classList.add('lasso-cursor-global')
   
-  // Activate the real lasso tool in allUtilStore
-  if (!allUtilStore.isLassoMode) {
-    allUtilStore.isLassoMode = true
-  }
+  // TODO: Temporarily disabled lasso integration for debugging
+  // allUtilStore.isLassoMode = true
 }
 
 // Function to handle Make Lasso Tool button click
