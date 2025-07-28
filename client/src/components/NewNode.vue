@@ -11,11 +11,7 @@
       <!--      {{ alt.id }}-->
 
       <!-- Transform Button (appears on the left when needed) -->
-      <button
-        v-show="changeDetected"
-        @click="transformColorStroke"
-        class="btn btn-outline-dark btn-sm ms-2"
-      >
+      <button v-show="changeDetected" @click="transform" class="btn btn-outline-dark btn-sm ms-2">
         Transform
       </button>
 
@@ -167,9 +163,12 @@ let isLasso = false
 let points = []
 const lassoBoundUrl = ref('')
 const strokesBoundUrl = ref('')
-let path = null
+let currentPath = null // Current path being drawn
+let lassoPaths = [] // store all completed lasso paths
+let allPathStrs = []
 let lassoStart = false
 let startPointer = null
+let prevLassoPaths = [] // store previous lasso paths for undo/redo
 
 // Tag editing state
 const editingTagIndex = ref(null)
@@ -255,6 +254,8 @@ onMounted(() => {
 
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
+      prevLassoPaths.forEach((path) => fabricCanvas.remove(path))
+
       fabricCanvas.forEachObject((obj) => {
         obj.selectable = false
       })
@@ -273,10 +274,10 @@ onMounted(() => {
     if (isLasso && lassoStart) {
       points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
 
-      if (path) fabricCanvas.remove(path)
+      if (currentPath) fabricCanvas.remove(currentPath)
 
       pathStr.value = points.join(' ') + ' Z' // Close the path
-      path = new fabric.Path(pathStr.value, {
+      currentPath = new fabric.Path(pathStr.value, {
         stroke: 'black',
         strokeWidth: 1,
         fill: 'rgba(0, 0, 0, 0.1)',
@@ -285,7 +286,7 @@ onMounted(() => {
         strokeDashArray: [5, 5],
       })
 
-      fabricCanvas.add(path)
+      fabricCanvas.add(currentPath)
       fabricCanvas.requestRenderAll()
     } else if (allUtilStore.isColorPen) {
       cursor.visible = true
@@ -331,8 +332,8 @@ onMounted(() => {
       const moved = endToStartDistance > 5 || hasMultiplePoints
 
       if (!moved) {
-        if (path) fabricCanvas.remove(path)
-        path = null
+        if (currentPath) fabricCanvas.remove(currentPath)
+        currentPath = null
         points = []
         fabricCanvas.requestRenderAll()
         return
@@ -340,10 +341,11 @@ onMounted(() => {
 
       // Always close the path with Z for lasso processing
       pathStr.value = points.join(' ') + ' Z'
+      allPathStrs.push(pathStr.value)
 
-      // Recreate the final path
-      if (path) fabricCanvas.remove(path)
-      path = new fabric.Path(pathStr.value, {
+      // Convert current drawing path to completed path
+      if (currentPath) fabricCanvas.remove(currentPath)
+      const completedPath = new fabric.Path(pathStr.value, {
         stroke: 'black',
         strokeWidth: 1,
         fill: 'rgba(0, 0, 0, 0.1)',
@@ -351,12 +353,36 @@ onMounted(() => {
         evented: false,
         strokeDashArray: [5, 5],
       })
-      fabricCanvas.add(path)
-      if (path) {
+      lassoPaths.push(completedPath) // Add to completed paths
+      fabricCanvas.add(completedPath)
+      currentPath = null // Clear current path reference
+      if (completedPath) {
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity
+
+        lassoPaths.forEach((p) => {
+          p.setCoords() // ensure coords are up to date
+          const rect = p.getBoundingRect()
+
+          minX = Math.min(minX, rect.left)
+          minY = Math.min(minY, rect.top)
+          maxX = Math.max(maxX, rect.left + rect.width)
+          maxY = Math.max(maxY, rect.top + rect.height)
+        })
+
+        const combinedBounds = {
+          left: minX,
+          top: minY,
+          width: maxX - minX,
+          height: maxY - minY,
+        }
         changeDetected.value = true
-        path.setCoords()
-        const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
-        // fabricCanvas.remove(path)
+        //path.setCoords()
+        //const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
+        lassoPaths.forEach((path) => fabricCanvas.remove(path))
+
         // Render first to make sure everything is drawn
         fabricCanvas.renderAll()
         canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
@@ -365,15 +391,14 @@ onMounted(() => {
         saveState()
         // Extract just the area covered by the path + content inside it
         lassoBoundUrl.value = fabricCanvas.toDataURL({
-          left: bounds.left,
-          top: bounds.top,
-          width: bounds.width,
-          height: bounds.height,
+          left: combinedBounds.left,
+          top: combinedBounds.top,
+          width: combinedBounds.width,
+          height: combinedBounds.height,
           format: 'png',
           multiplier: 1,
         })
-
-        fabricCanvas.add(path)
+        lassoPaths.forEach((path) => fabricCanvas.add(path))
 
         if (pathStr.value) {
           // uncomment to use google imagen api for inpainting
@@ -400,7 +425,7 @@ onMounted(() => {
           // totalEdgeUrl.value = alphaMaskCanvas.toDataURL('image/png')
           // console.log(totalEdgeUrl.value)
           // uncomment to use openai api for inpainting (masks not working well with 4.1 api)
-          const erasePath = new fabric.Path(pathStr.value, {
+          const erasePath = new fabric.Path(allPathStrs.join(' '), {
             absolutePositioned: true,
             globalCompositeOperation: 'destination-out', // <-- eraser mode
             fill: 'black', // fill is needed even if transparent
@@ -412,11 +437,11 @@ onMounted(() => {
 
           // Add the path to canvas (which erases underlying content)
           fabricCanvas.add(erasePath)
-          fabricCanvas.remove(path)
+          lassoPaths.forEach((path) => fabricCanvas.remove(path))
           fabricCanvas.requestRenderAll()
           totalEdgeUrl.value = fabricCanvas.toDataURL()
           console.log(totalEdgeUrl.value)
-          fabricCanvas.add(path)
+          lassoPaths.forEach((path) => fabricCanvas.add(path))
           fabricCanvas.remove(erasePath) // gone from the display list
 
           // uncomment to use magic quill for inpainting
@@ -626,7 +651,7 @@ function whiteToTransparent(canvas) {
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
 
-function transformColorStroke() {
+function transform() {
   if (allUtilStore.isColorPen) {
     let left = Infinity,
       top = Infinity,
@@ -706,6 +731,23 @@ function transformColorStroke() {
 
     // Save state after transform
     saveState()
+  } else if (allUtilStore.isLassoMode) {
+    // Lasso mode: send lasso data
+    // if (lassoBoundUrl.value) {
+    //   lassoPayload.value.type = 'lasso'
+    //   nodeStore.receiveCanvasData(lassoPayload.value)
+    // } else {
+    //   console.warn('No lasso path drawn, cannot transform.')
+    // }
+    console.log('transform lasso')
+    changeDetected.value = false
+    prevLassoPaths = lassoPaths
+    lassoPaths = []
+    allPathStrs = []
+    saveState()
+    allUtilStore.isLassoMode = false
+  } else {
+    console.warn('Transform action is only available in color pen or lasso mode.')
   }
 }
 defineExpose({
