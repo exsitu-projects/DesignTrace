@@ -127,25 +127,27 @@
       </button>
     </div>
 
-    <!-- Lasso cursor tooltip -->
-    <div
-      v-if="isLassoMode"
-      class="lasso-tooltip"
-      :style="{
-        left: mousePosition.x + 15 + 'px',
-        top: mousePosition.y - 10 + 'px',
-      }"
-    >
-      <Lasso color="black" :size="15"></Lasso>
-      <!-- Property mode: show individual tag elements -->
-      <div v-if="isPropertyMode" class="property-tags-container">
-        <div v-for="(tag, index) in propertyTags" :key="index" class="badge bg-dark my-1">
-          {{ tag }}
+    <!-- Lasso cursor tooltip - using Teleport to render at body level -->
+    <Teleport to="body">
+      <div
+        v-if="isLassoMode"
+        class="lasso-tooltip"
+        :style="{
+          left: mousePosition.x + 15 + 'px',
+          top: mousePosition.y - 10 + 'px',
+        }"
+      >
+        <Lasso color="black" :size="15"></Lasso>
+        <!-- Property mode: show individual tag elements -->
+        <div v-if="isPropertyMode" class="property-tags-container">
+          <div v-for="(tag, index) in propertyTags" :key="index" class="badge bg-dark my-1">
+            {{ tag }}
+          </div>
         </div>
+        <!-- Customize sets mode: show regular text -->
+        <span class="badge bg-dark" v-else>{{ lassoTagContent }}</span>
       </div>
-      <!-- Customize sets mode: show regular text -->
-      <span class="badge bg-dark" v-else>{{ lassoTagContent }}</span>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -157,7 +159,7 @@ import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, Teleport } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
 import { Lasso, SquareStack } from 'lucide-vue-next'
 
@@ -269,9 +271,11 @@ const updateCursorTooltip = () => {
     // Enter lasso mode with crosshair cursor
     isLassoMode.value = true
     document.body.classList.add('lasso-cursor-global')
-    
-    // TODO: Temporarily disabled lasso integration for debugging
-    // allUtilStore.isLassoMode = true
+
+    // Activate the real lasso tool in allUtilStore
+    if (!allUtilStore.isLassoMode) {
+      allUtilStore.switchLassoMode() // Only toggle if currently off
+    }
   } else {
     // No tags selected, exit lasso mode
     exitLassoMode()
@@ -372,12 +376,23 @@ const handleDragStart = (e, tagObj, propName) => {
   }
 }
 
+// Watch for lasso mode changes from external sources (like VisualTool)
+watch(
+  () => allUtilStore.isLassoMode,
+  (newVal, oldVal) => {
+    // If lasso mode was turned off externally (like via VisualTool button)
+    if (oldVal === true && newVal === false && isLassoMode.value === true) {
+      exitLassoMode(true) // Skip store update to avoid infinite loop
+    }
+  }
+)
+
 onMounted(() => {
   // Add global mouse move listener for lasso tooltip
   document.addEventListener('mousemove', handleMouseMove)
 
   // Add click listener to exit lasso mode when clicking anywhere
-  document.addEventListener('click', exitLassoMode)
+  // document.addEventListener('click', exitLassoMode)
 
   // Initialize Bootstrap tooltips and popovers
   setTimeout(() => {
@@ -554,16 +569,18 @@ const handleMouseMove = (event) => {
 }
 
 // Function to exit lasso mode
-const exitLassoMode = () => {
+const exitLassoMode = (skipStoreUpdate = false) => {
   isLassoMode.value = false
   lassoTagContent.value = ''
   isPropertyMode.value = false
   propertyTags.value = []
   // Remove global cursor style
   document.body.classList.remove('lasso-cursor-global')
-  
-  // TODO: Temporarily disabled lasso integration for debugging
-  // allUtilStore.isLassoMode = false
+
+  // Deactivate the real lasso tool in allUtilStore (unless called from watcher to avoid loops)
+  if (!skipStoreUpdate && allUtilStore.isLassoMode) {
+    allUtilStore.switchLassoMode() // Only toggle if currently on
+  }
 }
 
 // Function to handle property name click
@@ -584,9 +601,11 @@ const handlePropertyNameClick = (rowIdx, row) => {
   isLassoMode.value = true
   // Add global cursor style to body
   document.body.classList.add('lasso-cursor-global')
-  
-  // TODO: Temporarily disabled lasso integration for debugging
-  // allUtilStore.isLassoMode = true
+
+  // Activate the real lasso tool in allUtilStore
+  if (!allUtilStore.isLassoMode) {
+    allUtilStore.switchLassoMode() // Only toggle if currently off
+  }
 }
 
 // Function to handle Make Lasso Tool button click
