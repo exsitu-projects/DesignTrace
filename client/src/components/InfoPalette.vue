@@ -17,6 +17,7 @@
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
+        @click.stop="handlePropertyNameClick(rowIdx, row)"
         :isPropertyName="true"
         @property-name-finalized="
           (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
@@ -40,7 +41,7 @@
           <span
             class="badge m-1 tag-selectable"
             :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
-            @click="toggleTagSelection(rowIdx, tagIdx)"
+            @click.stop="toggleTagSelection(rowIdx, tagIdx)"
             style="cursor: pointer; user-select: none"
           >
             <EditableLabel
@@ -122,7 +123,7 @@
     >
     <div class="d-flex justify-content-end">
       <button @click.stop="makeTool" class="btn btn-sm btn-light" role="button">
-        <SquareStack color="black" :size="15" /> Customize Sets
+        <SquareStack color="black" :size="15" /> Save Smart Lasso
       </button>
     </div>
 
@@ -135,7 +136,15 @@
         top: mousePosition.y - 10 + 'px',
       }"
     >
-      🎯 {{ lassoTagContent }}
+      <Lasso color="black" :size="15"></Lasso>
+      <!-- Property mode: show individual tag elements -->
+      <div v-if="isPropertyMode" class="property-tags-container">
+        <div v-for="(tag, index) in propertyTags" :key="index" class="badge bg-dark my-1">
+          {{ tag }}
+        </div>
+      </div>
+      <!-- Customize sets mode: show regular text -->
+      <span class="badge bg-dark" v-else>{{ lassoTagContent }}</span>
     </div>
   </div>
 </template>
@@ -149,7 +158,7 @@ import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
-import { ImageUp, SquareStack } from 'lucide-vue-next'
+import { Lasso, SquareStack } from 'lucide-vue-next'
 
 const infoStore = useInfoStore()
 const objectStore = useObject()
@@ -164,6 +173,10 @@ const selectedTags = ref([]) // Array to store selected tags with their propName
 const isLassoMode = ref(false) // Track if we're in lasso cursor mode
 const lassoTagContent = ref('') // Content to display in the cursor tooltip
 const mousePosition = ref({ x: 0, y: 0 }) // Track mouse position for tooltip
+const isPropertyMode = ref(false) // Track if we're in property selection mode
+const selectedProperty = ref(null) // Track selected property data
+const propertyTagContent = ref('') // Content to display in property cursor tooltip
+const propertyTags = ref([]) // Array of individual tags for property mode display
 
 // Get remaining ghost tags for a specific row (excluding already used ones)
 const getRemainingGhostTags = (rowIdx) => {
@@ -236,6 +249,27 @@ const toggleTagSelection = (rowIdx, tagIdx) => {
   } else {
     // Select: add to array
     selectedTags.value.push(tagData)
+  }
+
+  // Update cursor tooltip and mode based on current selection
+  updateCursorTooltip()
+}
+
+// Function to update cursor tooltip based on selected tags
+const updateCursorTooltip = () => {
+  if (selectedTags.value.length > 0) {
+    // Enable lasso mode and show selected tags inline
+    const tagTexts = selectedTags.value.map((item) => item.tag)
+    lassoTagContent.value = tagTexts.join(', ')
+    isPropertyMode.value = false // Use regular text display for accumulated tags
+    propertyTags.value = []
+
+    // Enter lasso mode with crosshair cursor
+    isLassoMode.value = true
+    document.body.classList.add('lasso-cursor-global')
+  } else {
+    // No tags selected, exit lasso mode
+    exitLassoMode()
   }
 }
 
@@ -518,8 +552,30 @@ const handleMouseMove = (event) => {
 const exitLassoMode = () => {
   isLassoMode.value = false
   lassoTagContent.value = ''
+  isPropertyMode.value = false
+  propertyTags.value = []
   // Remove global cursor style
   document.body.classList.remove('lasso-cursor-global')
+}
+
+// Function to handle property name click
+const handlePropertyNameClick = (rowIdx, row) => {
+  // Get the tags for this property row
+  const tagTexts = row.tags.map((tag) => tag.tag).filter((tag) => tag.trim() !== '')
+
+  if (tagTexts.length === 0) {
+    return // Do nothing if no tags are available
+  }
+
+  // Set property mode and store individual tags
+  isPropertyMode.value = true
+  propertyTags.value = tagTexts
+  lassoTagContent.value = '' // Clear regular content since we'll use propertyTags
+
+  // Enter lasso mode with crosshair cursor
+  isLassoMode.value = true
+  // Add global cursor style to body
+  document.body.classList.add('lasso-cursor-global')
 }
 
 // Function to handle Make Lasso Tool button click
@@ -528,32 +584,26 @@ const makeTool = () => {
     return // Do nothing if no tags are selected
   }
 
-  // Store the tag content for the cursor tooltip
+  // Create the display text for the customized set
   const tagTexts = selectedTags.value.map((item) => item.tag).join(', ')
-  lassoTagContent.value = tagTexts
-
-  // Enter lasso mode
-  isLassoMode.value = true
-  // Add global cursor style to body
-  document.body.classList.add('lasso-cursor-global')
-  console.log('body classes now:', document.body.className)
-
-  // Create the display text and add to store
   const displayText = `${tagTexts}`
 
-  // Add a new row for the lasso tool
-  infoStore.addRow()
-  const newRowIndex = rows.value.length - 1
+  // Find existing "Customized Sets" row or create new one
+  let customizedSetsRowIndex = rows.value.findIndex((row) => row.name === 'Customized Attributes')
 
-  // Set the row name to "Customized Sets"
-  rows.value[newRowIndex].name = 'Customized Sets'
+  if (customizedSetsRowIndex === -1) {
+    // No existing "Customized Sets" row, create a new one
+    infoStore.addRow()
+    customizedSetsRowIndex = rows.value.length - 1
+    rows.value[customizedSetsRowIndex].name = 'Customized Attributes'
+  }
 
   // Add the tag with the display text and store the selected tags data
-  infoStore.addTag(newRowIndex, displayText)
+  infoStore.addTag(customizedSetsRowIndex, displayText)
 
   // Store the selected tags data in the tag object
-  const newTagIndex = rows.value[newRowIndex].tags.length - 1
-  rows.value[newRowIndex].tags[newTagIndex].selectedTagsData = [...selectedTags.value]
+  const newTagIndex = rows.value[customizedSetsRowIndex].tags.length - 1
+  rows.value[customizedSetsRowIndex].tags[newTagIndex].selectedTagsData = [...selectedTags.value]
 
   // Clear the selected tags to unselect them visually
   selectedTags.value = []
@@ -579,16 +629,25 @@ const makeTool = () => {
 /* Lasso tooltip */
 .lasso-tooltip {
   position: fixed;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
+  color: black;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   pointer-events: none;
   z-index: 9999;
-  white-space: nowrap;
+  white-space: pre-line;
   max-width: 300px;
   word-wrap: break-word;
+  line-height: 1.2;
+}
+
+/* Property tags container */
+.property-tags-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 4px;
+  background: transparent;
 }
 
 /* Global lasso cursor style (not scoped) */
