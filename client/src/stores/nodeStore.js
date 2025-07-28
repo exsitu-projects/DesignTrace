@@ -41,6 +41,9 @@ export const useNode = defineStore('nodes', () => {
   const lastSelectedIndex = ref(null)
   const ctrlPressed = ref(false)
 
+  // Hover state for expanded alts
+  const hoveredParentAltId = ref(null)
+
   // Payloads and temporary data
   const selectionPayload = ref({})
   const currentColorPenInfo = ref({})
@@ -209,7 +212,7 @@ export const useNode = defineStore('nodes', () => {
       nodes: [],
       parents: [],
       steps: [],
-      collapsedAltIds: [],
+      expandedAltIds: [],
     }
 
     currentBranchId.value = newBranch.id
@@ -338,7 +341,7 @@ export const useNode = defineStore('nodes', () => {
     for (const alt of allAlts) {
       // iterate through all alts, if it is hidden/visible, means that we have visited it before,
       // then we dont need to visit it again
-      if (alt.collapse === true) {
+      if (alt.expand === true) {
         // If an alt is not included in steps, means we have not visited this alt
         if (!allAltsInSteps.includes(alt.id)) {
           let childAlt = alt
@@ -351,7 +354,7 @@ export const useNode = defineStore('nodes', () => {
             // This might looks odd, but it makes sense because since the currentparent is not in steps,
             // so we need to keep searching from here
             childAlt = allAlts.find((a) => a.id === currentParentId)
-            childAlt.collapse = false
+            childAlt.expand = false
 
             // childAlt.visibleEdges = childAlt.visibleEdges.filter(
             //   (edge) => edge.toAltId !== currentChildId,
@@ -369,7 +372,7 @@ export const useNode = defineStore('nodes', () => {
           // )
           // Then we are still in the for loop, we need to know if alt is slected or not:
           if (selectedAltIdArr.includes(alt.id)) {
-            alt.collapse = true
+            alt.expand = true
             if (parentAlt) {
               // parentAlt.visible = true
               parentAlt.visibleEdges.push({
@@ -378,20 +381,20 @@ export const useNode = defineStore('nodes', () => {
               })
             }
           } else {
-            branch.collapsedAltIds.push(alt.id)
-            console.log(branch.collapsedAltIds)
+            branch.expandedAltIds.push(alt.id)
+            console.log(branch.expandedAltIds)
             // console.log('allAltsInSteps', allAltsInSteps)
-            if (branch.collapsedAltIds.includes(alt.id) && !allAltsInSteps.includes(alt.id)) {
+            if (branch.expandedAltIds.includes(alt.id) && !allAltsInSteps.includes(alt.id)) {
               // unselected alt, so we move it to the parentAlt position
-              alt.collapse = false
+              alt.expand = false
 
-              // Count how many other collapsed alts are already stacked at this parent's position
-              const stackedAltsAtParent = branch.collapsedAltIds.filter((collapsedId) => {
-                const collapsedAlt = allAlts.find((a) => a.id === collapsedId)
+              // Count how many other expanded alts are already stacked at this parent's position
+              const stackedAltsAtParent = branch.expandedAltIds.filter((expandedId) => {
+                const expandedAlt = allAlts.find((a) => a.id === expandedId)
                 return (
-                  collapsedAlt &&
-                  collapsedAlt.id !== alt.id &&
-                  collapsedAlt.prevAltId === alt.prevAltId
+                  expandedAlt &&
+                  expandedAlt.id !== alt.id &&
+                  expandedAlt.prevAltId === alt.prevAltId
                 )
               }).length
 
@@ -442,7 +445,7 @@ export const useNode = defineStore('nodes', () => {
         undoStack: [],
         redoStack: [],
       },
-      collapse: true,
+      expand: true,
       isStepLock: false,
     }
   }
@@ -763,8 +766,8 @@ export const useNode = defineStore('nodes', () => {
    * @param {Object} node - Node object containing alts
    */
   // function updateAltPos(maxY, minY, x, node, branch) {
-  //   // const visibleNodeList = node.alts.filter((alt) => !branch.collapsedAltIds.includes(alt.id))
-  //   // const visibleNodeList = node.alts.filter((alt) => alt.collapse !== false)
+  //   // const visibleNodeList = node.alts.filter((alt) => !branch.expandedAltIds.includes(alt.id))
+  //   // const visibleNodeList = node.alts.filter((alt) => alt.expand !== false)
   //   // for (let i = 0; i < visibleNodeList.length; i++) {
   //   //   const alt = visibleNodeList[i]
   //   //   alt.position.x = x
@@ -875,8 +878,7 @@ export const useNode = defineStore('nodes', () => {
       updatedAltLength = altObjs.length
     } else {
       newNode = branch.nodes.find((n) => n.id === prevNode.nextNodeId)
-      updatedAltLength =
-        newNode.alts.filter((alt) => alt.collapse !== false).length + altObjs.length
+      updatedAltLength = newNode.alts.filter((alt) => alt.expand !== false).length + altObjs.length
     }
 
     // Step 4: Calculate layout and adjust positions
@@ -962,6 +964,7 @@ export const useNode = defineStore('nodes', () => {
     selectedBranchId,
     lastSelectedIndex,
     ctrlPressed,
+    hoveredParentAltId,
 
     // Layout Functions
     setNodeXR,
