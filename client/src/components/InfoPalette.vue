@@ -156,6 +156,7 @@ import { useInfoStore } from '@/stores/infoStore'
 import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
+import { useAllUtil } from '@/stores/allUtilStore.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
 import { Lasso, SquareStack } from 'lucide-vue-next'
@@ -163,6 +164,7 @@ import { Lasso, SquareStack } from 'lucide-vue-next'
 const infoStore = useInfoStore()
 const objectStore = useObject()
 const generationStore = useGeneration()
+const allUtilStore = useAllUtil()
 const { rows } = storeToRefs(infoStore)
 const hoveredRowIndex = ref(null)
 const hoveredAddButton = ref(null) // Track which row's add button is hovered
@@ -267,6 +269,11 @@ const updateCursorTooltip = () => {
     // Enter lasso mode with crosshair cursor
     isLassoMode.value = true
     document.body.classList.add('lasso-cursor-global')
+    
+    // Activate the real lasso tool in allUtilStore
+    if (!allUtilStore.isLassoMode) {
+      allUtilStore.isLassoMode = true
+    }
   } else {
     // No tags selected, exit lasso mode
     exitLassoMode()
@@ -556,6 +563,11 @@ const exitLassoMode = () => {
   propertyTags.value = []
   // Remove global cursor style
   document.body.classList.remove('lasso-cursor-global')
+  
+  // Deactivate the real lasso tool in allUtilStore
+  if (allUtilStore.isLassoMode) {
+    allUtilStore.isLassoMode = false
+  }
 }
 
 // Function to handle property name click
@@ -576,6 +588,11 @@ const handlePropertyNameClick = (rowIdx, row) => {
   isLassoMode.value = true
   // Add global cursor style to body
   document.body.classList.add('lasso-cursor-global')
+  
+  // Activate the real lasso tool in allUtilStore
+  if (!allUtilStore.isLassoMode) {
+    allUtilStore.isLassoMode = true
+  }
 }
 
 // Function to handle Make Lasso Tool button click
