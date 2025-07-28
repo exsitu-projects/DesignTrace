@@ -323,7 +323,12 @@ onMounted(() => {
       isLasso = false
       const dx = opt.pointer.x - startPointer.x
       const dy = opt.pointer.y - startPointer.y
-      const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+      const endToStartDistance = Math.sqrt(dx * dx + dy * dy)
+
+      // Check if we actually drew a path (not just a single click)
+      // Consider it "moved" if we have multiple points (regardless of end position)
+      const hasMultiplePoints = points.length > 2
+      const moved = endToStartDistance > 5 || hasMultiplePoints
 
       if (!moved) {
         if (path) fabricCanvas.remove(path)
@@ -332,10 +337,26 @@ onMounted(() => {
         fabricCanvas.requestRenderAll()
         return
       }
+
+      // Always close the path with Z for lasso processing
+      pathStr.value = points.join(' ') + ' Z'
+
+      // Recreate the final path
+      if (path) fabricCanvas.remove(path)
+      path = new fabric.Path(pathStr.value, {
+        stroke: 'black',
+        strokeWidth: 1,
+        fill: 'rgba(0, 0, 0, 0.1)',
+        selectable: false,
+        evented: false,
+        strokeDashArray: [5, 5],
+      })
+      fabricCanvas.add(path)
       if (path) {
+        changeDetected.value = true
         path.setCoords()
         const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
-        fabricCanvas.remove(path)
+        // fabricCanvas.remove(path)
         // Render first to make sure everything is drawn
         fabricCanvas.renderAll()
         canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
