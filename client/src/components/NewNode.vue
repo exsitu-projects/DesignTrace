@@ -11,7 +11,11 @@
       <!--      {{ alt.id }}-->
 
       <!-- Transform Button (appears on the left when needed) -->
-      <button v-show="changeDetected" @click="transform" class="btn btn-outline-dark btn-sm ms-2">
+      <button
+        v-show="changeDetected"
+        @click="transform(lassoPaths)"
+        class="btn btn-outline-dark btn-sm ms-2"
+      >
         Transform
       </button>
 
@@ -246,14 +250,17 @@ function createHoverOverlay() {
 
   // Create a combined path from all previous lasso paths
   // Handle case where path might be a Fabric path object or have a .path property
-  const combinedPathStr = prevLassoPaths.map((path) => {
-    if (path && path.path) {
-      return path.path
-    } else if (path && typeof path === 'object' && path.type === 'path') {
-      return path.path
-    }
-    return ''
-  }).filter(p => p !== '').join(' ')
+  const combinedPathStr = prevLassoPaths
+    .map((path) => {
+      if (path && path.path) {
+        return path.path
+      } else if (path && typeof path === 'object' && path.type === 'path') {
+        return path.path
+      }
+      return ''
+    })
+    .filter((p) => p !== '')
+    .join(' ')
 
   if (combinedPathStr) {
     prevLassoHoverOverlay = new fabric.Path(combinedPathStr, {
@@ -281,19 +288,21 @@ function removeHoverOverlay() {
 // Clear all lasso paths from canvas
 function clearAllLassoPaths() {
   // Remove all objects that look like lasso paths (have strokeDashArray)
-  const objectsToRemove = fabricCanvas.getObjects().filter(obj => {
-    return obj.strokeDashArray && Array.isArray(obj.strokeDashArray) && obj.strokeDashArray.length > 0
+  const objectsToRemove = fabricCanvas.getObjects().filter((obj) => {
+    return (
+      obj.strokeDashArray && Array.isArray(obj.strokeDashArray) && obj.strokeDashArray.length > 0
+    )
   })
-  
-  objectsToRemove.forEach(obj => fabricCanvas.remove(obj))
-  
+
+  objectsToRemove.forEach((obj) => fabricCanvas.remove(obj))
+
   // Also clear from our arrays
   prevLassoPaths.forEach((path) => {
     if (path && fabricCanvas.getObjects().includes(path)) {
       fabricCanvas.remove(path)
     }
   })
-  
+
   prevLassoPaths = []
   removeHoverOverlay()
   isHoveringPrevLasso = false
@@ -346,7 +355,7 @@ onMounted(() => {
         if (isInPrevLasso) {
           // Apply tooltip to existing lasso area - trigger transform
           removeHoverOverlay()
-          transform()
+          transform(prevLassoPaths)
           return
         } else {
           // Clear previous lasso paths when starting new lasso outside existing area
@@ -645,6 +654,10 @@ onMounted(() => {
 
           // Save state after lasso operation
           saveState()
+
+          // Store the completed lasso paths for future reuse
+          prevLassoPaths = [...lassoPaths]
+          console.log('Stored lasso paths for reuse:', prevLassoPaths.length)
         }
       }
     } else if (allUtilStore.isColorPen) {
@@ -766,7 +779,7 @@ function whiteToTransparent(canvas) {
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
 
-function transform() {
+function transform(lassoPathInfo) {
   if (allUtilStore.isColorPen) {
     let left = Infinity,
       top = Infinity,
@@ -881,8 +894,8 @@ function transform() {
         )
       }
     }
-
-    prevLassoPaths = lassoPaths
+    prevLassoPaths = lassoPathInfo
+    //prevLassoPaths = lassoPaths
     lassoPaths = []
     allPathStrs = []
     requestForLasso.value = false
