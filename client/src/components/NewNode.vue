@@ -245,18 +245,28 @@ function createHoverOverlay() {
   if (prevLassoPaths.length === 0) return
 
   // Create a combined path from all previous lasso paths
-  const combinedPathStr = prevLassoPaths.map((path) => path.path).join(' ')
+  // Handle case where path might be a Fabric path object or have a .path property
+  const combinedPathStr = prevLassoPaths.map((path) => {
+    if (path && path.path) {
+      return path.path
+    } else if (path && typeof path === 'object' && path.type === 'path') {
+      return path.path
+    }
+    return ''
+  }).filter(p => p !== '').join(' ')
 
-  prevLassoHoverOverlay = new fabric.Path(combinedPathStr, {
-    fill: 'rgba(0, 0, 0, 0.3)', // darker overlay
-    stroke: 'transparent',
-    selectable: false,
-    evented: false,
-    absolutePositioned: true,
-  })
+  if (combinedPathStr) {
+    prevLassoHoverOverlay = new fabric.Path(combinedPathStr, {
+      fill: 'rgba(0, 0, 0, 0.3)', // darker overlay
+      stroke: 'transparent',
+      selectable: false,
+      evented: false,
+      absolutePositioned: true,
+    })
 
-  fabricCanvas.add(prevLassoHoverOverlay)
-  fabricCanvas.requestRenderAll()
+    fabricCanvas.add(prevLassoHoverOverlay)
+    fabricCanvas.requestRenderAll()
+  }
 }
 
 // Remove hover overlay
@@ -266,6 +276,28 @@ function removeHoverOverlay() {
     prevLassoHoverOverlay = null
     fabricCanvas.requestRenderAll()
   }
+}
+
+// Clear all lasso paths from canvas
+function clearAllLassoPaths() {
+  // Remove all objects that look like lasso paths (have strokeDashArray)
+  const objectsToRemove = fabricCanvas.getObjects().filter(obj => {
+    return obj.strokeDashArray && Array.isArray(obj.strokeDashArray) && obj.strokeDashArray.length > 0
+  })
+  
+  objectsToRemove.forEach(obj => fabricCanvas.remove(obj))
+  
+  // Also clear from our arrays
+  prevLassoPaths.forEach((path) => {
+    if (path && fabricCanvas.getObjects().includes(path)) {
+      fabricCanvas.remove(path)
+    }
+  })
+  
+  prevLassoPaths = []
+  removeHoverOverlay()
+  isHoveringPrevLasso = false
+  fabricCanvas.requestRenderAll()
 }
 
 function handleHorizontalScroll(event) {
@@ -318,9 +350,7 @@ onMounted(() => {
           return
         } else {
           // Clear previous lasso paths when starting new lasso outside existing area
-          prevLassoPaths.forEach((path) => fabricCanvas.remove(path))
-          prevLassoPaths = []
-          removeHoverOverlay()
+          clearAllLassoPaths()
         }
       }
 
