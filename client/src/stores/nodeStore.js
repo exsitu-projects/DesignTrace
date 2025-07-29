@@ -558,7 +558,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = openAIMaskPrompt(
           propsAltered,
@@ -573,7 +573,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -792,7 +792,7 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    // Step 1: Wait for canvas data
+    console.log(altObjs)
     selectionPayload.value = await canvasDataPromise(currentAltId)
     const alt = findAlt(currentAltId)
 
@@ -859,7 +859,7 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    // Step 1: Wait for canvas data
+    console.log(altObjs)
     selectionPayload.value = await canvasDataPromise(currentAltId)
 
     // Step 2: Find branch and node

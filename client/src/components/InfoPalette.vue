@@ -139,13 +139,17 @@
       >
         <Lasso color="black" :size="15"></Lasso>
         <!-- Property mode: show individual tag elements -->
-        <div v-if="isPropertyMode" class="property-tags-container">
-          <div v-for="(tag, index) in propertyTags" :key="index" class="badge bg-dark my-1">
-            {{ tag }}
+        <div v-if="infoStore.isPropertyMode" class="property-tags-container">
+          <div
+            v-for="(propTag, index) in infoStore.propertyTags"
+            :key="index"
+            class="badge bg-dark my-1"
+          >
+            {{ propTag.tag }}
           </div>
         </div>
         <!-- Customize sets mode: show regular text -->
-        <span class="badge bg-dark" v-else>{{ lassoTagContent }}</span>
+        <span class="badge bg-dark" v-else>{{ infoStore.lassoTagContent }}</span>
       </div>
     </Teleport>
   </div>
@@ -173,16 +177,8 @@ const hoveredAddButton = ref(null) // Track which row's add button is hovered
 const popoverButton = ref(null)
 let currentPopover = null
 let ghostTagTimeout = null // Timeout for ghost tag hiding
-const selectedTags = ref([]) // Array to store selected tags with their propName and tag content
 const isLassoMode = ref(false) // Track if we're in lasso cursor mode
-const lassoTagContent = ref('') // Content to display in the cursor tooltip
 const mousePosition = ref({ x: 0, y: 0 }) // Track mouse position for tooltip
-const isPropertyMode = ref(false) // Track if we're in property selection mode
-const selectedProperty = ref(null) // Track selected property data
-const propertyTagContent = ref('') // Content to display in property cursor tooltip
-const propertyTags = ref([]) // Array of individual tags for property mode display
-
-// Get remaining ghost tags for a specific row (excluding already used ones)
 const getRemainingGhostTags = (rowIdx) => {
   if (!rows.value[rowIdx]) return []
 
@@ -243,16 +239,16 @@ const toggleTagSelection = (rowIdx, tagIdx) => {
   }
 
   // Check if tag is already selected
-  const existingIndex = selectedTags.value.findIndex(
+  const existingIndex = infoStore.selectedTags.findIndex(
     (selected) => selected.rowIdx === rowIdx && selected.tagIdx === tagIdx,
   )
 
   if (existingIndex >= 0) {
     // Deselect: remove from array
-    selectedTags.value.splice(existingIndex, 1)
+    infoStore.selectedTags.splice(existingIndex, 1)
   } else {
     // Select: add to array
-    selectedTags.value.push(tagData)
+    infoStore.selectedTags.push(tagData)
   }
 
   // Update cursor tooltip and mode based on current selection
@@ -261,13 +257,12 @@ const toggleTagSelection = (rowIdx, tagIdx) => {
 
 // Function to update cursor tooltip based on selected tags
 const updateCursorTooltip = () => {
-  if (selectedTags.value.length > 0) {
+  if (infoStore.selectedTags.length > 0) {
     // Enable lasso mode and show selected tags inline
-    const tagTexts = selectedTags.value.map((item) => item.tag)
-    lassoTagContent.value = tagTexts.join(', ')
-    isPropertyMode.value = false // Use regular text display for accumulated tags
-    propertyTags.value = []
-
+    const tagTexts = infoStore.selectedTags.map((item) => item.tag)
+    infoStore.lassoTagContent = tagTexts.join(', ')
+    infoStore.isPropertyMode = false // Use regular text display for accumulated tags
+    infoStore.propertyTags = []
     // Enter lasso mode with crosshair cursor
     isLassoMode.value = true
     document.body.classList.add('lasso-cursor-global')
@@ -284,7 +279,7 @@ const updateCursorTooltip = () => {
 
 // Function to check if a tag is selected
 const isTagSelected = (rowIdx, tagIdx) => {
-  return selectedTags.value.some(
+  return infoStore.selectedTags.some(
     (selected) => selected.rowIdx === rowIdx && selected.tagIdx === tagIdx,
   )
 }
@@ -384,7 +379,7 @@ watch(
     if (oldVal === true && newVal === false && isLassoMode.value === true) {
       exitLassoMode(true) // Skip store update to avoid infinite loop
     }
-  }
+  },
 )
 
 onMounted(() => {
@@ -571,9 +566,10 @@ const handleMouseMove = (event) => {
 // Function to exit lasso mode
 const exitLassoMode = (skipStoreUpdate = false) => {
   isLassoMode.value = false
-  lassoTagContent.value = ''
-  isPropertyMode.value = false
-  propertyTags.value = []
+  infoStore.selectedTags = []
+  infoStore.lassoTagContent = ''
+  infoStore.isPropertyMode = false
+  infoStore.propertyTags = []
   // Remove global cursor style
   document.body.classList.remove('lasso-cursor-global')
 
@@ -586,16 +582,19 @@ const exitLassoMode = (skipStoreUpdate = false) => {
 // Function to handle property name click
 const handlePropertyNameClick = (rowIdx, row) => {
   // Get the tags for this property row
-  const tagTexts = row.tags.map((tag) => tag.tag).filter((tag) => tag.trim() !== '')
+  const tagTexts = row.tags.map((tag) => ({
+    propName: row.name,
+    tag: tag.tag,
+  }))
 
   if (tagTexts.length === 0) {
     return // Do nothing if no tags are available
   }
 
   // Set property mode and store individual tags
-  isPropertyMode.value = true
-  propertyTags.value = tagTexts
-  lassoTagContent.value = '' // Clear regular content since we'll use propertyTags
+  infoStore.isPropertyMode = true
+  infoStore.propertyTags = tagTexts
+  infoStore.lassoTagContent = '' // Clear regular content since we'll use propertyTags
 
   // Enter lasso mode with crosshair cursor
   isLassoMode.value = true
@@ -610,12 +609,12 @@ const handlePropertyNameClick = (rowIdx, row) => {
 
 // Function to handle Make Lasso Tool button click
 const makeTool = () => {
-  if (selectedTags.value.length === 0) {
+  if (infoStore.selectedTags.length === 0) {
     return // Do nothing if no tags are selected
   }
 
   // Create the display text for the customized set
-  const tagTexts = selectedTags.value.map((item) => item.tag).join(', ')
+  const tagTexts = infoStore.selectedTags.map((item) => item.tag).join(', ')
   const displayText = `${tagTexts}`
 
   // Find existing "Customized Sets" row or create new one
@@ -633,10 +632,12 @@ const makeTool = () => {
 
   // Store the selected tags data in the tag object
   const newTagIndex = rows.value[customizedSetsRowIndex].tags.length - 1
-  rows.value[customizedSetsRowIndex].tags[newTagIndex].selectedTagsData = [...selectedTags.value]
+  rows.value[customizedSetsRowIndex].tags[newTagIndex].selectedTagsData = [
+    ...infoStore.selectedTags,
+  ]
 
   // Clear the selected tags to unselect them visually
-  selectedTags.value = []
+  infoStore.selectedTags = []
 }
 </script>
 

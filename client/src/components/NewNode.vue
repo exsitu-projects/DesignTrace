@@ -118,6 +118,7 @@ import {
   watch,
   defineEmits,
   nextTick,
+  toRaw,
 } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
 import * as fabric from 'fabric'
@@ -127,6 +128,8 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { CannyJS } from '@/js/canny'
 import { useGeneration } from '@/stores/generationStore.js'
+import { useInfoStore } from '@/stores/infoStore.js'
+
 const emit = defineEmits(['remove']) // or whatever event you want to emit
 
 const props = defineProps({
@@ -138,12 +141,12 @@ const props = defineProps({
   requestForLasso: Boolean,
 })
 const canvasEl = ref(null)
+const requestForLasso = ref(false)
 const nodeEl = ref(null)
 const nodeTagsRef = ref(null)
 let fabricCanvas = null
 const { alt } = props
-const $ = (id) => document.getElementById(id)
-const nodeName = ref('New Node')
+const infoStore = useInfoStore() // Import infoStore to access property tags
 const canvasContainer = ref(null)
 const posEdgeUrl = ref('')
 const negEdgeUrl = ref('')
@@ -440,7 +443,6 @@ onMounted(() => {
           lassoPaths.forEach((path) => fabricCanvas.remove(path))
           fabricCanvas.requestRenderAll()
           totalEdgeUrl.value = fabricCanvas.toDataURL()
-          console.log(totalEdgeUrl.value)
           lassoPaths.forEach((path) => fabricCanvas.add(path))
           fabricCanvas.remove(erasePath) // gone from the display list
 
@@ -732,22 +734,46 @@ function transform() {
     // Save state after transform
     saveState()
   } else if (allUtilStore.isLassoMode) {
-    // Lasso mode: send lasso data
-    // if (lassoBoundUrl.value) {
-    //   lassoPayload.value.type = 'lasso'
-    //   nodeStore.receiveCanvasData(lassoPayload.value)
-    // } else {
-    //   console.warn('No lasso path drawn, cannot transform.')
-    // }
-    console.log('transform lasso')
+    saveState()
     changeDetected.value = false
+    let objContent = []
+    if (infoStore.isPropertyMode) {
+      objContent = infoStore.selectedTags
+    } else {
+      objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
+    }
+    requestForLasso.value = true
+    lassoPayload.value.type = 'lasso'
+    // Apply the same logic as mouseUpNode
+    if (objContent.length > 0) {
+      if (alt.isStepLock) {
+        // Constrain generation inside this node
+        nodeStore.addOnExistingAlt(
+          objContent,
+          alt.branchId,
+          alt.nodeId,
+          alt.position.x,
+          alt.position.y,
+          alt.id,
+        )
+      } else {
+        // Create new nodes
+        nodeStore.addMultAlt(
+          objContent,
+          alt.branchId,
+          alt.nodeId,
+          alt.position.x,
+          alt.position.y,
+          alt.id,
+        )
+      }
+    }
+
     prevLassoPaths = lassoPaths
     lassoPaths = []
     allPathStrs = []
-    saveState()
+    requestForLasso.value = false
     allUtilStore.isLassoMode = false
-  } else {
-    console.warn('Transform action is only available in color pen or lasso mode.')
   }
 }
 defineExpose({
@@ -763,24 +789,6 @@ function deleteSelectedObjects() {
     canvas.requestRenderAll()
   } else {
     emit('remove') // remove this whole node if nothing selected
-  }
-}
-function clickOnNodeTap() {
-  //DOM Change
-  const branch = nodeStore.nodeBranchList.find((b) => b.id === alt.branchId)
-  const node = branch.nodes.find((n) => n.id === alt.nodeId)
-
-  alt.position.y = node.midYPos
-  let startZId = alt.z
-  let startPosY = node.midYPos
-  for (let eachAlt of node.alts) {
-    eachAlt.position.x = node.midXPos
-    if (eachAlt.id !== alt.id) {
-      startZId -= 1
-      startPosY -= 20
-      eachAlt.position.y = startPosY
-      eachAlt.z = startZId
-    }
   }
 }
 
@@ -818,9 +826,9 @@ watch(
   () => nodeStore.requestCanvasData.status,
   (shouldSend) => {
     if (shouldSend && nodeStore.requestCanvasData.altId === alt.id) {
-      if (path !== null) {
+      if (lassoPayload.value.type === 'lasso') {
         // if there is lasso path
-        lassoPayload.value.type = 'lasso'
+
         nodeStore.receiveCanvasData(lassoPayload.value)
       } else {
         // else send the whole image

@@ -9,6 +9,10 @@ function uid() {
 export const useInfoStore = defineStore('infoStore', () => {
   const promiseThumbnailUpdate = ref('')
   const currentUID = ref('')
+  const propertyTags = ref([])
+  const selectedTags = ref([])
+  const isPropertyMode = ref(false)
+  const lassoTagContent = ref('')
   const rows = ref([
     {
       name: 'Color',
@@ -94,6 +98,10 @@ export const useInfoStore = defineStore('infoStore', () => {
 
   return {
     rows,
+    propertyTags,
+    selectedTags,
+    isPropertyMode,
+    lassoTagContent,
     addRow,
     addTag,
     removeTag,
