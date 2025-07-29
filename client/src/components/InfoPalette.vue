@@ -1,5 +1,5 @@
 <template>
-  <div class="content" style="z-index: 0" :class="{ 'lasso-cursor': isLassoMode }">
+  <div class="content" style="z-index: 0" :class="{ 'lasso-cursor': allUtilStore.isToolTip }">
     <!-- One row per visual property -->
     <div
       v-for="(row, rowIdx) in rows"
@@ -130,7 +130,7 @@
     <!-- Lasso cursor tooltip - using Teleport to render at body level -->
     <Teleport to="body">
       <div
-        v-if="isLassoMode"
+        v-if="allUtilStore.isToolTip"
         class="lasso-tooltip"
         :style="{
           left: mousePosition.x + 15 + 'px',
@@ -178,7 +178,6 @@ const popoverButton = ref(null)
 let currentPopover = null
 let ghostTagTimeout = null // Timeout for ghost tag hiding
 let propSelected = false // Track if a property is selected for lasso mode
-const isLassoMode = ref(false) // Track if we're in lasso cursor mode
 const mousePosition = ref({ x: 0, y: 0 }) // Track mouse position for tooltip
 const getRemainingGhostTags = (rowIdx) => {
   if (!rows.value[rowIdx]) return []
@@ -265,7 +264,7 @@ const updateCursorTooltip = () => {
     infoStore.isPropertyMode = false // Use regular text display for accumulated tags
     infoStore.propertyTags = []
     // Enter lasso mode with crosshair cursor
-    isLassoMode.value = true
+    allUtilStore.isToolTip = true
     document.body.classList.add('lasso-cursor-global')
 
     // Activate the real lasso tool in allUtilStore
@@ -377,7 +376,7 @@ watch(
   () => allUtilStore.isLassoMode,
   (newVal, oldVal) => {
     // If lasso mode was turned off externally (like via VisualTool button)
-    if (oldVal === true && newVal === false && isLassoMode.value === true) {
+    if (oldVal === true && newVal === false && allUtilStore.isToolTip === true) {
       exitLassoMode(true) // Skip store update to avoid infinite loop
     }
   },
@@ -556,7 +555,7 @@ const handleMouseUp = async (rowIdx, propName) => {
 
 // Mouse tracking for lasso tooltip
 const handleMouseMove = (event) => {
-  if (isLassoMode.value) {
+  if (allUtilStore.isToolTip) {
     mousePosition.value = {
       x: event.clientX,
       y: event.clientY,
@@ -566,7 +565,7 @@ const handleMouseMove = (event) => {
 
 // Function to exit lasso mode
 const exitLassoMode = (skipStoreUpdate = false) => {
-  isLassoMode.value = false
+  allUtilStore.isToolTip = false
   infoStore.selectedTags = []
   infoStore.lassoTagContent = ''
   infoStore.isPropertyMode = false
@@ -603,7 +602,7 @@ const handlePropertyNameClick = (rowIdx, row) => {
     infoStore.lassoTagContent = '' // Clear regular content since we'll use propertyTags
 
     // Enter lasso mode with crosshair cursor
-    isLassoMode.value = true
+    allUtilStore.isToolTip = true
     // Add global cursor style to body
     document.body.classList.add('lasso-cursor-global')
     // Activate the real lasso tool in allUtilStore

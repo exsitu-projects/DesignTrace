@@ -54,7 +54,11 @@
         :w="nodeStore.nodeW"
         :h="'auto'"
         :z="alt.z"
-        :class="['design-space-container alt-item', isSelected(alt.id) ? 'selected' : '']"
+        :class="[
+          'design-space-container alt-item',
+          { 'card-hover tooltip-wrapper': allUtilStore.isToolTip },
+          isSelected(alt.id) ? 'selected' : '',
+        ]"
         :requestForLasso="requestForLasso"
         @mouseup="
           mouseUpNode(
@@ -71,6 +75,7 @@
         :drag-handle="'.nodeHandle'"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
+        <div class="tooltip-text">Apply to the whole image</div>
         <NewNode
           @remove="() => deleteAlt(alt.id)"
           :alt="alt"
@@ -348,5 +353,37 @@ onMounted(() => {
 }
 .alt-item.selected {
   border: 2px solid #42b983; /* Green border */
+}
+.card-hover:hover {
+  box-shadow:
+    0 0 0 100vmax rgba(0, 0, 0, 0.05) inset,
+    0 8px 24px rgba(0, 0, 0, 0.3);
+  outline: 2px solid rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s ease,
+    outline 0.3s ease;
+  z-index: 20;
+}
+.tooltip-text {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(33, 37, 41, 0.95); /* Bootstrap dark */
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 999;
+}
+
+.tooltip-wrapper:hover .tooltip-text {
+  opacity: 1;
 }
 </style>

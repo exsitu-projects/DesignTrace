@@ -9,6 +9,7 @@ export const useAllUtil = defineStore('allUtil', () => {
   const nodeOnDrag = ref(false)
   const brush = { color: ref('#000000'), width: ref(10) }
   const isStepLock = ref(false)
+  const isToolTip = ref(false)
   function switchLassoMode() {
     if (isColorPen.value) isColorPen.value = false
     isLassoMode.value = !isLassoMode.value
@@ -26,6 +27,7 @@ export const useAllUtil = defineStore('allUtil', () => {
     isLassoMode,
     brush,
     isStepLock,
+    isToolTip,
     switchLassoMode,
     switchColorPen,
     switchStepLock,
