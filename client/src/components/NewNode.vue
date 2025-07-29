@@ -172,6 +172,8 @@ let allPathStrs = []
 let lassoStart = false
 let startPointer = null
 let prevLassoPaths = [] // store previous lasso paths for undo/redo
+let isHoveringPrevLasso = false // track if hovering over previous lasso
+let prevLassoHoverOverlay = null // overlay for darkening effect
 
 // Tag editing state
 const editingTagIndex = ref(null)
@@ -218,6 +220,54 @@ function updateCursor() {
   cursor.dirty = true // force re‑render
 }
 
+// Helper function to check if point is inside any prev lasso path
+function isPointInPrevLasso(x, y) {
+  if (prevLassoPaths.length === 0) return false
+
+  for (const path of prevLassoPaths) {
+    // Use Fabric.js containsPoint method which is more reliable
+    if (path && path.containsPoint) {
+      const point = new fabric.Point(x, y)
+      if (path.containsPoint(point)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+// Create/update hover overlay for darkening effect
+function createHoverOverlay() {
+  if (prevLassoHoverOverlay) {
+    fabricCanvas.remove(prevLassoHoverOverlay)
+  }
+
+  if (prevLassoPaths.length === 0) return
+
+  // Create a combined path from all previous lasso paths
+  const combinedPathStr = prevLassoPaths.map((path) => path.path).join(' ')
+
+  prevLassoHoverOverlay = new fabric.Path(combinedPathStr, {
+    fill: 'rgba(0, 0, 0, 0.3)', // darker overlay
+    stroke: 'transparent',
+    selectable: false,
+    evented: false,
+    absolutePositioned: true,
+  })
+
+  fabricCanvas.add(prevLassoHoverOverlay)
+  fabricCanvas.requestRenderAll()
+}
+
+// Remove hover overlay
+function removeHoverOverlay() {
+  if (prevLassoHoverOverlay) {
+    fabricCanvas.remove(prevLassoHoverOverlay)
+    prevLassoHoverOverlay = null
+    fabricCanvas.requestRenderAll()
+  }
+}
+
 function handleHorizontalScroll(event) {
   // Convert vertical wheel scroll to horizontal scroll
   if (nodeTagsRef.value && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
@@ -257,7 +307,22 @@ onMounted(() => {
 
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
-      prevLassoPaths.forEach((path) => fabricCanvas.remove(path))
+      // Check if clicking on existing lasso area
+      if (prevLassoPaths.length !== 0) {
+        const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+
+        if (isInPrevLasso) {
+          // Apply tooltip to existing lasso area - trigger transform
+          removeHoverOverlay()
+          transform()
+          return
+        } else {
+          // Clear previous lasso paths when starting new lasso outside existing area
+          prevLassoPaths.forEach((path) => fabricCanvas.remove(path))
+          prevLassoPaths = []
+          removeHoverOverlay()
+        }
+      }
 
       fabricCanvas.forEachObject((obj) => {
         obj.selectable = false
@@ -298,6 +363,19 @@ onMounted(() => {
       cursor.setCoords()
       fabricCanvas.bringObjectToFront(cursor)
       fabricCanvas.requestRenderAll()
+    } else if (lassoStart && prevLassoPaths.length !== 0 && !isLasso) {
+      // Handle hover detection for existing lasso when in lasso mode but not actively drawing
+      const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+
+      if (isInPrevLasso && !isHoveringPrevLasso) {
+        // Mouse entered lasso area - show darkening effect
+        isHoveringPrevLasso = true
+        createHoverOverlay()
+      } else if (!isInPrevLasso && isHoveringPrevLasso) {
+        // Mouse left lasso area - remove darkening effect
+        isHoveringPrevLasso = false
+        removeHoverOverlay()
+      }
     }
   })
 
@@ -569,6 +647,11 @@ onBeforeUnmount(() => {
   if (fabricCanvas?.upperCanvasEl) {
     fabricCanvas.upperCanvasEl.removeEventListener('keydown', handleCanvasKeyDown)
   }
+
+  // Clean up hover overlay and reset state
+  removeHoverOverlay()
+  isHoveringPrevLasso = false
+  prevLassoPaths = []
 })
 
 function deleteAlt(e) {
@@ -908,6 +991,12 @@ watch(
     })
     fabricCanvas.discardActiveObject()
     fabricCanvas.selection = !newVal
+
+    // Clean up hover state when lasso mode is disabled
+    if (!newVal) {
+      isHoveringPrevLasso = false
+      removeHoverOverlay()
+    }
   },
 )
 watch(
@@ -955,6 +1044,8 @@ async function loadCanvasState(state) {
       console.warn('Attempted to load a null or undefined state.')
       return resolve()
     }
+    prevLassoPaths = []
+    removeHoverOverlay()
     const parsedState = JSON.parse(state)
     fabricCanvas.loadFromJSON(parsedState, () => {
       try {
