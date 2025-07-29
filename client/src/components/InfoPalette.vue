@@ -13,7 +13,7 @@
       <EditableLabel
         v-model="row.name"
         style="min-width: 80px"
-        class="my-auto bg-transparent"
+        :class="['my-auto bg-transparent ']"
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
@@ -177,6 +177,7 @@ const hoveredAddButton = ref(null) // Track which row's add button is hovered
 const popoverButton = ref(null)
 let currentPopover = null
 let ghostTagTimeout = null // Timeout for ghost tag hiding
+let propSelected = false // Track if a property is selected for lasso mode
 const isLassoMode = ref(false) // Track if we're in lasso cursor mode
 const mousePosition = ref({ x: 0, y: 0 }) // Track mouse position for tooltip
 const getRemainingGhostTags = (rowIdx) => {
@@ -591,19 +592,24 @@ const handlePropertyNameClick = (rowIdx, row) => {
     return // Do nothing if no tags are available
   }
 
-  // Set property mode and store individual tags
-  infoStore.isPropertyMode = true
-  infoStore.propertyTags = tagTexts
-  infoStore.lassoTagContent = '' // Clear regular content since we'll use propertyTags
+  propSelected = JSON.stringify(infoStore.propertyTags) === JSON.stringify(tagTexts)
+  if (propSelected) {
+    infoStore.propertyTags = []
+    exitLassoMode()
+  } else {
+    // Set property mode and store individual tags
+    infoStore.isPropertyMode = true
+    infoStore.propertyTags = tagTexts
+    infoStore.lassoTagContent = '' // Clear regular content since we'll use propertyTags
 
-  // Enter lasso mode with crosshair cursor
-  isLassoMode.value = true
-  // Add global cursor style to body
-  document.body.classList.add('lasso-cursor-global')
-
-  // Activate the real lasso tool in allUtilStore
-  if (!allUtilStore.isLassoMode) {
-    allUtilStore.switchLassoMode() // Only toggle if currently off
+    // Enter lasso mode with crosshair cursor
+    isLassoMode.value = true
+    // Add global cursor style to body
+    document.body.classList.add('lasso-cursor-global')
+    // Activate the real lasso tool in allUtilStore
+    if (!allUtilStore.isLassoMode) {
+      allUtilStore.switchLassoMode() // Only toggle if currently off
+    }
   }
 }
 
