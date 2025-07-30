@@ -309,6 +309,7 @@ function clearAllLassoPaths() {
   })
 
   prevLassoPaths = []
+  lassoPaths = [] // Reset for next drawing operation
   removeHoverOverlay()
   isHoveringPrevLasso = false
   fabricCanvas.requestRenderAll()
@@ -362,10 +363,8 @@ onMounted(() => {
           removeHoverOverlay()
           transformLasso(prevLassoPaths)
           return
-        } else {
-          // Clear previous lasso paths when starting new lasso outside existing area
-          clearAllLassoPaths()
         }
+        // Don't clear existing lassos when starting new lasso - allow multi-selection
       }
 
       fabricCanvas.forEachObject((obj) => {
@@ -457,9 +456,11 @@ onMounted(() => {
       const moved = endToStartDistance > 5 || hasMultiplePoints
 
       if (!moved) {
+        // Single click without drawing - clear ALL existing lassos
         if (currentPath) fabricCanvas.remove(currentPath)
         currentPath = null
         points = []
+        clearAllLassoPaths() // Clear all existing lasso selections
         fabricCanvas.requestRenderAll()
         return
       }
@@ -512,7 +513,6 @@ onMounted(() => {
         fabricCanvas.renderAll()
         canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
         // Save state before adding lasso
-        console.log('Saving state before adding lasso')
         saveState()
         // Extract just the area covered by the path + content inside it
         lassoBoundUrl.value = fabricCanvas.toDataURL({
@@ -660,9 +660,9 @@ onMounted(() => {
           // Save state after lasso operation
           saveState()
 
-          // Store the completed lasso paths for future reuse
-          prevLassoPaths = [...lassoPaths]
-          console.log('Stored lasso paths for reuse:', prevLassoPaths.length)
+          // Add the new lasso to existing selections (multi-selection)
+          prevLassoPaths = [...prevLassoPaths, ...lassoPaths]
+          console.log('Added lasso to existing selections, total:', prevLassoPaths.length)
         }
       }
     } else if (allUtilStore.isColorPen) {
