@@ -12,39 +12,48 @@
       <Check color="green" :size="15" />&nbsp;Collapse Other Nodes
     </button>
     <!-- nodes & alts overlay -->
-    <svg
-      class="arrows-layer"
-      :width="nodeStore.nodeXR"
-      :height="nodeStore.nodeYB"
-      style="position: absolute; top: 0; left: 0; pointer-events: none"
+    <div
+      class="svg-wrapper"
+      @keydown.delete="handleDelete"
+      tabindex="0"
+      ref="svgWrapper"
+      style="outline: none"
     >
-      <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="6"
-          markerHeight="4"
-          refX="6"
-          refY="2"
-          orient="auto"
-          markerUnits="strokeWidth"
-        >
-          <!-- scale the triangle down and soften the colour -->
-          <polygon points="0 0, 6 2, 0 4" fill="#666666" />
-        </marker>
-      </defs>
+      <svg
+        class="arrows-layer"
+        :width="nodeStore.nodeXR"
+        :height="nodeStore.nodeYB"
+        style="position: absolute; top: 0; left: 0; pointer-events: none"
+      >
+        <defs>
+          <marker
+            id="arrowhead"
+            markerWidth="6"
+            markerHeight="4"
+            refX="6"
+            refY="2"
+            orient="auto"
+            markerUnits="strokeWidth"
+          >
+            <polygon points="0 0, 6 2, 0 4" fill="#666666" />
+          </marker>
+        </defs>
 
-      <path
-        v-for="edge in allVisibleEdges"
-        :key="edge.fromAltId + '-' + edge.toAltId"
-        :d="getBezierPath(edge)"
-        stroke="#666"
-        stroke-width="1.4"
-        fill="none"
-        marker-end="url(#arrowhead)"
-        class="edge-line"
-        @dblclick="removeEdgeConnection(edge)"
-      />
-    </svg>
+        <path
+          v-for="edge in allVisibleEdges"
+          :key="edge.fromAltId + '-' + edge.toAltId"
+          :d="getBezierPath(edge)"
+          stroke="#666"
+          stroke-width="1.4"
+          fill="none"
+          marker-end="url(#arrowhead)"
+          class="edge-line"
+          :class="{ 'selected-edge': selectedEdge === edge }"
+          @click="selectEdge(edge)"
+          style="pointer-events: stroke"
+        />
+      </svg>
+    </div>
     <transition-group name="fade" tag="div" class="nodes-layer">
       <VueDraggableResizable
         @mouseenter="() => setNodeHover(alt.id, true)"
@@ -191,6 +200,8 @@ const allVisibleEdges = computed(() =>
     (alt.visibleEdges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
   ),
 )
+const selectedEdge = ref(null)
+const svgWrapper = ref(null)
 const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
@@ -201,6 +212,16 @@ const isConnecting = ref(false)
 const sourceAltId = ref(null)
 const hoveredConnectionDot = ref(null)
 const tempEdge = ref(null)
+
+function selectEdge(edge) {
+  selectedEdge.value = edge
+}
+function handleDelete() {
+  if (selectedEdge.value) {
+    removeEdgeConnection(selectedEdge.value)
+    selectedEdge.value = null
+  }
+}
 
 /* example async — not used right now */
 function confirmNodes() {
@@ -389,6 +410,7 @@ function removeEdgeConnection(edge) {
 }
 
 onMounted(() => {
+  svgWrapper.value?.focus()
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
   window.addEventListener('click', (e) => {
