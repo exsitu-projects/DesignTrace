@@ -45,9 +45,10 @@
     </svg>
     <transition-group name="fade" tag="div" class="nodes-layer">
       <VueDraggableResizable
+        @mouseenter="() => setNodeHover(alt.id, true)"
+        @mouseleave="() => setNodeHover(alt.id, false)"
         v-for="alt in allAlts"
         v-show="alt.visible"
-        @mouseleave="() => setNodeHover(alt.id, false)"
         :id="'drag_' + alt.id"
         :key="alt.id"
         :x="alt.position.x"
@@ -60,7 +61,6 @@
           { 'card-hover tooltip-wrapper': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
           isSelected(alt.id) ? 'selected' : '',
         ]"
-        :requestForLasso="requestForLasso"
         @mouseup="
           mouseUpNode(
             alt.position.x,
@@ -76,9 +76,15 @@
         :drag-handle="'.nodeHandle'"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
-        <div v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]" class="tooltip-overlay">
-          Apply to the whole image
-        </div>
+        <transition name="tooltip-fade">
+          <div
+            v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]"
+            class="tooltip-popout text-white"
+            @click="applyToFullImg"
+          >
+            Apply to the whole image
+          </div>
+        </transition>
         <NewNode
           :onCanvasHover="setNodeHover"
           @remove="() => deleteAlt(alt.id)"
@@ -145,7 +151,6 @@ const allVisibleEdges = computed(() =>
     (alt.visibleEdges ?? []).map(({ fromAltId, toAltId }) => ({ fromAltId, toAltId })),
   ),
 )
-const requestForLasso = ref(false)
 const imgDOMPayload = ref({})
 const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
@@ -194,6 +199,10 @@ function handleKeyDown(e) {
     }
   }
 }
+function applyToFullImg(altId) {
+  // Apply the current node's properties to the whole image
+  nodeCanvasRefs[altId]?.applyToFullImg()
+}
 function handleKeyUp(e) {
   if (e.key === 'Control') nodeStore.ctrlPressed = false
 }
@@ -212,7 +221,6 @@ function toggleDesignSpace() {
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
-      requestForLasso.value = true
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
       // objectStore.obj in form of
       /*{ type: 'tag', content:
@@ -228,7 +236,6 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
       }
 
       objectStore.dragState = 'finishedDragging'
-      requestForLasso.value = false
       return
     } else if (objectStore.obj.type === 'image') {
       //the dropped thing is an image and is dropped to the canvas area
@@ -364,25 +371,28 @@ onMounted(() => {
     outline 0.3s ease;
   z-index: 20;
 }
-.tooltip-wrapper {
-  position: relative; /* needed for absolute child positioning */
+.tooltip-popout {
+  cursor: pointer;
+  background-color: rgba(25, 135, 84, 0.9); /* Bootstrap green */
+  padding: 6px 0; /* vertical padding, no horizontal */
+  border-radius: 6px 6px 0 0; /* rounded corners top only */
+  font-size: 0.9rem;
+  text-align: center;
+  width: 100%; /* full width */
+  box-sizing: border-box; /* make padding included in width */
+  user-select: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s ease-out;
 }
 
-.tooltip-overlay {
-  position: absolute;
-  inset: 0; /* full cover */
-  background: rgba(0, 0, 0, 0.4); /* semi-transparent gray */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 12px;
-  border-radius: 4px;
-  z-index: 9999;
-  user-select: none;
-  pointer-events: none; /* don’t block mouse interaction */
+.tooltip-fade-enter-from,
+.tooltip-fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
 }
-.tooltip-wrapper:hover .tooltip-text {
+.tooltip-fade-enter-to,
+.tooltip-fade-leave-from {
   opacity: 1;
+  transform: translateY(0);
 }
 </style>

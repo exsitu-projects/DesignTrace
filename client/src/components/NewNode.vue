@@ -1,8 +1,6 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
-      @mouseenter="() => props.onCanvasHover(alt.id, false)"
-      @mouseleave="() => props.onCanvasHover(alt.id, true)"
       v-if="alt.expand"
       @click="handleClick(alt.id, alt.branchId)"
       class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
@@ -14,11 +12,7 @@
 
       <!-- Transform Button (appears on the left when needed) -->
 
-      <button
-        v-show="changeDetected"
-        @click="transform(lassoPaths)"
-        class="btn btn-outline-dark btn-sm ms-2"
-      >
+      <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
         Transform
       </button>
 
@@ -89,7 +83,13 @@
         />
       </button>
     </div>
-    <div @click.stop class="my-2 m-auto position-relative" ref="canvasContainer">
+    <div
+      @mouseenter="() => props.onCanvasHover(alt.id, false)"
+      @mouseleave="() => props.onCanvasHover(alt.id, true)"
+      @click.stop
+      class="my-2 m-auto position-relative"
+      ref="canvasContainer"
+    >
       <!-- Spinner positioned absolutely inside the container -->
       <div
         v-show="
@@ -145,14 +145,12 @@ const props = defineProps({
     required: true,
   },
   imgPayload: Object,
-  requestForLasso: Boolean,
   onCanvasHover: {
     type: Function,
     default: () => {}, // no-op if not provided
   },
 })
 const canvasEl = ref(null)
-const requestForLasso = ref(false)
 const nodeEl = ref(null)
 const nodeTagsRef = ref(null)
 let fabricCanvas = null
@@ -362,7 +360,7 @@ onMounted(() => {
         if (isInPrevLasso) {
           // Apply tooltip to existing lasso area - trigger transform
           removeHoverOverlay()
-          transform(prevLassoPaths)
+          transformLasso(prevLassoPaths)
           return
         } else {
           // Clear previous lasso paths when starting new lasso outside existing area
@@ -505,7 +503,7 @@ onMounted(() => {
           width: maxX - minX,
           height: maxY - minY,
         }
-        changeDetected.value = true
+        // changeDetected.value = true
         //path.setCoords()
         //const bounds = path.getBoundingRect() //lasso extracted but rectangular bounds
         lassoPaths.forEach((path) => fabricCanvas.remove(path))
@@ -786,7 +784,7 @@ function whiteToTransparent(canvas) {
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
 
-function transform(lassoPathInfo) {
+function transform() {
   if (allUtilStore.isColorPen) {
     let left = Infinity,
       top = Infinity,
@@ -866,22 +864,31 @@ function transform(lassoPathInfo) {
 
     // Save state after transform
     saveState()
-  } else if (allUtilStore.isLassoMode) {
+  }
+  // else if (allUtilStore.isLassoMode) {
+  //   saveState()
+  //   changeDetected.value = false
+  //   lassoPayload.value.type = 'lasso'
+  //   transformImage()
+  //   prevLassoPaths = lassoPathInfo
+  //   //prevLassoPaths = lassoPaths
+  //   lassoPaths = []
+  //   allPathStrs = []
+  //   allUtilStore.isLassoMode = false
+  // }
+}
+function transformLasso(lassoPathInfo) {
+  if (allUtilStore.isLassoMode) {
     saveState()
-    changeDetected.value = false
-    requestForLasso.value = true
     lassoPayload.value.type = 'lasso'
     transformImage()
     prevLassoPaths = lassoPathInfo
-    //prevLassoPaths = lassoPaths
     lassoPaths = []
     allPathStrs = []
-    requestForLasso.value = false
     allUtilStore.isLassoMode = false
   }
 }
 function transformImage() {
-  console.log('transformImage called')
   let objContent = []
   if (infoStore.isPropertyMode) {
     objContent = infoStore.selectedTags
@@ -916,6 +923,7 @@ function transformImage() {
 }
 defineExpose({
   deleteSelectedObjects,
+  applyToFullImg,
 })
 
 function applyToFullImg() {
@@ -923,7 +931,6 @@ function applyToFullImg() {
     console.log('hey')
     lassoPayload.value.type = 'full-img'
     saveState()
-    changeDetected.value = false
     transformImage()
     allUtilStore.isLassoMode = false
   }
