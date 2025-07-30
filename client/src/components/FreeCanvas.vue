@@ -1,5 +1,17 @@
 <template>
   <canvas id="freeCanvas"></canvas>
+  <!-- Cutout tooltip -->
+  <div
+    v-if="isDraggingCutout && cutoutTooltip.visible"
+    class="cutout-tooltip"
+    :style="{
+      left: cutoutTooltip.x + 'px',
+      top: cutoutTooltip.y + 'px',
+      position: 'fixed',
+    }"
+  >
+    <img :src="cutoutTooltip.imageData" alt="cutout" />
+  </div>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
     <div class="collapse" id="collapseExample">
       <ColorPicker></ColorPicker>
@@ -91,8 +103,14 @@ let lassoPaths = [] // Store completed lasso paths
 let prevLassoPaths = [] // Store previous lasso paths for hover/drag
 let isHoveringPrevLasso = false // Track if hovering over previous lasso
 let prevLassoHoverOverlay = null // Overlay for darkening effect
-let isDraggingCutout = false // Track if dragging a cut-out image
+let isDraggingCutout = ref(false) // Track if dragging a cut-out image
 let cutoutImage = null // Store the cut-out image data
+const cutoutTooltip = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  imageData: null,
+})
 function syncCanvasToLayout() {
   if (!canvas) return
   canvas.setWidth(layoutStore.width)
@@ -418,7 +436,7 @@ onMounted(() => {
           if (targetLassoPath) {
             // Extract the lassoed area
             cutoutImage = extractLassoArea(targetLassoPath)
-            isDraggingCutout = true
+            isDraggingCutout.value = true
 
             // Remove the lasso path from canvas and arrays
             canvas.remove(targetLassoPath)
@@ -433,6 +451,18 @@ onMounted(() => {
               width: cutoutImage.bounds.width,
               height: cutoutImage.bounds.height,
             }
+
+            // Show tooltip with cutout preview
+            // Get the canvas element position for proper tooltip positioning
+            const canvasRect = canvas.getElement().getBoundingClientRect()
+            cutoutTooltip.value = {
+              visible: true,
+              x: canvasRect.left + opt.pointer.x + 10,
+              y: canvasRect.top + opt.pointer.y - 10,
+              imageData: cutoutImage.imageData,
+            }
+            console.log('Tooltip set:', cutoutTooltip.value)
+
             console.log('im dragging this cutout', cutoutImage.imageData)
             objectStore.dragState = 'startDragging'
           }
@@ -451,6 +481,13 @@ onMounted(() => {
   })
 
   canvas.on('mouse:move', function (opt) {
+    // Update cutout tooltip position during drag
+    if (isDraggingCutout.value && cutoutTooltip.value.visible) {
+      const canvasRect = canvas.getElement().getBoundingClientRect()
+      cutoutTooltip.value.x = canvasRect.left + opt.pointer.x + 10
+      cutoutTooltip.value.y = canvasRect.top + opt.pointer.y - 10
+    }
+
     // Handle hover detection for existing lasso paths
     if (!isLasso && lassoStart && prevLassoPaths.length > 0) {
       const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
@@ -530,9 +567,14 @@ onMounted(() => {
       canvas.add(completedPath)
       lassoPaths.push(completedPath)
 
-      // Add to multi-selection (preserve existing lassos)
-      prevLassoPaths = [...prevLassoPaths, ...lassoPaths]
-      console.log('Added lasso to FreeCanvas selections, total:', prevLassoPaths.length)
+      // Clear previous lassos and set only the current one (disable multiple selection)
+      prevLassoPaths.forEach((lassoPath) => {
+        if (lassoPath && canvas.getObjects().includes(lassoPath)) {
+          canvas.remove(lassoPath)
+        }
+      })
+      prevLassoPaths = [...lassoPaths]
+      console.log('Set single lasso selection on FreeCanvas')
 
       path = null
       points = []
@@ -592,6 +634,13 @@ onMounted(() => {
       e.target.opacity = 1
     },
     'mouse:up': function (e) {
+      // Hide cutout tooltip when drag ends
+      if (isDraggingCutout.value) {
+        cutoutTooltip.value.visible = false
+        isDraggingCutout.value = false
+        cutoutImage = null
+      }
+
       objectStore.dragState = 'finishedDragging' // not dropping to anywhere meaningful. may rewrite later to avoid other conditions...
       objectStore.obj = {}
     },
@@ -601,7 +650,7 @@ onMounted(() => {
         //meaning the object being dragged is an image on free canvas
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
-        objectStore.obj.type = 'image'
+        objectStore.obj.type = 'image-cutout'
         objectStore.dragState = 'startDragging'
       }
     },
@@ -711,8 +760,9 @@ onBeforeUnmount(() => {
   isHoveringPrevLasso = false
   prevLassoPaths = []
   lassoPaths = []
-  isDraggingCutout = false
+  isDraggingCutout.value = false
   cutoutImage = null
+  cutoutTooltip.value.visible = false
 })
 
 defineExpose({
@@ -727,5 +777,24 @@ body {
   padding: 0;
   height: 100%;
   width: 100%;
+}
+
+.cutout-tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  max-width: 200px;
+  max-height: 200px;
+}
+
+.cutout-tooltip img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  display: block;
 }
 </style>

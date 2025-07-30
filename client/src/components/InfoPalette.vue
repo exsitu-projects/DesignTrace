@@ -528,13 +528,13 @@ onUnmounted(() => {
 
 const handleMouseUp = async (rowIdx, propName) => {
   if (objectStore.dragState !== 'startDragging') return
-  if (objectStore.obj.type === 'image') {
+  if (objectStore.obj.type === 'image' || objectStore.obj.type === 'image-cutout') {
     //the dropped thing is an image and is dropped to the property
     const droppedObj = objectStore.obj
     console.log('received dropped object:', droppedObj)
     objectStore.startDragTop = droppedObj.top
     objectStore.startDragLeft = droppedObj.left
-    objectStore.dragState = 'restoreInitialDOM' // this is to ensure image to back in place before the generation starts
+    if (objectStore.obj.type === 'image') objectStore.dragState = 'restoreInitialDOM' // this is to ensure image to back in place before the generation starts
 
     let finalSrc = ''
 
