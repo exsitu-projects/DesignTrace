@@ -891,7 +891,7 @@ function transformLasso(lassoPathInfo) {
 function transformImage() {
   let objContent = []
   if (infoStore.isPropertyMode) {
-    objContent = infoStore.selectedTags
+    objContent = [...infoStore.propertyTags]
   } else {
     objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
   }
@@ -928,7 +928,6 @@ defineExpose({
 
 function applyToFullImg() {
   if (allUtilStore.isToolTip) {
-    console.log('hey')
     lassoPayload.value.type = 'full-img'
     saveState()
     transformImage()

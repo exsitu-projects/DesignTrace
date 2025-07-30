@@ -80,7 +80,7 @@
           <div
             v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]"
             class="tooltip-popout text-white"
-            @click="applyToFullImg"
+            @click="applyToFullImg(alt.id)"
           >
             Apply to the whole image
           </div>
