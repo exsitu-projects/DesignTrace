@@ -220,6 +220,7 @@ function toggleDesignSpace() {
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
+    console.log('hey')
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
       // objectStore.obj in form of
@@ -227,17 +228,18 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
       [{ tag: 'Red',   propName: 'color' },
       { tag: 'Green', propName: 'color' },
       { tag: 'Blue',  propName: 'color' },]}*/
-      const objContent = toRaw(objectStore.obj.content).slice()
-      objectStore.obj = {}
-      if (altIsStepLock) {
-        await nodeStore.addOnExistingAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
-      } else {
-        await nodeStore.addMultAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
-      }
-
-      objectStore.dragState = 'finishedDragging'
-      return
-    } else if (objectStore.obj.type === 'image') {
+      // uncomment to enable dropping tags or properties
+      // const objContent = toRaw(objectStore.obj.content).slice()
+      // objectStore.obj = {}
+      // if (altIsStepLock) {
+      //   await nodeStore.addOnExistingAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
+      // } else {
+      //   await nodeStore.addMultAlt(objContent, branchId, nodeId, altPosX, altPosY, altId)
+      // }
+      //
+      // objectStore.dragState = 'finishedDragging'
+      // return
+    } else if (objectStore.obj.type === 'image' || objectStore.obj.type === 'image-cutout') {
       //the dropped thing is an image and is dropped to the canvas area
       const droppedObj = objectStore.obj
       objectStore.startDragTop = droppedObj.top
@@ -248,7 +250,8 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
         url: droppedObj.src,
         e: e,
       }
-      objectStore.dragState = 'restoreInitialDOM'
+      if (objectStore.obj.type === 'image') objectStore.dragState = 'restoreInitialDOM'
+      if (objectStore.obj.type === 'image-cutout') allUtilStore.isLassoMode = false
       dropAltId.value = altId
       return
     }
@@ -270,7 +273,7 @@ function onDrag(x, y, alt) {
     position.y = y
   }
   nodeStore.selectedIndices = []
-} ////TODO: Image on free canvas might also needs to be handled here
+}
 
 function ensureNodeInView(nodeXL, nodeYT) {
   const draggingXR = nodeXL + nodeStore.nodeW

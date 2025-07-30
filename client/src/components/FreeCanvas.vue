@@ -444,7 +444,7 @@ onMounted(() => {
 
             // Store cutout data for dragging to properties
             objectStore.obj = {
-              type: 'image',
+              type: 'image-cutout',
               src: cutoutImage.imageData,
               left: cutoutImage.bounds.left,
               top: cutoutImage.bounds.top,
@@ -650,7 +650,7 @@ onMounted(() => {
         //meaning the object being dragged is an image on free canvas
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
-        objectStore.obj.type = 'image-cutout'
+        objectStore.obj.type = 'image'
         objectStore.dragState = 'startDragging'
       }
     },
