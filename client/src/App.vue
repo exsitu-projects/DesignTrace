@@ -16,7 +16,7 @@
       class="arrows-layer"
       :width="nodeStore.nodeXR"
       :height="nodeStore.nodeYB"
-      style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 500"
+      style="position: absolute; top: 0; left: 0; pointer-events: none"
     >
       <defs>
         <marker
@@ -41,6 +41,8 @@
         stroke-width="1.4"
         fill="none"
         marker-end="url(#arrowhead)"
+        class="edge-line"
+        @dblclick="removeEdgeConnection(edge)"
       />
     </svg>
     <transition-group name="fade" tag="div" class="nodes-layer">
@@ -92,6 +94,44 @@
           :ref="(el) => setActiveNodeCanvas(el, alt.id)"
           :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
         />
+
+        <!-- Connection dots -->
+        <!-- Right edge connection dot (source) -->
+        <div
+          class="connection-dot source-dot"
+          :class="{
+            visible: hoveredConnectionDot === `${alt.id}-source` || isConnecting,
+            active: sourceAltId === alt.id,
+          }"
+          @mouseenter="hoveredConnectionDot = `${alt.id}-source`"
+          @mouseleave="hoveredConnectionDot = null"
+          @mousedown="startConnection(alt.id, $event)"
+          :style="{
+            right: '-8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+          }"
+        ></div>
+
+        <!-- Left edge connection dot (target) -->
+        <div
+          class="connection-dot target-dot"
+          :class="{
+            visible:
+              hoveredConnectionDot === `${alt.id}-target` ||
+              (isConnecting && sourceAltId !== alt.id),
+            highlighted:
+              isConnecting && sourceAltId !== alt.id && hoveredConnectionDot === `${alt.id}-target`,
+          }"
+          @mouseenter="hoveredConnectionDot = `${alt.id}-target`"
+          @mouseleave="hoveredConnectionDot = null"
+          @mouseup="finishConnection(alt.id, $event)"
+          :style="{
+            left: '-8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+          }"
+        ></div>
       </VueDraggableResizable>
     </transition-group>
     <!-- floating palette panel -->
@@ -156,6 +196,12 @@ const dropAltId = ref(0)
 const isDesignSpaceVisible = ref(false)
 const position = reactive({ x: 20, y: 20 })
 
+// Edge connection state
+const isConnecting = ref(false)
+const sourceAltId = ref(null)
+const hoveredConnectionDot = ref(null)
+const tempEdge = ref(null)
+
 /* example async — not used right now */
 function confirmNodes() {
   nodeStore.updateParents(nodeStore.selectedIndices, nodeStore.selectedBranchId)
@@ -183,6 +229,11 @@ function handleKeyDown(e) {
 
   if (e.key === 'Control') {
     nodeStore.ctrlPressed = true
+    return
+  }
+
+  if (e.key === 'Escape') {
+    cancelConnection()
     return
   }
 
@@ -302,9 +353,50 @@ function getBezierPath(edge) {
   return `M${startX},${startY} C${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`
 }
 
+// Edge connection functions
+function startConnection(altId, event) {
+  event.preventDefault()
+  event.stopPropagation()
+  isConnecting.value = true
+  sourceAltId.value = altId
+}
+
+function finishConnection(targetAltId, event) {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (isConnecting.value && sourceAltId.value && sourceAltId.value !== targetAltId) {
+    // Add edge connection
+    nodeStore.addEdgeConnection(sourceAltId.value, targetAltId)
+  }
+
+  // Reset connection state
+  isConnecting.value = false
+  sourceAltId.value = null
+  hoveredConnectionDot.value = null
+}
+
+// Cancel connection on escape key or outside click
+function cancelConnection() {
+  isConnecting.value = false
+  sourceAltId.value = null
+  hoveredConnectionDot.value = null
+}
+
+// Remove edge connection (double-click on existing edge)
+function removeEdgeConnection(edge) {
+  nodeStore.removeEdgeConnection(edge.fromAltId, edge.toAltId)
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
+  window.addEventListener('click', (e) => {
+    // Cancel connection if clicking outside of connection dots
+    if (isConnecting.value && !e.target.closest('.connection-dot')) {
+      cancelConnection()
+    }
+  })
 })
 </script>
 
@@ -399,5 +491,61 @@ onMounted(() => {
 .tooltip-fade-leave-from {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Connection dots styles */
+.connection-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #42b983;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  pointer-events: all;
+}
+
+.connection-dot.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.connection-dot.active {
+  background-color: #ff6b6b;
+  transform: translateY(-50%) scale(1.2);
+}
+
+.connection-dot.highlighted {
+  background-color: #4ecdc4;
+  transform: translateY(-50%) scale(1.3);
+  box-shadow: 0 0 8px rgba(78, 205, 196, 0.6);
+}
+
+.connection-dot:hover {
+  transform: translateY(-50%) scale(1.1);
+}
+
+.source-dot {
+  background-color: #42b983;
+}
+
+.target-dot {
+  background-color: #4ecdc4;
+}
+
+/* Edge line styles */
+.edge-line {
+  cursor: pointer;
+  stroke-width: 1.4;
+  transition: stroke-width 0.2s ease;
+}
+
+.edge-line:hover {
+  stroke-width: 2.5;
+  stroke: #42b983;
 }
 </style>

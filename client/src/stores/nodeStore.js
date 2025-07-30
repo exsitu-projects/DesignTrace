@@ -598,6 +598,7 @@ export const useNode = defineStore('nodes', () => {
     try {
       //const result = ''
       const result = await generationStore.excludePropObject(imageUrl, propsAltered)
+      console.log('getObjectProperties', result)
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
@@ -943,6 +944,121 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
+  // ===== MANUAL EDGE MANAGEMENT =====
+
+  /**
+   * Add an edge connection between two alts
+   * @param {string} fromAltId - Source alt ID
+   * @param {string} toAltId - Target alt ID
+   * @returns {boolean} Success status
+   */
+  function addEdgeConnection(fromAltId, toAltId) {
+    const fromAlt = findAlt(fromAltId)
+    const toAlt = findAlt(toAltId)
+    
+    if (!fromAlt || !toAlt) {
+      console.warn(`Alt not found: fromAltId=${fromAltId}, toAltId=${toAltId}`)
+      return false
+    }
+
+    // Check if edge already exists
+    const existingEdge = fromAlt.visibleEdges.find(
+      edge => edge.fromAltId === fromAltId && edge.toAltId === toAltId
+    )
+    
+    if (existingEdge) {
+      console.log('Edge already exists')
+      return false
+    }
+
+    // Create the edge
+    const edge = { fromAltId, toAltId }
+    
+    // Add to both edges and visibleEdges arrays
+    fromAlt.edges.push(edge)
+    fromAlt.visibleEdges.push(edge)
+    
+    // Update nextAltId array
+    if (!fromAlt.nextAltId.includes(toAltId)) {
+      fromAlt.nextAltId.push(toAltId)
+    }
+    
+    // Update prevAltId for the target alt (if it doesn't already have one)
+    if (!toAlt.prevAltId) {
+      toAlt.prevAltId = fromAltId
+    }
+    
+    console.log(`Added edge: ${fromAltId} -> ${toAltId}`)
+    return true
+  }
+
+  /**
+   * Remove an edge connection between two alts
+   * @param {string} fromAltId - Source alt ID
+   * @param {string} toAltId - Target alt ID  
+   * @returns {boolean} Success status
+   */
+  function removeEdgeConnection(fromAltId, toAltId) {
+    const fromAlt = findAlt(fromAltId)
+    const toAlt = findAlt(toAltId)
+    
+    if (!fromAlt || !toAlt) {
+      console.warn(`Alt not found: fromAltId=${fromAltId}, toAltId=${toAltId}`)
+      return false
+    }
+
+    // Remove from edges array
+    fromAlt.edges = fromAlt.edges.filter(
+      edge => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId)
+    )
+    
+    // Remove from visibleEdges array
+    fromAlt.visibleEdges = fromAlt.visibleEdges.filter(
+      edge => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId)
+    )
+    
+    // Remove from nextAltId array
+    fromAlt.nextAltId = fromAlt.nextAltId.filter(id => id !== toAltId)
+    
+    // Clear prevAltId for target alt if it was the only connection
+    if (toAlt.prevAltId === fromAltId) {
+      // Check if there are other connections to this alt
+      const hasOtherConnections = nodeBranchList.value
+        .flatMap(branch => branch.nodes.flatMap(node => node.alts))
+        .some(alt => alt.visibleEdges.some(edge => edge.toAltId === toAltId && edge.fromAltId !== fromAltId))
+      
+      if (!hasOtherConnections) {
+        toAlt.prevAltId = null
+      }
+    }
+    
+    console.log(`Removed edge: ${fromAltId} -> ${toAltId}`)
+    return true
+  }
+
+  /**
+   * Get all edges for a specific alt
+   * @param {string} altId - Alt ID to get edges for
+   * @returns {Object} Object containing incoming and outgoing edges
+   */
+  function getAltEdges(altId) {
+    const allAlts = nodeBranchList.value.flatMap(branch => 
+      branch.nodes.flatMap(node => node.alts)
+    )
+    
+    const outgoingEdges = allAlts
+      .find(alt => alt.id === altId)?.visibleEdges || []
+    
+    const incomingEdges = allAlts
+      .flatMap(alt => alt.visibleEdges)
+      .filter(edge => edge.toAltId === altId)
+    
+    return {
+      outgoing: outgoingEdges,
+      incoming: incomingEdges
+    }
+  }
+
   // ===== EXPORTED VALUES AND FUNCTIONS =====
   return {
     // Constants
@@ -998,5 +1114,10 @@ export const useNode = defineStore('nodes', () => {
     setCurrentLassoInfo,
     applyColorPen,
     switchStepLock,
+
+    // Edge Management
+    addEdgeConnection,
+    removeEdgeConnection,
+    getAltEdges,
   }
 })
