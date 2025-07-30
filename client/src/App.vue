@@ -47,6 +47,7 @@
       <VueDraggableResizable
         v-for="alt in allAlts"
         v-show="alt.visible"
+        @mouseleave="() => setNodeHover(alt.id, false)"
         :id="'drag_' + alt.id"
         :key="alt.id"
         :x="alt.position.x"
@@ -56,7 +57,7 @@
         :z="alt.z"
         :class="[
           'design-space-container alt-item',
-          { 'card-hover tooltip-wrapper': allUtilStore.isToolTip },
+          { 'card-hover tooltip-wrapper': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
           isSelected(alt.id) ? 'selected' : '',
         ]"
         :requestForLasso="requestForLasso"
@@ -75,8 +76,11 @@
         :drag-handle="'.nodeHandle'"
         @dragging="(x, y) => onDrag(x, y, alt)"
       >
-        <div class="tooltip-text">Apply to the whole image</div>
+        <div v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]" class="tooltip-overlay">
+          Apply to the whole image
+        </div>
         <NewNode
+          :onCanvasHover="setNodeHover"
           @remove="() => deleteAlt(alt.id)"
           :alt="alt"
           :ref="(el) => setActiveNodeCanvas(el, alt.id)"
@@ -127,7 +131,7 @@ import { useAllUtil } from '@/stores/allUtilStore.js'
 /* --- store instances --- */
 const nodeCanvasRefs = reactive({}) // { [altId]: componentRef }
 const freeCanvasRef = ref(null)
-
+const nodeHoverStates = reactive({})
 const nodeStore = useNode()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
@@ -159,7 +163,9 @@ function deleteAlt(altId) {
     })
   })
 }
-
+function setNodeHover(id, isHovering) {
+  nodeHoverStates[id] = isHovering && allUtilStore.isToolTip
+}
 function isSelected(altId) {
   return nodeStore.selectedIndices.includes(altId)
 }
@@ -283,15 +289,7 @@ function getBezierPath(edge) {
 
   return `M${startX},${startY} C${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`
 }
-async function fetchModels() {
-  try {
-    const res = await fetch('http://localhost:5000/api/checkpoints')
-    const data = await res.json()
-    availableModels.value = data.checkpoints
-  } catch (err) {
-    console.error('Error fetching models:', err)
-  }
-}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
@@ -366,23 +364,24 @@ onMounted(() => {
     outline 0.3s ease;
   z-index: 20;
 }
-.tooltip-text {
-  position: absolute;
-  top: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(33, 37, 41, 0.95); /* Bootstrap dark */
-  color: #fff;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 999;
+.tooltip-wrapper {
+  position: relative; /* needed for absolute child positioning */
 }
 
+.tooltip-overlay {
+  position: absolute;
+  inset: 0; /* full cover */
+  background: rgba(0, 0, 0, 0.4); /* semi-transparent gray */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  z-index: 9999;
+  user-select: none;
+  pointer-events: none; /* don’t block mouse interaction */
+}
 .tooltip-wrapper:hover .tooltip-text {
   opacity: 1;
 }

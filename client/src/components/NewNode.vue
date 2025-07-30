@@ -1,6 +1,8 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
+      @mouseenter="() => props.onCanvasHover(alt.id, false)"
+      @mouseleave="() => props.onCanvasHover(alt.id, true)"
       v-if="alt.expand"
       @click="handleClick(alt.id, alt.branchId)"
       class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
@@ -11,6 +13,7 @@
       <!--      {{ alt.id }}-->
 
       <!-- Transform Button (appears on the left when needed) -->
+
       <button
         v-show="changeDetected"
         @click="transform(lassoPaths)"
@@ -143,6 +146,10 @@ const props = defineProps({
   },
   imgPayload: Object,
   requestForLasso: Boolean,
+  onCanvasHover: {
+    type: Function,
+    default: () => {}, // no-op if not provided
+  },
 })
 const canvasEl = ref(null)
 const requestForLasso = ref(false)
@@ -862,38 +869,9 @@ function transform(lassoPathInfo) {
   } else if (allUtilStore.isLassoMode) {
     saveState()
     changeDetected.value = false
-    let objContent = []
-    if (infoStore.isPropertyMode) {
-      objContent = infoStore.selectedTags
-    } else {
-      objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
-    }
     requestForLasso.value = true
     lassoPayload.value.type = 'lasso'
-    // Apply the same logic as mouseUpNode
-    if (objContent.length > 0) {
-      if (alt.isStepLock) {
-        // Constrain generation inside this node
-        nodeStore.addOnExistingAlt(
-          objContent,
-          alt.branchId,
-          alt.nodeId,
-          alt.position.x,
-          alt.position.y,
-          alt.id,
-        )
-      } else {
-        // Create new nodes
-        nodeStore.addMultAlt(
-          objContent,
-          alt.branchId,
-          alt.nodeId,
-          alt.position.x,
-          alt.position.y,
-          alt.id,
-        )
-      }
-    }
+    transformImage()
     prevLassoPaths = lassoPathInfo
     //prevLassoPaths = lassoPaths
     lassoPaths = []
@@ -902,9 +880,54 @@ function transform(lassoPathInfo) {
     allUtilStore.isLassoMode = false
   }
 }
+function transformImage() {
+  console.log('transformImage called')
+  let objContent = []
+  if (infoStore.isPropertyMode) {
+    objContent = infoStore.selectedTags
+  } else {
+    objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
+  }
+
+  // Apply the same logic as mouseUpNode
+  if (objContent.length > 0) {
+    if (alt.isStepLock) {
+      // Constrain generation inside this node
+      nodeStore.addOnExistingAlt(
+        objContent,
+        alt.branchId,
+        alt.nodeId,
+        alt.position.x,
+        alt.position.y,
+        alt.id,
+      )
+    } else {
+      // Create new nodes
+      nodeStore.addMultAlt(
+        objContent,
+        alt.branchId,
+        alt.nodeId,
+        alt.position.x,
+        alt.position.y,
+        alt.id,
+      )
+    }
+  }
+}
 defineExpose({
   deleteSelectedObjects,
 })
+
+function applyToFullImg() {
+  if (allUtilStore.isToolTip) {
+    console.log('hey')
+    lassoPayload.value.type = 'full-img'
+    saveState()
+    changeDetected.value = false
+    transformImage()
+    allUtilStore.isLassoMode = false
+  }
+}
 
 function deleteSelectedObjects() {
   const canvas = fabricCanvas // this component’s own instance
