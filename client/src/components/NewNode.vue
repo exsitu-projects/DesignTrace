@@ -1,7 +1,7 @@
 <template>
   <div ref="nodeEl" :id="alt.id" class="node">
     <div
-      v-if="alt.expand"
+      v-if="alt.expand || alt.dragAgain"
       @click="handleClick(alt.id, alt.branchId)"
       class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
       style="background: #ededed"

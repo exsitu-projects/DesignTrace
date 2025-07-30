@@ -531,20 +531,32 @@ const handleMouseUp = async (rowIdx, propName) => {
   if (objectStore.obj.type === 'image') {
     //the dropped thing is an image and is dropped to the property
     const droppedObj = objectStore.obj
+    console.log('received dropped object:', droppedObj)
     objectStore.startDragTop = droppedObj.top
     objectStore.startDragLeft = droppedObj.left
     objectStore.dragState = 'restoreInitialDOM' // this is to ensure image to back in place before the generation starts
 
-    const staticPath = droppedObj.src.match(/static\/.+/)[0] // staticPath: staitc/
+    let finalSrc = ''
 
+    if (droppedObj.src.startsWith('data:image')) {
+      // It's already a base64 image, use as is
+      finalSrc = droppedObj.src
+    } else {
+      // It's a static path like "/static/xxx.jpg"
+      const match = droppedObj.src.match(/static\/.+/)
+      if (match) {
+        finalSrc = match[0] // e.g., "static/xxx.jpg"
+      } else {
+        console.warn('Unexpected src format:', droppedObj.src)
+      }
+    }
     const propVal = await generationStore.describeImage(
-      staticPath,
+      finalSrc,
       propName,
       generationStore.propValSysPrompt,
     )
     //const propVal = ''
     infoStore.addTag(rowIdx, propVal)
-    console.log(droppedObj)
     const thumbnailUrl = droppedObj.src
     // const thumbnailUrl = await infoStore.generateThumbnail(propName, propVal)
     infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)

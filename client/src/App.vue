@@ -257,7 +257,9 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
 
 function onDrag(x, y, alt) {
   allUtilStore.nodeOnDrag = true
+
   if (alt !== undefined) {
+    alt.dragAgain = true
     //dragging an alt
     alt.position.x = x
     alt.position.y = y

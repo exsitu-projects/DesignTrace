@@ -87,6 +87,12 @@ let points = []
 let path = null
 let lassoStart = false
 let startPointer = null
+let lassoPaths = [] // Store completed lasso paths
+let prevLassoPaths = [] // Store previous lasso paths for hover/drag
+let isHoveringPrevLasso = false // Track if hovering over previous lasso
+let prevLassoHoverOverlay = null // Overlay for darkening effect
+let isDraggingCutout = false // Track if dragging a cut-out image
+let cutoutImage = null // Store the cut-out image data
 function syncCanvasToLayout() {
   if (!canvas) return
   canvas.setWidth(layoutStore.width)
@@ -274,6 +280,90 @@ function resizeFabric(newW, newH) {
   canvas.renderAll()
 }
 
+// Helper function to check if point is inside any prev lasso path
+function isPointInPrevLasso(x, y) {
+  if (prevLassoPaths.length === 0) return false
+
+  for (const path of prevLassoPaths) {
+    // Use Fabric.js containsPoint method which is more reliable
+    if (path && path.containsPoint) {
+      const point = new fabric.Point(x, y)
+      if (path.containsPoint(point)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+// Create/update hover overlay for darkening effect
+function createHoverOverlay() {
+  if (prevLassoHoverOverlay || prevLassoPaths.length === 0) return
+
+  let combinedPathStr = ''
+  prevLassoPaths.forEach((path) => {
+    if (path.path) {
+      const pathStr = path.path.map((cmd) => cmd.join(' ')).join(' ')
+      combinedPathStr += pathStr + ' '
+    }
+  })
+
+  if (combinedPathStr) {
+    prevLassoHoverOverlay = new fabric.Path(combinedPathStr.trim(), {
+      stroke: 'transparent',
+      strokeWidth: 0,
+      fill: 'rgba(0, 0, 0, 0.3)', // Darker overlay
+      selectable: false,
+      evented: false,
+      absolutePositioned: false,
+    })
+    canvas.add(prevLassoHoverOverlay)
+    canvas.bringObjectToFront(prevLassoHoverOverlay)
+    canvas.requestRenderAll()
+  }
+}
+
+// Remove hover overlay
+function removeHoverOverlay() {
+  if (prevLassoHoverOverlay) {
+    canvas.remove(prevLassoHoverOverlay)
+    prevLassoHoverOverlay = null
+    canvas.requestRenderAll()
+  }
+}
+
+// Function to extract image area within lasso paths
+function extractLassoArea(lassoPath) {
+  if (!lassoPath) return null
+
+  // Get bounding rect of the lasso path
+  const bounds = lassoPath.getBoundingRect()
+
+  // Temporarily remove the lasso path to get clean image
+  canvas.remove(lassoPath)
+  canvas.renderAll()
+
+  // Extract the area as image data
+  const imageData = canvas.toDataURL({
+    left: bounds.left,
+    top: bounds.top,
+    width: bounds.width,
+    height: bounds.height,
+    format: 'png',
+    multiplier: 1,
+  })
+
+  // Re-add the lasso path
+  canvas.add(lassoPath)
+  canvas.renderAll()
+
+  return {
+    imageData: imageData,
+    bounds: bounds,
+    lassoPath: lassoPath,
+  }
+}
+
 onMounted(() => {
   // Initialize Fabric Canvas with markRaw to avoid Vue reactivity overhead
   canvas = markRaw(
@@ -305,6 +395,51 @@ onMounted(() => {
   // })
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
+      // Check if clicking on existing lasso area
+      if (prevLassoPaths.length !== 0) {
+        const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+
+        if (isInPrevLasso) {
+          // Start drag-to-cut operation
+          removeHoverOverlay()
+
+          // Find the specific lasso path that contains this point
+          let targetLassoPath = null
+          for (const path of prevLassoPaths) {
+            if (path && path.containsPoint) {
+              const point = new fabric.Point(opt.pointer.x, opt.pointer.y)
+              if (path.containsPoint(point)) {
+                targetLassoPath = path
+                break
+              }
+            }
+          }
+
+          if (targetLassoPath) {
+            // Extract the lassoed area
+            cutoutImage = extractLassoArea(targetLassoPath)
+            isDraggingCutout = true
+
+            // Remove the lasso path from canvas and arrays
+            canvas.remove(targetLassoPath)
+            prevLassoPaths = prevLassoPaths.filter((p) => p !== targetLassoPath)
+
+            // Store cutout data for dragging to properties
+            objectStore.obj = {
+              type: 'image',
+              src: cutoutImage.imageData,
+              left: cutoutImage.bounds.left,
+              top: cutoutImage.bounds.top,
+              width: cutoutImage.bounds.width,
+              height: cutoutImage.bounds.height,
+            }
+            console.log('im dragging this cutout', cutoutImage.imageData)
+            objectStore.dragState = 'startDragging'
+          }
+          return
+        }
+      }
+
       canvas.forEachObject((obj) => {
         obj.selectable = false
       })
@@ -316,6 +451,19 @@ onMounted(() => {
   })
 
   canvas.on('mouse:move', function (opt) {
+    // Handle hover detection for existing lasso paths
+    if (!isLasso && lassoStart && prevLassoPaths.length > 0) {
+      const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+
+      if (isInPrevLasso && !isHoveringPrevLasso) {
+        isHoveringPrevLasso = true
+        createHoverOverlay()
+      } else if (!isInPrevLasso && isHoveringPrevLasso) {
+        isHoveringPrevLasso = false
+        removeHoverOverlay()
+      }
+    }
+
     if (!isLasso || !lassoStart) return
     points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
 
@@ -344,29 +492,52 @@ onMounted(() => {
     const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
 
     if (!moved) {
+      // Single click without drawing - clear ALL existing lassos
       if (path) canvas.remove(path)
       path = null
       points = []
+
+      // Clear all existing lasso selections
+      prevLassoPaths.forEach((lassoPath) => {
+        if (lassoPath && canvas.getObjects().includes(lassoPath)) {
+          canvas.remove(lassoPath)
+        }
+      })
+      prevLassoPaths = []
+      lassoPaths = []
+      removeHoverOverlay()
+      isHoveringPrevLasso = false
+
       canvas.requestRenderAll()
       return
     }
 
     if (path) {
-      path.setCoords()
-      const bounds = path.getBoundingRect()
-      canvas.remove(path)
-      // Render first to make sure everything is drawn
-      canvas.renderAll()
-      canvas.add(path)
-      // Extract just the area covered by the path + content inside it
-      const dataUrl = canvas.toDataURL({
-        left: bounds.left,
-        top: bounds.top,
-        width: bounds.width,
-        height: bounds.height,
-        format: 'png',
-        multiplier: 1, // can set to 2 for higher resolution
+      // Convert current drawing path to completed path
+      const completedPath = new fabric.Path(points.join(' ') + ' Z', {
+        stroke: 'black',
+        strokeWidth: 1,
+        fill: 'rgba(0, 0, 0, 0.1)',
+        selectable: false,
+        evented: false,
+        strokeDashArray: [5, 5],
       })
+
+      // Remove the temporary drawing path
+      canvas.remove(path)
+
+      // Add the completed path
+      canvas.add(completedPath)
+      lassoPaths.push(completedPath)
+
+      // Add to multi-selection (preserve existing lassos)
+      prevLassoPaths = [...prevLassoPaths, ...lassoPaths]
+      console.log('Added lasso to FreeCanvas selections, total:', prevLassoPaths.length)
+
+      path = null
+      points = []
+      lassoPaths = [] // Reset for next drawing operation
+      canvas.requestRenderAll()
     }
   })
 
@@ -426,7 +597,7 @@ onMounted(() => {
     },
     'mouse:down': function (e) {
       // start dragging
-      if (e.target && 'idInUpload' in e.target) {
+      if (e.target && 'idInUpload' in e.target && !allUtilStore.isLassoMode) {
         //meaning the object being dragged is an image on free canvas
         objectStore.id = e.target.idInUpload
         objectStore.obj = e.target.toObject()
@@ -532,6 +703,16 @@ onMounted(() => {
   //
   // // Initial brush update
   // updateBrush()
+})
+
+onBeforeUnmount(() => {
+  // Clean up hover overlay and reset state
+  removeHoverOverlay()
+  isHoveringPrevLasso = false
+  prevLassoPaths = []
+  lassoPaths = []
+  isDraggingCutout = false
+  cutoutImage = null
 })
 
 defineExpose({
