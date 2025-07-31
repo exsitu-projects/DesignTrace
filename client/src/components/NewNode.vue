@@ -112,25 +112,13 @@
         style="z-index: 1"
       ></canvas>
     </div>
-    
+
     <!-- Resize handles -->
     <div class="resize-handles" v-if="alt.expand || alt.dragAgain">
-      <div 
-        class="resize-handle resize-handle-nw" 
-        @mousedown="startResize($event, 'nw')"
-      ></div>
-      <div 
-        class="resize-handle resize-handle-ne" 
-        @mousedown="startResize($event, 'ne')"
-      ></div>
-      <div 
-        class="resize-handle resize-handle-sw" 
-        @mousedown="startResize($event, 'sw')"
-      ></div>
-      <div 
-        class="resize-handle resize-handle-se" 
-        @mousedown="startResize($event, 'se')"
-      ></div>
+      <div class="resize-handle resize-handle-nw" @mousedown="startResize($event, 'nw')"></div>
+      <div class="resize-handle resize-handle-ne" @mousedown="startResize($event, 'ne')"></div>
+      <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
+      <div class="resize-handle resize-handle-se" @mousedown="startResize($event, 'se')"></div>
     </div>
   </div>
 </template>
@@ -219,17 +207,21 @@ const localNodeH = ref(alt.sizing?.nodeHeight || nodeStore.nodeH.value)
 
 // Use local reactive values for computed properties
 const canvasW = computed(() => localCanvasW.value)
-const nodeW = computed(() => localNodeW.value)  
+const nodeW = computed(() => localNodeW.value)
 const nodeH = computed(() => localNodeH.value)
 
 // Watch for changes from the store and update local values
-watch(() => alt.sizing, (newSizing) => {
-  if (newSizing) {
-    localCanvasW.value = newSizing.canvasWidth
-    localNodeW.value = newSizing.nodeWidth
-    localNodeH.value = newSizing.nodeHeight
-  }
-}, { deep: true, immediate: true })
+watch(
+  () => alt.sizing,
+  (newSizing) => {
+    if (newSizing) {
+      localCanvasW.value = newSizing.canvasWidth
+      localNodeW.value = newSizing.nodeWidth
+      localNodeH.value = newSizing.nodeHeight
+    }
+  },
+  { deep: true, immediate: true },
+)
 const canvasUrlWithoutBrush = ref('')
 // Undo/Redo functionality
 const isLoadingState = ref(false) // Prevent saving state during undo/redo
@@ -1271,14 +1263,14 @@ async function navigateToPropertyState(property) {
 // Function to store original object states before resize
 function storeOriginalObjectStates() {
   if (!fabricCanvas) return
-  
-  const objects = fabricCanvas.getObjects().filter(obj => obj !== cursor)
-  originalObjectStates.value = objects.map(obj => ({
+
+  const objects = fabricCanvas.getObjects().filter((obj) => obj !== cursor)
+  originalObjectStates.value = objects.map((obj) => ({
     object: obj,
     left: obj.left,
     top: obj.top,
     scaleX: obj.scaleX || 1,
-    scaleY: obj.scaleY || 1
+    scaleY: obj.scaleY || 1,
   }))
 }
 
@@ -1287,30 +1279,30 @@ function scaleCanvasObjectsFromOriginal(newWidth) {
   if (!fabricCanvas || originalObjectStates.value.length === 0) {
     return
   }
-  
+
   const scaleFactor = newWidth / originalCanvasSize.value.width
-  
+
   originalObjectStates.value.forEach((originalState) => {
     const obj = originalState.object
-    
+
     // Scale from original values
     const newLeft = originalState.left * scaleFactor
     const newTop = originalState.top * scaleFactor
     const newScaleX = originalState.scaleX * scaleFactor
     const newScaleY = originalState.scaleY * scaleFactor
-    
+
     // Apply scaling
     obj.set({
       left: newLeft,
       top: newTop,
       scaleX: newScaleX,
-      scaleY: newScaleY
+      scaleY: newScaleY,
     })
-    
+
     // Update object coordinates for hit detection
     obj.setCoords()
   })
-  
+
   // Ensure cursor is properly positioned
   if (cursor) {
     cursor.visible = false
@@ -1319,7 +1311,7 @@ function scaleCanvasObjectsFromOriginal(newWidth) {
     }
     fabricCanvas.bringObjectToFront(cursor)
   }
-  
+
   fabricCanvas.renderAll()
 }
 
@@ -1327,45 +1319,45 @@ function scaleCanvasObjectsFromOriginal(newWidth) {
 function startResize(event, direction) {
   event.preventDefault()
   event.stopPropagation()
-  
+
   isResizing.value = true
   resizeDirection.value = direction
   resizeStartPos.value = { x: event.clientX, y: event.clientY }
-  resizeStartSize.value = { 
-    width: canvasW.value, 
-    height: canvasW.value // Canvas is always square (1:1 aspect ratio)
+  resizeStartSize.value = {
+    width: canvasW.value,
+    height: canvasW.value, // Canvas is always square (1:1 aspect ratio)
   }
-  
+
   // Store original canvas size for scaling calculations
   originalCanvasSize.value = {
     width: canvasW.value,
-    height: canvasW.value
+    height: canvasW.value,
   }
-  
+
   // Store original object states
   storeOriginalObjectStates()
-  
+
   // Add global event listeners
   document.addEventListener('mousemove', handleResize)
   document.addEventListener('mouseup', stopResize)
-  
+
   // Prevent dragging the node while resizing
   document.body.style.userSelect = 'none'
 }
 
 function handleResize(event) {
   if (!isResizing.value) return
-  
+
   const deltaX = event.clientX - resizeStartPos.value.x
   const deltaY = event.clientY - resizeStartPos.value.y
-  
+
   // Calculate the delta that maintains aspect ratio (use the larger absolute delta)
   const absDeltaX = Math.abs(deltaX)
   const absDeltaY = Math.abs(deltaY)
   const delta = absDeltaX > absDeltaY ? deltaX : deltaY
-  
+
   let newCanvasWidth = resizeStartSize.value.width
-  
+
   // Apply delta based on resize direction
   switch (resizeDirection.value) {
     case 'nw': // northwest - shrink when moving in, grow when moving out
@@ -1381,54 +1373,53 @@ function handleResize(event) {
       newCanvasWidth = resizeStartSize.value.width + delta
       break
   }
-  
+
   // Enforce minimum and maximum sizes
   const minSize = 300
   const maxSize = 600
   newCanvasWidth = Math.max(minSize, Math.min(maxSize, newCanvasWidth))
-  
+
   // Update the alt's sizing through the store
   nodeStore.updateAltSizing(alt.id, newCanvasWidth)
-  
+
   // Update local reactive values immediately for UI responsiveness
   localCanvasW.value = newCanvasWidth
   localNodeW.value = newCanvasWidth + 20
-  localNodeH.value = newCanvasWidth + 120
-  
+  localNodeH.value = newCanvasWidth + 100
+
   // Update fabric canvas size and scale objects if it exists
-  if (fabricCanvas) {    
+  if (fabricCanvas) {
     // Scale all objects from their original states
     scaleCanvasObjectsFromOriginal(newCanvasWidth)
-    
+
     // Update canvas dimensions
-    fabricCanvas.setDimensions({ 
-      width: newCanvasWidth, 
-      height: newCanvasWidth 
+    fabricCanvas.setDimensions({
+      width: newCanvasWidth,
+      height: newCanvasWidth,
     })
-    
+
     fabricCanvas.renderAll()
   }
 }
 
 function stopResize() {
   if (!isResizing.value) return
-  
+
   isResizing.value = false
   resizeDirection.value = ''
-  
+
   // Remove global event listeners
   document.removeEventListener('mousemove', handleResize)
   document.removeEventListener('mouseup', stopResize)
-  
+
   // Re-enable text selection
   document.body.style.userSelect = ''
-  
+
   // Save state after resize
   setTimeout(() => {
     saveState()
   }, 100)
 }
-
 </script>
 
 <style scoped>

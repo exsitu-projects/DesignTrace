@@ -15,7 +15,7 @@ export const useNode = defineStore('nodes', () => {
   // ===== DEFAULT SIZING CONSTANTS =====
   const DEFAULT_CANVAS_WIDTH = 300
   const DEFAULT_NODE_WIDTH = DEFAULT_CANVAS_WIDTH + 20
-  const DEFAULT_NODE_HEIGHT = DEFAULT_CANVAS_WIDTH + 120
+  const DEFAULT_NODE_HEIGHT = DEFAULT_CANVAS_WIDTH + 100
   const INITIAL_NODE_X = 150
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
@@ -24,7 +24,7 @@ export const useNode = defineStore('nodes', () => {
   // Global default sizes (can be modified)
   const defaultCanvasWidth = ref(DEFAULT_CANVAS_WIDTH)
   const defaultNodeWidth = computed(() => defaultCanvasWidth.value + 20)
-  const defaultNodeHeight = computed(() => defaultCanvasWidth.value + 120)
+  const defaultNodeHeight = computed(() => defaultCanvasWidth.value + 100)
 
   // ===== STATE =====
   // Core data structure
@@ -778,10 +778,16 @@ export const useNode = defineStore('nodes', () => {
    * @param {number} nodeHeight - Height of the current node (optional, uses default if not provided)
    * @returns {Object} Layout coordinates
    */
-  function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts, nodeWidth = defaultNodeWidth.value, nodeHeight = defaultNodeHeight.value) {
+  function calculateMultiAltLayout(
+    currentNodeX,
+    currentNodeY,
+    numAlts,
+    nodeWidth = defaultNodeWidth.value,
+    nodeHeight = defaultNodeHeight.value,
+  ) {
     const maxY = currentNodeY + (nodeHeight / 2) * (numAlts - 1)
     const minY = currentNodeY - (nodeHeight / 2) * (numAlts - 1)
-    
+
     // Calculate dynamic spacing based on node width (proportional to the default spacing ratio)
     const defaultSpacingRatio = NODE_ADJACENCY_SPACING / DEFAULT_NODE_WIDTH // ~0.31 (100/320)
     const dynamicSpacing = Math.max(50, nodeWidth * defaultSpacingRatio) // Minimum 50px spacing
@@ -806,6 +812,51 @@ export const useNode = defineStore('nodes', () => {
     alt.sizing.canvasWidth = canvasWidth
     alt.sizing.nodeWidth = canvasWidth + 20
     alt.sizing.nodeHeight = canvasWidth + 120
+  }
+
+  /**
+   * Calculate positions for new alts considering existing ones
+   * @param {Object} newNode - The target node where alts will be placed
+   * @param {number} numNewAlts - Number of new alts to add
+   * @param {number} nodeHeight - Height of the nodes
+   * @param {number} centerX - X position for the new alts
+   * @param {number} centerY - Center Y position reference
+   * @returns {Array} Array of {x, y} positions for the new alts
+   */
+  function calculateNewAltPositions(newNode, numNewAlts, nodeHeight, centerX, centerY) {
+    const existingAlts = newNode.alts.filter((alt) => alt.expand !== false)
+    const totalAlts = existingAlts.length + numNewAlts
+
+    // Calculate the total height needed for all alts
+    const totalSpacing = nodeHeight * (totalAlts - 1)
+    const topY = centerY - totalSpacing / 2
+
+    // Ensure minimum Y position is at least 50px from top
+    const minY = 50
+    const adjustedTopY = Math.max(minY, topY)
+
+    // If we had to adjust upward, recalculate centerY
+    const actualCenterY = totalAlts > 1 ? adjustedTopY + totalSpacing / 2 : centerY
+
+    // Create array of all positions (existing + new)
+    const allPositions = []
+    for (let i = 0; i < totalAlts; i++) {
+      const y = adjustedTopY + nodeHeight * i
+      allPositions.push({
+        x: centerX,
+        y: y,
+        isNew: i >= existingAlts.length,
+      })
+    }
+
+    // Update existing alt positions first
+    existingAlts.forEach((alt, index) => {
+      alt.position.x = allPositions[index].x
+      alt.position.y = allPositions[index].y
+    })
+
+    // Return positions for new alts only
+    return allPositions.filter((pos) => pos.isNew).map((pos) => ({ x: pos.x, y: pos.y }))
   }
 
   /**
@@ -956,7 +1007,13 @@ export const useNode = defineStore('nodes', () => {
     const currentNodeHeight = currentAlt?.sizing?.nodeHeight || defaultNodeHeight.value
 
     // Step 4: Calculate layout and adjust positions
-    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, updatedAltLength, currentNodeWidth, currentNodeHeight)
+    const { maxY, minY, x } = calculateMultiAltLayout(
+      currentNodeX,
+      currentNodeY,
+      updatedAltLength,
+      currentNodeWidth,
+      currentNodeHeight,
+    )
     adjustPositionsForBounds(branch, minY)
 
     // Step 5: Create or use existing next node
@@ -965,9 +1022,7 @@ export const useNode = defineStore('nodes', () => {
       prevNode.nextNodeId = currentNodeId.value
     }
 
-    // Step 6: Update canvas boundaries
-    nodeYT.value = minY + offsetY.value
-    nodeYB.value = Math.max(maxY + currentNodeHeight, nodeYB.value) + offsetY.value
+    // Step 6: Update canvas boundaries (will be recalculated after positioning)
     nodeXR.value = Math.max(nodeXR.value, x + currentNodeWidth)
 
     // Step 7: Prepare properties for object detection
@@ -988,10 +1043,19 @@ export const useNode = defineStore('nodes', () => {
       return []
     }
 
-    // Step 9: Generate alts sequentially
+    // Step 9: Calculate positions for new alts considering existing ones
+    const newAltPositions = calculateNewAltPositions(
+      newNode,
+      altObjs.length,
+      currentNodeHeight,
+      x,
+      (maxY + minY) / 2 + offsetY.value,
+    )
+
+    // Step 10: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
-      const y = maxY - currentNodeHeight * i + offsetY.value
+      const position = newAltPositions[i]
       altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
       altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
       // Set initial historyStateIndex to 1 for new alts (they'll have their first meaningful state at index 1)
@@ -1003,8 +1067,8 @@ export const useNode = defineStore('nodes', () => {
         nodeId,
         i,
         prevNode.nextNodeId,
-        x,
-        y,
+        position.x,
+        position.y,
         currentAltId,
         propsAltered,
         adjObjectText,
@@ -1015,8 +1079,15 @@ export const useNode = defineStore('nodes', () => {
       urls.push(url)
     }
 
-    // Step 10: Update alt positions
-    // updateAltPos(maxY, minY, x, newNode, branch)
+    // Step 11: Update canvas boundaries based on final positions
+    const allAlts = newNode.alts.filter((alt) => alt.expand !== false)
+    if (allAlts.length > 0) {
+      const topY = Math.min(...allAlts.map((alt) => alt.position.y))
+      const bottomY = Math.max(...allAlts.map((alt) => alt.position.y + currentNodeHeight))
+
+      nodeYT.value = Math.min(nodeYT.value, topY)
+      nodeYB.value = Math.max(nodeYB.value, bottomY)
+    }
 
     return urls
   }
