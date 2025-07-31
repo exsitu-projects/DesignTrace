@@ -59,6 +59,25 @@ export const useNode = defineStore('nodes', () => {
   // ===== HELPER FUNCTIONS =====
 
   /**
+   * Check if a value is empty (null, undefined, empty string, or whitespace-only)
+   * @param {any} value - The value to check
+   * @returns {boolean} - True if the value is considered empty
+   */
+  function isEmpty(value) {
+    return !value || (typeof value === 'string' && value.trim() === '')
+  }
+
+  /**
+   * Validate that object properties are not empty
+   * @param {Object} properties - Object with properties to validate
+   * @param {string[]} requiredFields - Array of field names that must not be empty
+   * @returns {boolean} - True if all required fields are valid
+   */
+  function validateObjectProperties(properties, requiredFields) {
+    return requiredFields.every(field => !isEmpty(properties[field]))
+  }
+
+  /**
    * Find an alt by its ID across all branches and nodes
    * @param {string} altId - The ID of the alt to find
    * @returns {Object|undefined} - The found alt object or undefined
@@ -831,7 +850,10 @@ export const useNode = defineStore('nodes', () => {
       propsAltered,
     )
 
-    if (!adjObjectText || !objectText) {
+    // Validate that we got proper object properties before proceeding
+    const objectProps = { objOrProp, objectText, visibleProps, adjObjectText }
+    if (!validateObjectProperties(objectProps, ['objOrProp', 'objectText', 'visibleProps'])) {
+      console.warn('getObjectProperties returned empty values, aborting addOnExistingAlt:', objectProps)
       return
     }
     // Step 5: Generate new image
@@ -910,6 +932,14 @@ export const useNode = defineStore('nodes', () => {
       selectionPayload.value.lassoBoundUrl,
       propsAltered,
     )
+
+    // Validate that we got proper object properties before proceeding
+    const objectProps = { objOrProp, objectText, visibleProps, adjObjectText }
+    if (!validateObjectProperties(objectProps, ['objOrProp', 'objectText', 'visibleProps'])) {
+      console.warn('getObjectProperties returned empty values, aborting addMultAlt:', objectProps)
+      return []
+    }
+
     // Step 9: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
