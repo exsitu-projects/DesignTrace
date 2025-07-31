@@ -1280,26 +1280,17 @@ function storeOriginalObjectStates() {
     scaleX: obj.scaleX || 1,
     scaleY: obj.scaleY || 1
   }))
-  
-  console.log('Stored original states for', originalObjectStates.value.length, 'objects')
 }
 
 // Function to scale all fabric objects proportionally from original states
 function scaleCanvasObjectsFromOriginal(newWidth) {
   if (!fabricCanvas || originalObjectStates.value.length === 0) {
-    console.log('Skipping scale - no original states stored')
     return
   }
   
   const scaleFactor = newWidth / originalCanvasSize.value.width
-  console.log('Scaling from original states:', { 
-    originalWidth: originalCanvasSize.value.width, 
-    newWidth, 
-    scaleFactor,
-    objectCount: originalObjectStates.value.length
-  })
   
-  originalObjectStates.value.forEach((originalState, index) => {
+  originalObjectStates.value.forEach((originalState) => {
     const obj = originalState.object
     
     // Scale from original values
@@ -1307,12 +1298,6 @@ function scaleCanvasObjectsFromOriginal(newWidth) {
     const newTop = originalState.top * scaleFactor
     const newScaleX = originalState.scaleX * scaleFactor
     const newScaleY = originalState.scaleY * scaleFactor
-    
-    console.log(`Scaling object ${index} from original:`, {
-      type: obj.type,
-      original: { left: originalState.left, top: originalState.top, scaleX: originalState.scaleX, scaleY: originalState.scaleY },
-      new: { left: newLeft, top: newTop, scaleX: newScaleX, scaleY: newScaleY }
-    })
     
     // Apply scaling
     obj.set({
@@ -1398,7 +1383,7 @@ function handleResize(event) {
   }
   
   // Enforce minimum and maximum sizes
-  const minSize = 150
+  const minSize = 300
   const maxSize = 600
   newCanvasWidth = Math.max(minSize, Math.min(maxSize, newCanvasWidth))
   
@@ -1444,16 +1429,6 @@ function stopResize() {
   }, 100)
 }
 
-// Debug watcher to track sizing changes
-watch([canvasW, nodeW, nodeH], (newValues, oldValues) => {
-  console.log('NewNode sizing changed:', {
-    altId: alt.id,
-    canvasW: newValues[0],
-    nodeW: newValues[1], 
-    nodeH: newValues[2],
-    altSizing: alt.sizing
-  })
-}, { deep: true })
 </script>
 
 <style scoped>

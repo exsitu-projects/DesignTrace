@@ -638,7 +638,6 @@ export const useNode = defineStore('nodes', () => {
     try {
       //const result = ''
       const result = await generationStore.excludePropObject(imageUrl, propsAltered)
-      console.log('getObjectProperties', result)
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
@@ -775,12 +774,18 @@ export const useNode = defineStore('nodes', () => {
    * @param {number} currentNodeX - X position of current node
    * @param {number} currentNodeY - Y position of current node
    * @param {number} numAlts - Number of alts to calculate layout for
+   * @param {number} nodeWidth - Width of the current node (optional, uses default if not provided)
+   * @param {number} nodeHeight - Height of the current node (optional, uses default if not provided)
    * @returns {Object} Layout coordinates
    */
-  function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts) {
-    const maxY = currentNodeY + (defaultNodeHeight.value / 2) * (numAlts - 1)
-    const minY = currentNodeY - (defaultNodeHeight.value / 2) * (numAlts - 1)
-    const x = currentNodeX + defaultNodeWidth.value + NODE_ADJACENCY_SPACING
+  function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts, nodeWidth = defaultNodeWidth.value, nodeHeight = defaultNodeHeight.value) {
+    const maxY = currentNodeY + (nodeHeight / 2) * (numAlts - 1)
+    const minY = currentNodeY - (nodeHeight / 2) * (numAlts - 1)
+    
+    // Calculate dynamic spacing based on node width (proportional to the default spacing ratio)
+    const defaultSpacingRatio = NODE_ADJACENCY_SPACING / DEFAULT_NODE_WIDTH // ~0.31 (100/320)
+    const dynamicSpacing = Math.max(50, nodeWidth * defaultSpacingRatio) // Minimum 50px spacing
+    const x = currentNodeX + nodeWidth + dynamicSpacing
 
     return { maxY, minY, x }
   }
@@ -945,8 +950,13 @@ export const useNode = defineStore('nodes', () => {
       updatedAltLength = newNode.alts.filter((alt) => alt.expand !== false).length + altObjs.length
     }
 
+    // Get the current alt to use its sizing for layout calculations
+    const currentAlt = findAlt(currentAltId)
+    const currentNodeWidth = currentAlt?.sizing?.nodeWidth || defaultNodeWidth.value
+    const currentNodeHeight = currentAlt?.sizing?.nodeHeight || defaultNodeHeight.value
+
     // Step 4: Calculate layout and adjust positions
-    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, updatedAltLength)
+    const { maxY, minY, x } = calculateMultiAltLayout(currentNodeX, currentNodeY, updatedAltLength, currentNodeWidth, currentNodeHeight)
     adjustPositionsForBounds(branch, minY)
 
     // Step 5: Create or use existing next node
@@ -957,8 +967,8 @@ export const useNode = defineStore('nodes', () => {
 
     // Step 6: Update canvas boundaries
     nodeYT.value = minY + offsetY.value
-    nodeYB.value = Math.max(maxY + defaultNodeHeight.value, nodeYB.value) + offsetY.value
-    nodeXR.value = Math.max(nodeXR.value, x + defaultNodeWidth.value)
+    nodeYB.value = Math.max(maxY + currentNodeHeight, nodeYB.value) + offsetY.value
+    nodeXR.value = Math.max(nodeXR.value, x + currentNodeWidth)
 
     // Step 7: Prepare properties for object detection
     const propsAltered = altObjs
@@ -981,7 +991,7 @@ export const useNode = defineStore('nodes', () => {
     // Step 9: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
-      const y = maxY - defaultNodeHeight.value * i + offsetY.value
+      const y = maxY - currentNodeHeight * i + offsetY.value
       altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
       altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
       // Set initial historyStateIndex to 1 for new alts (they'll have their first meaningful state at index 1)

@@ -203,7 +203,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
 
   async function excludePropObject(lassoBoundUrl, propsString) {
     try {
-      console.log(propsString)
       const raw = await describeImage(lassoBoundUrl, propsString, nonPropsSysPrompt)
 
       const [adjObjectText = '', objectText = '', visibleProps = '', objOrProp = ''] = raw
