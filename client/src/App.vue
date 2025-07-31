@@ -292,7 +292,6 @@ function toggleDesignSpace() {
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
-    console.log('hey')
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
       // objectStore.obj in form of

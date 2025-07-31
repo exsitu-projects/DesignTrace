@@ -121,13 +121,16 @@ export const useNode = defineStore('nodes', () => {
     alt.history.currentIndex = alt.history.undoStack.length - 1
 
     // Associate pending properties with this history state
+    // Only assign historyStateIndex when undoStack has more than 1 entry (aligns with undo button logic)
     const currentHistoryIndex = alt.history.undoStack.length - 1
-    alt.properties.forEach((property) => {
-      if (property.pendingHistoryAssociation) {
-        property.historyStateIndex = currentHistoryIndex
-        property.pendingHistoryAssociation = false
-      }
-    })
+    if (alt.history.undoStack.length > 1) {
+      alt.properties.forEach((property) => {
+        if (property.pendingHistoryAssociation) {
+          property.historyStateIndex = currentHistoryIndex
+          property.pendingHistoryAssociation = false
+        }
+      })
+    }
 
     // Limit undo stack size to prevent memory issues
     const MAX_HISTORY = 50
@@ -444,6 +447,7 @@ export const useNode = defineStore('nodes', () => {
       history: {
         undoStack: [],
         redoStack: [],
+        currentIndex: -1, // Initialize current index properly
       },
       expand: true,
       isStepLock: false,
@@ -860,7 +864,6 @@ export const useNode = defineStore('nodes', () => {
     currentNodeY,
     currentAltId,
   ) {
-    console.log(altObjs)
     selectionPayload.value = await canvasDataPromise(currentAltId)
 
     // Step 2: Find branch and node
@@ -913,6 +916,9 @@ export const useNode = defineStore('nodes', () => {
       const y = maxY - NODE_HEIGHT * i + offsetY.value
       altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
       altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
+      // Set initial historyStateIndex to 1 for new alts (they'll have their first meaningful state at index 1)
+      // This aligns with the undo button logic that requires undoStack.length > 1
+      altObjs[i].historyStateIndex = 1
       const url = await addAlt(
         altObjs[i],
         nodeBranchId,
@@ -955,7 +961,7 @@ export const useNode = defineStore('nodes', () => {
   function addEdgeConnection(fromAltId, toAltId) {
     const fromAlt = findAlt(fromAltId)
     const toAlt = findAlt(toAltId)
-    
+
     if (!fromAlt || !toAlt) {
       console.warn(`Alt not found: fromAltId=${fromAltId}, toAltId=${toAltId}`)
       return false
@@ -963,9 +969,9 @@ export const useNode = defineStore('nodes', () => {
 
     // Check if edge already exists
     const existingEdge = fromAlt.visibleEdges.find(
-      edge => edge.fromAltId === fromAltId && edge.toAltId === toAltId
+      (edge) => edge.fromAltId === fromAltId && edge.toAltId === toAltId,
     )
-    
+
     if (existingEdge) {
       console.log('Edge already exists')
       return false
@@ -973,21 +979,21 @@ export const useNode = defineStore('nodes', () => {
 
     // Create the edge
     const edge = { fromAltId, toAltId }
-    
+
     // Add to both edges and visibleEdges arrays
     fromAlt.edges.push(edge)
     fromAlt.visibleEdges.push(edge)
-    
+
     // Update nextAltId array
     if (!fromAlt.nextAltId.includes(toAltId)) {
       fromAlt.nextAltId.push(toAltId)
     }
-    
+
     // Update prevAltId for the target alt (if it doesn't already have one)
     if (!toAlt.prevAltId) {
       toAlt.prevAltId = fromAltId
     }
-    
+
     console.log(`Added edge: ${fromAltId} -> ${toAltId}`)
     return true
   }
@@ -995,13 +1001,13 @@ export const useNode = defineStore('nodes', () => {
   /**
    * Remove an edge connection between two alts
    * @param {string} fromAltId - Source alt ID
-   * @param {string} toAltId - Target alt ID  
+   * @param {string} toAltId - Target alt ID
    * @returns {boolean} Success status
    */
   function removeEdgeConnection(fromAltId, toAltId) {
     const fromAlt = findAlt(fromAltId)
     const toAlt = findAlt(toAltId)
-    
+
     if (!fromAlt || !toAlt) {
       console.warn(`Alt not found: fromAltId=${fromAltId}, toAltId=${toAltId}`)
       return false
@@ -1009,29 +1015,31 @@ export const useNode = defineStore('nodes', () => {
 
     // Remove from edges array
     fromAlt.edges = fromAlt.edges.filter(
-      edge => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId)
+      (edge) => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId),
     )
-    
+
     // Remove from visibleEdges array
     fromAlt.visibleEdges = fromAlt.visibleEdges.filter(
-      edge => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId)
+      (edge) => !(edge.fromAltId === fromAltId && edge.toAltId === toAltId),
     )
-    
+
     // Remove from nextAltId array
-    fromAlt.nextAltId = fromAlt.nextAltId.filter(id => id !== toAltId)
-    
+    fromAlt.nextAltId = fromAlt.nextAltId.filter((id) => id !== toAltId)
+
     // Clear prevAltId for target alt if it was the only connection
     if (toAlt.prevAltId === fromAltId) {
       // Check if there are other connections to this alt
       const hasOtherConnections = nodeBranchList.value
-        .flatMap(branch => branch.nodes.flatMap(node => node.alts))
-        .some(alt => alt.visibleEdges.some(edge => edge.toAltId === toAltId && edge.fromAltId !== fromAltId))
-      
+        .flatMap((branch) => branch.nodes.flatMap((node) => node.alts))
+        .some((alt) =>
+          alt.visibleEdges.some((edge) => edge.toAltId === toAltId && edge.fromAltId !== fromAltId),
+        )
+
       if (!hasOtherConnections) {
         toAlt.prevAltId = null
       }
     }
-    
+
     console.log(`Removed edge: ${fromAltId} -> ${toAltId}`)
     return true
   }
@@ -1042,20 +1050,19 @@ export const useNode = defineStore('nodes', () => {
    * @returns {Object} Object containing incoming and outgoing edges
    */
   function getAltEdges(altId) {
-    const allAlts = nodeBranchList.value.flatMap(branch => 
-      branch.nodes.flatMap(node => node.alts)
+    const allAlts = nodeBranchList.value.flatMap((branch) =>
+      branch.nodes.flatMap((node) => node.alts),
     )
-    
-    const outgoingEdges = allAlts
-      .find(alt => alt.id === altId)?.visibleEdges || []
-    
+
+    const outgoingEdges = allAlts.find((alt) => alt.id === altId)?.visibleEdges || []
+
     const incomingEdges = allAlts
-      .flatMap(alt => alt.visibleEdges)
-      .filter(edge => edge.toAltId === altId)
-    
+      .flatMap((alt) => alt.visibleEdges)
+      .filter((edge) => edge.toAltId === altId)
+
     return {
       outgoing: outgoingEdges,
-      incoming: incomingEdges
+      incoming: incomingEdges,
     }
   }
 
