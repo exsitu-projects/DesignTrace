@@ -112,6 +112,26 @@
         style="z-index: 1"
       ></canvas>
     </div>
+    
+    <!-- Resize handles -->
+    <div class="resize-handles" v-if="alt.expand || alt.dragAgain">
+      <div 
+        class="resize-handle resize-handle-nw" 
+        @mousedown="startResize($event, 'nw')"
+      ></div>
+      <div 
+        class="resize-handle resize-handle-ne" 
+        @mousedown="startResize($event, 'ne')"
+      ></div>
+      <div 
+        class="resize-handle resize-handle-sw" 
+        @mousedown="startResize($event, 'sw')"
+      ></div>
+      <div 
+        class="resize-handle resize-handle-se" 
+        @mousedown="startResize($event, 'se')"
+      ></div>
+    </div>
   </div>
 </template>
 
@@ -126,6 +146,7 @@ import {
   defineEmits,
   nextTick,
   toRaw,
+  toRef,
 } from 'vue'
 import { Lock, LockOpen } from 'lucide-vue-next'
 import * as fabric from 'fabric'
@@ -191,13 +212,36 @@ const tagInputRefs = ref([])
 const fabricCanvasW = ref(0) // reactive refs
 const fabricCanvasH = ref(0)
 const lassoPayload = ref({})
-const canvasW = computed(() => nodeStore.canvasW)
-const nodeW = computed(() => nodeStore.nodeW)
-const nodeH = computed(() => nodeStore.nodeH)
+// Create reactive local sizing refs that sync with alt.sizing
+const localCanvasW = ref(alt.sizing?.canvasWidth || nodeStore.canvasW.value)
+const localNodeW = ref(alt.sizing?.nodeWidth || nodeStore.nodeW.value)
+const localNodeH = ref(alt.sizing?.nodeHeight || nodeStore.nodeH.value)
+
+// Use local reactive values for computed properties
+const canvasW = computed(() => localCanvasW.value)
+const nodeW = computed(() => localNodeW.value)  
+const nodeH = computed(() => localNodeH.value)
+
+// Watch for changes from the store and update local values
+watch(() => alt.sizing, (newSizing) => {
+  if (newSizing) {
+    localCanvasW.value = newSizing.canvasWidth
+    localNodeW.value = newSizing.nodeWidth
+    localNodeH.value = newSizing.nodeHeight
+  }
+}, { deep: true, immediate: true })
 const canvasUrlWithoutBrush = ref('')
 // Undo/Redo functionality
 const isLoadingState = ref(false) // Prevent saving state during undo/redo
 const undoStack = computed(() => alt.history?.undoStack || [])
+
+// Resize functionality
+const isResizing = ref(false)
+const resizeDirection = ref('')
+const resizeStartPos = ref({ x: 0, y: 0 })
+const resizeStartSize = ref({ width: 0, height: 0 })
+const originalCanvasSize = ref({ width: 0, height: 0 })
+const originalObjectStates = ref([])
 const redoStack = computed(() => alt.history?.redoStack || [])
 
 // Function to check if a property button should be active
@@ -1223,12 +1267,199 @@ async function navigateToPropertyState(property) {
     isLoadingState.value = false
   }
 }
+
+// Function to store original object states before resize
+function storeOriginalObjectStates() {
+  if (!fabricCanvas) return
+  
+  const objects = fabricCanvas.getObjects().filter(obj => obj !== cursor)
+  originalObjectStates.value = objects.map(obj => ({
+    object: obj,
+    left: obj.left,
+    top: obj.top,
+    scaleX: obj.scaleX || 1,
+    scaleY: obj.scaleY || 1
+  }))
+  
+  console.log('Stored original states for', originalObjectStates.value.length, 'objects')
+}
+
+// Function to scale all fabric objects proportionally from original states
+function scaleCanvasObjectsFromOriginal(newWidth) {
+  if (!fabricCanvas || originalObjectStates.value.length === 0) {
+    console.log('Skipping scale - no original states stored')
+    return
+  }
+  
+  const scaleFactor = newWidth / originalCanvasSize.value.width
+  console.log('Scaling from original states:', { 
+    originalWidth: originalCanvasSize.value.width, 
+    newWidth, 
+    scaleFactor,
+    objectCount: originalObjectStates.value.length
+  })
+  
+  originalObjectStates.value.forEach((originalState, index) => {
+    const obj = originalState.object
+    
+    // Scale from original values
+    const newLeft = originalState.left * scaleFactor
+    const newTop = originalState.top * scaleFactor
+    const newScaleX = originalState.scaleX * scaleFactor
+    const newScaleY = originalState.scaleY * scaleFactor
+    
+    console.log(`Scaling object ${index} from original:`, {
+      type: obj.type,
+      original: { left: originalState.left, top: originalState.top, scaleX: originalState.scaleX, scaleY: originalState.scaleY },
+      new: { left: newLeft, top: newTop, scaleX: newScaleX, scaleY: newScaleY }
+    })
+    
+    // Apply scaling
+    obj.set({
+      left: newLeft,
+      top: newTop,
+      scaleX: newScaleX,
+      scaleY: newScaleY
+    })
+    
+    // Update object coordinates for hit detection
+    obj.setCoords()
+  })
+  
+  // Ensure cursor is properly positioned
+  if (cursor) {
+    cursor.visible = false
+    if (!fabricCanvas.getObjects().includes(cursor)) {
+      fabricCanvas.add(cursor)
+    }
+    fabricCanvas.bringObjectToFront(cursor)
+  }
+  
+  fabricCanvas.renderAll()
+}
+
+// Resize functions
+function startResize(event, direction) {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  isResizing.value = true
+  resizeDirection.value = direction
+  resizeStartPos.value = { x: event.clientX, y: event.clientY }
+  resizeStartSize.value = { 
+    width: canvasW.value, 
+    height: canvasW.value // Canvas is always square (1:1 aspect ratio)
+  }
+  
+  // Store original canvas size for scaling calculations
+  originalCanvasSize.value = {
+    width: canvasW.value,
+    height: canvasW.value
+  }
+  
+  // Store original object states
+  storeOriginalObjectStates()
+  
+  // Add global event listeners
+  document.addEventListener('mousemove', handleResize)
+  document.addEventListener('mouseup', stopResize)
+  
+  // Prevent dragging the node while resizing
+  document.body.style.userSelect = 'none'
+}
+
+function handleResize(event) {
+  if (!isResizing.value) return
+  
+  const deltaX = event.clientX - resizeStartPos.value.x
+  const deltaY = event.clientY - resizeStartPos.value.y
+  
+  // Calculate the delta that maintains aspect ratio (use the larger absolute delta)
+  const absDeltaX = Math.abs(deltaX)
+  const absDeltaY = Math.abs(deltaY)
+  const delta = absDeltaX > absDeltaY ? deltaX : deltaY
+  
+  let newCanvasWidth = resizeStartSize.value.width
+  
+  // Apply delta based on resize direction
+  switch (resizeDirection.value) {
+    case 'nw': // northwest - shrink when moving in, grow when moving out
+      newCanvasWidth = resizeStartSize.value.width - delta
+      break
+    case 'ne': // northeast - grow when moving right or up
+      newCanvasWidth = resizeStartSize.value.width + delta
+      break
+    case 'sw': // southwest - shrink when moving left or down
+      newCanvasWidth = resizeStartSize.value.width - delta
+      break
+    case 'se': // southeast - grow when moving right or down
+      newCanvasWidth = resizeStartSize.value.width + delta
+      break
+  }
+  
+  // Enforce minimum and maximum sizes
+  const minSize = 150
+  const maxSize = 600
+  newCanvasWidth = Math.max(minSize, Math.min(maxSize, newCanvasWidth))
+  
+  // Update the alt's sizing through the store
+  nodeStore.updateAltSizing(alt.id, newCanvasWidth)
+  
+  // Update local reactive values immediately for UI responsiveness
+  localCanvasW.value = newCanvasWidth
+  localNodeW.value = newCanvasWidth + 20
+  localNodeH.value = newCanvasWidth + 120
+  
+  // Update fabric canvas size and scale objects if it exists
+  if (fabricCanvas) {    
+    // Scale all objects from their original states
+    scaleCanvasObjectsFromOriginal(newCanvasWidth)
+    
+    // Update canvas dimensions
+    fabricCanvas.setDimensions({ 
+      width: newCanvasWidth, 
+      height: newCanvasWidth 
+    })
+    
+    fabricCanvas.renderAll()
+  }
+}
+
+function stopResize() {
+  if (!isResizing.value) return
+  
+  isResizing.value = false
+  resizeDirection.value = ''
+  
+  // Remove global event listeners
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+  
+  // Re-enable text selection
+  document.body.style.userSelect = ''
+  
+  // Save state after resize
+  setTimeout(() => {
+    saveState()
+  }, 100)
+}
+
+// Debug watcher to track sizing changes
+watch([canvasW, nodeW, nodeH], (newValues, oldValues) => {
+  console.log('NewNode sizing changed:', {
+    altId: alt.id,
+    canvasW: newValues[0],
+    nodeW: newValues[1], 
+    nodeH: newValues[2],
+    altSizing: alt.sizing
+  })
+}, { deep: true })
 </script>
 
 <style scoped>
 .node {
-  width: v-bind(nodeW);
-  height: v-bind(nodeH); /* fixed height */
+  width: v-bind('nodeW + "px"');
+  height: v-bind('nodeH + "px"'); /* fixed height */
   background-color: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -1382,5 +1613,66 @@ async function navigateToPropertyState(property) {
   left: 100%;
   transform: translateY(-50%) rotate(10deg);
   pointer-events: none;
+}
+
+/* Resize handles */
+.resize-handles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none; /* Allow clicks through except on handles */
+}
+
+.resize-handle {
+  position: absolute;
+  background-color: #42b983;
+  border: 2px solid white;
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  pointer-events: all;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  z-index: 1001; /* Above other elements */
+}
+
+.resize-handle:hover {
+  opacity: 1;
+  transform: scale(1.2);
+  box-shadow: 0 2px 8px rgba(66, 185, 131, 0.4);
+}
+
+/* Position the handles at each corner */
+.resize-handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nw-resize;
+}
+
+.resize-handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: ne-resize;
+}
+
+.resize-handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: sw-resize;
+}
+
+.resize-handle-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: se-resize;
+}
+
+/* Hide resize handles when node is collapsed */
+.node:not(:hover) .resize-handle {
+  opacity: 0;
+  transform: scale(0.8);
 }
 </style>

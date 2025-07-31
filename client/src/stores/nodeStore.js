@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useGeneration } from '@/stores/generationStore.js'
 
 /**
@@ -12,13 +12,19 @@ import { useGeneration } from '@/stores/generationStore.js'
  *       - alt: Smallest unit - an "alternative" design
  */
 export const useNode = defineStore('nodes', () => {
-  // ===== CONSTANTS =====
-  const CANVAS_WIDTH = 300
-  const NODE_WIDTH = CANVAS_WIDTH + 20
-  const NODE_HEIGHT = CANVAS_WIDTH + 120
+  // ===== DEFAULT SIZING CONSTANTS =====
+  const DEFAULT_CANVAS_WIDTH = 300
+  const DEFAULT_NODE_WIDTH = DEFAULT_CANVAS_WIDTH + 20
+  const DEFAULT_NODE_HEIGHT = DEFAULT_CANVAS_WIDTH + 120
   const INITIAL_NODE_X = 150
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
+
+  // ===== REACTIVE SIZING =====
+  // Global default sizes (can be modified)
+  const defaultCanvasWidth = ref(DEFAULT_CANVAS_WIDTH)
+  const defaultNodeWidth = computed(() => defaultCanvasWidth.value + 20)
+  const defaultNodeHeight = computed(() => defaultCanvasWidth.value + 120)
 
   // ===== STATE =====
   // Core data structure
@@ -74,7 +80,7 @@ export const useNode = defineStore('nodes', () => {
    * @returns {boolean} - True if all required fields are valid
    */
   function validateObjectProperties(properties, requiredFields) {
-    return requiredFields.every(field => !isEmpty(properties[field]))
+    return requiredFields.every((field) => !isEmpty(properties[field]))
   }
 
   /**
@@ -106,7 +112,12 @@ export const useNode = defineStore('nodes', () => {
    * @param {number} nodeWidth - The width of the node
    * @param {number} nodeHeight - The height of the node
    */
-  function updateLayoutBoundaries(x, y, nodeWidth = NODE_WIDTH, nodeHeight = NODE_HEIGHT) {
+  function updateLayoutBoundaries(
+    x,
+    y,
+    nodeWidth = defaultNodeWidth.value,
+    nodeHeight = defaultNodeHeight.value,
+  ) {
     nodeXR.value = Math.max(nodeXR.value, x + nodeWidth)
     nodeYB.value = Math.max(nodeYB.value, y + nodeHeight)
     nodeYT.value = Math.min(nodeYT.value, y)
@@ -470,6 +481,12 @@ export const useNode = defineStore('nodes', () => {
       },
       expand: true,
       isStepLock: false,
+      // Individual alt sizing (can be different from defaults)
+      sizing: {
+        canvasWidth: defaultCanvasWidth.value,
+        nodeWidth: defaultNodeWidth.value,
+        nodeHeight: defaultNodeHeight.value,
+      },
     }
   }
 
@@ -761,11 +778,29 @@ export const useNode = defineStore('nodes', () => {
    * @returns {Object} Layout coordinates
    */
   function calculateMultiAltLayout(currentNodeX, currentNodeY, numAlts) {
-    const maxY = currentNodeY + (NODE_HEIGHT / 2) * (numAlts - 1)
-    const minY = currentNodeY - (NODE_HEIGHT / 2) * (numAlts - 1)
-    const x = currentNodeX + NODE_WIDTH + NODE_ADJACENCY_SPACING
+    const maxY = currentNodeY + (defaultNodeHeight.value / 2) * (numAlts - 1)
+    const minY = currentNodeY - (defaultNodeHeight.value / 2) * (numAlts - 1)
+    const x = currentNodeX + defaultNodeWidth.value + NODE_ADJACENCY_SPACING
 
     return { maxY, minY, x }
+  }
+
+  /**
+   * Update the sizing of a specific alt
+   * @param {string} altId - ID of the alt to update
+   * @param {number} canvasWidth - New canvas width
+   */
+  function updateAltSizing(altId, canvasWidth) {
+    const alt = findAlt(altId)
+    if (!alt) {
+      console.warn(`Alt with ID ${altId} not found`)
+      return
+    }
+
+    // Update the alt's sizing while maintaining aspect ratio (1:1 for canvas)
+    alt.sizing.canvasWidth = canvasWidth
+    alt.sizing.nodeWidth = canvasWidth + 20
+    alt.sizing.nodeHeight = canvasWidth + 120
   }
 
   /**
@@ -853,7 +888,10 @@ export const useNode = defineStore('nodes', () => {
     // Validate that we got proper object properties before proceeding
     const objectProps = { objOrProp, objectText, visibleProps, adjObjectText }
     if (!validateObjectProperties(objectProps, ['objOrProp', 'objectText', 'visibleProps'])) {
-      console.warn('getObjectProperties returned empty values, aborting addOnExistingAlt:', objectProps)
+      console.warn(
+        'getObjectProperties returned empty values, aborting addOnExistingAlt:',
+        objectProps,
+      )
       return
     }
     // Step 5: Generate new image
@@ -919,8 +957,8 @@ export const useNode = defineStore('nodes', () => {
 
     // Step 6: Update canvas boundaries
     nodeYT.value = minY + offsetY.value
-    nodeYB.value = Math.max(maxY + NODE_HEIGHT, nodeYB.value) + offsetY.value
-    nodeXR.value = Math.max(nodeXR.value, x + NODE_WIDTH)
+    nodeYB.value = Math.max(maxY + defaultNodeHeight.value, nodeYB.value) + offsetY.value
+    nodeXR.value = Math.max(nodeXR.value, x + defaultNodeWidth.value)
 
     // Step 7: Prepare properties for object detection
     const propsAltered = altObjs
@@ -943,7 +981,7 @@ export const useNode = defineStore('nodes', () => {
     // Step 9: Generate alts sequentially
     const urls = []
     for (let i = 0; i < altObjs.length; i++) {
-      const y = maxY - NODE_HEIGHT * i + offsetY.value
+      const y = maxY - defaultNodeHeight.value * i + offsetY.value
       altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
       altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
       // Set initial historyStateIndex to 1 for new alts (they'll have their first meaningful state at index 1)
@@ -1098,13 +1136,16 @@ export const useNode = defineStore('nodes', () => {
 
   // ===== EXPORTED VALUES AND FUNCTIONS =====
   return {
-    // Constants
+    // Constants and Reactive Sizing
     nodeXR,
     nodeYB,
     nodeYT,
-    nodeW: NODE_WIDTH,
-    nodeH: NODE_HEIGHT,
-    canvasW: CANVAS_WIDTH,
+    nodeW: defaultNodeWidth,
+    nodeH: defaultNodeHeight,
+    canvasW: defaultCanvasWidth,
+    defaultCanvasWidth,
+    defaultNodeWidth,
+    defaultNodeHeight,
 
     // State Management
     layerPayload,
@@ -1156,5 +1197,8 @@ export const useNode = defineStore('nodes', () => {
     addEdgeConnection,
     removeEdgeConnection,
     getAltEdges,
+
+    // Alt Sizing Management
+    updateAltSizing,
   }
 })
