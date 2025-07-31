@@ -874,23 +874,6 @@ export const useNode = defineStore('nodes', () => {
   }
 
   /**
-   * Update positions of alt nodes in layout
-   * @param {number} maxY - Maximum Y coordinate
-   * @param {number} minY - Minimum Y coordinate
-   * @param {number} x - X coordinate
-   * @param {Object} node - Node object containing alts
-   */
-  // function updateAltPos(maxY, minY, x, node, branch) {
-  //   // const visibleNodeList = node.alts.filter((alt) => !branch.expandedAltIds.includes(alt.id))
-  //   // const visibleNodeList = node.alts.filter((alt) => alt.expand !== false)
-  //   // for (let i = 0; i < visibleNodeList.length; i++) {
-  //   //   const alt = visibleNodeList[i]
-  //   //   alt.position.x = x
-  //   //   alt.position.y = maxY - NODE_HEIGHT * i + offsetY.value
-  //   // }
-  // }
-
-  /**
    * Update properties of an existing alt and generate a new image
    * @param {Array} altObjs - Array of alt property objects
    * @param {string} nodeBranchId - Branch ID

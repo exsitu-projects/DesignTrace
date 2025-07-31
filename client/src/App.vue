@@ -330,27 +330,70 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
 }
 
 function onDrag(x, y, alt) {
+  const clampedX = Math.max(0, x)
+  const clampedY = Math.max(0, y)
   allUtilStore.nodeOnDrag = true
-
   if (alt !== undefined) {
     alt.dragAgain = true
     //dragging an alt
-    alt.position.x = x
-    alt.position.y = y
+    alt.position.x = clampedX
+    alt.position.y = clampedY
     ensureNodeInView(x, y)
   } else {
     //dragging the palette
-    position.x = x
-    position.y = y
+    position.x = clampedX
+    position.y = clampedY
   }
   nodeStore.selectedIndices = []
 }
 
 function ensureNodeInView(nodeXL, nodeYT) {
-  const draggingXR = nodeXL + nodeStore.nodeW
-  const draggingYB = nodeYT + nodeStore.nodeH
+  const draggingXR = nodeXL + nodeStore.nodeW.value
+  const draggingYB = nodeYT + nodeStore.nodeH.value
+  
+  // Handle positive boundaries (right and bottom)
   if (nodeStore.nodeXR < draggingXR) nodeStore.setNodeXR(draggingXR)
   if (nodeStore.nodeYB < draggingYB) nodeStore.setNodeYB(draggingYB)
+  
+  // Handle negative boundaries (left and top)
+  if (nodeXL < 0) {
+    // Shift all existing nodes to the right by the absolute value of the negative X
+    const offsetX = Math.abs(nodeXL)
+    
+    // Update all alt positions
+    nodeStore.nodeBranchList.forEach(branch => {
+      branch.nodes.forEach(node => {
+        node.alts.forEach(alt => {
+          alt.position.x += offsetX
+        })
+      })
+    })
+    
+    // Extend the right boundary to accommodate the shift
+    nodeStore.setNodeXR(nodeStore.nodeXR + offsetX)
+  }
+  
+  if (nodeYT < 0) {
+    // Shift all existing nodes down by the absolute value of the negative Y
+    const offsetY = Math.abs(nodeYT)
+    
+    // Update all alt positions
+    nodeStore.nodeBranchList.forEach(branch => {
+      branch.nodes.forEach(node => {
+        node.alts.forEach(alt => {
+          alt.position.y += offsetY
+        })
+      })
+    })
+    
+    // Extend the bottom boundary to accommodate the shift
+    nodeStore.setNodeYB(nodeStore.nodeYB + offsetY)
+    
+    // Update the top boundary reference if it exists
+    if (nodeStore.nodeYT !== undefined) {
+      nodeStore.nodeYT = Math.max(0, nodeStore.nodeYT + offsetY)
+    }
+  }
 }
 
 function getBezierPath(edge) {
