@@ -38,7 +38,12 @@
 import { ref, watch, nextTick } from 'vue'
 
 const model = defineModel()
-const emit = defineEmits(['update:modelValue', 'delete-label', 'property-name-finalized'])
+const emit = defineEmits([
+  'editing-changed',
+  'update:modelValue',
+  'delete-label',
+  'property-name-finalized',
+])
 
 const props = defineProps({
   type: String,
@@ -78,7 +83,7 @@ const startEditing = () => {
   isEditing.value = true
   text.value = model.value
   updateWidth()
-
+  emit('editing-changed', true)
   // Focus the input element after DOM update
   nextTick(() => {
     if (input.value) {
@@ -95,7 +100,7 @@ const onKeyDown = (e) => {
 
 const save = () => {
   emit('update:modelValue', text.value)
-
+  emit('editing-changed', false)
   // Only emit property-name-finalized if this is specifically a property name EditableLabel
   if (props.isPropertyName && text.value !== 'Attribute' && text.value.trim() !== '') {
     emit('property-name-finalized', text.value)

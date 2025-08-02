@@ -39,12 +39,17 @@
         <!-- each tag -->
         <template #item="{ element, index: tagIdx }">
           <span
+            :style="{
+              pointerEvents: editingStates[rowIdx]?.[tagIdx] ? 'none' : 'auto',
+              cursor: editingStates[rowIdx]?.[tagIdx] ? 'default' : 'pointer',
+              userSelect: 'none',
+            }"
+            @click.stop="!editingStates[rowIdx]?.[tagIdx] && toggleTagSelection(rowIdx, tagIdx)"
             class="badge m-1 tag-selectable"
             :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
-            @click.stop="toggleTagSelection(rowIdx, tagIdx)"
-            style="cursor: pointer; user-select: none"
           >
             <EditableLabel
+              @editing-changed="onEditingChanged(rowIdx, tagIdx, $event)"
               :draggable="true"
               @dragstart="
                 (e) =>
@@ -163,7 +168,7 @@ import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import { onMounted, onUnmounted, ref, watch, Teleport } from 'vue'
+import { onMounted, onUnmounted, ref, watch, Teleport, reactive } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
 import { Lasso, SquareStack } from 'lucide-vue-next'
 
@@ -194,6 +199,13 @@ const getRemainingGhostTags = (rowIdx) => {
   )
 
   return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
+}
+
+const editingStates = reactive({})
+
+function onEditingChanged(rowIdx, tagIdx, editing) {
+  if (!editingStates[rowIdx]) editingStates[rowIdx] = {}
+  editingStates[rowIdx][tagIdx] = editing
 }
 
 // Functions to handle ghost tag visibility with delay
