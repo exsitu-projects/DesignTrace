@@ -1198,6 +1198,28 @@ export const useNode = defineStore('nodes', () => {
       incoming: incomingEdges,
     }
   }
+  function mergeCanvasPrompt() {
+    return 'Rerender this image to make it visually consistent. Blend in any foreign or out-of-place objects so that the entire scene looks coherent and naturally composed.'
+  }
+  async function mergeWholeCanvas(dataUrl, altId) {
+    try {
+      let imgUrl = null
+      // Generate appropriate prompt and image based on payload type
+      const prompt = mergeCanvasPrompt()
+      imgUrl = await generationStore.generateOpenAIImg({
+        original_image: dataUrl,
+        prompt: prompt,
+        altId: altId,
+      })
+      if (imgUrl) {
+        addAltImgPayload.value = { url: imgUrl, altId: altId }
+      }
+      return imgUrl
+    } catch (error) {
+      console.error('Image generation failed:', error)
+      return null
+    }
+  }
 
   function exportAltToFreeCanv(base64CanvasUrl, unique_id, x, y) {
     exportAlt.value = {
@@ -1277,5 +1299,6 @@ export const useNode = defineStore('nodes', () => {
     updateAltSizing,
     exportAltToFreeCanv,
     exportAlt,
+    mergeWholeCanvas,
   }
 })

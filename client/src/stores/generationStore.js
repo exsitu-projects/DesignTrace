@@ -264,7 +264,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
           total_mask,
           prompt,
         }),
-        //body: JSON.stringify({ original_image, total_mask, prompt }),
       })
       const result = await response.json()
 

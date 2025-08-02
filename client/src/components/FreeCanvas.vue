@@ -252,6 +252,37 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
         perPixelTargetFind: true,
         hasBorders: false,
       })
+      // SkewX (horizontal handle – right)
+      fabricImage.controls.skewXControl = new fabric.Control({
+        x: 0.5,
+        y: 0,
+        offsetX: 20,
+        cursorStyle: 'ew-resize',
+        render: fabric.controlsUtils.renderCircleControl,
+        actionHandler: function (eventData, transform) {
+          const target = transform.target
+          const deltaX = eventData.movementX || 0
+          const currentSkewX = target.skewX || 0
+          target.set('skewX', currentSkewX + deltaX / 20) // smaller step
+          return true
+        },
+      })
+
+      // SkewY (vertical handle – top)
+      fabricImage.controls.skewYControl = new fabric.Control({
+        x: 0,
+        y: -0.5,
+        offsetY: -20,
+        cursorStyle: 'ns-resize',
+        render: fabric.controlsUtils.renderCircleControl,
+        actionHandler: function (eventData, transform) {
+          const target = transform.target
+          const deltaY = eventData.movementY || 0
+          const currentSkewY = target.skewY || 0
+          target.set('skewY', currentSkewY + deltaY / 10) // smaller step
+          return true
+        },
+      })
 
       fabricImage.scaleToWidth(250)
       fabricImage.set('idInUpload', id) // assign your own ID

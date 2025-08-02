@@ -11,13 +11,13 @@
       <!--      {{ alt.id }}-->
 
       <!-- Transform Button (appears on the left when needed) -->
-
-      <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
-        Transform
-      </button>
       <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
         <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
       </button>
+      <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
+        Merge Edits
+      </button>
+
       <!-- Undo/Redo Controls -->
       <div class="d-flex align-items-center gap-1 ms-auto">
         <button
@@ -837,7 +837,7 @@ function whiteToTransparent(canvas) {
   return canvas.toDataURL('image/png')
 } // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
 
-function transform() {
+async function transform() {
   if (allUtilStore.isColorPen) {
     let left = Infinity,
       top = Infinity,
@@ -916,6 +916,14 @@ function transform() {
     changeDetected.value = false
 
     // Save state after transform
+    saveState()
+  } else {
+    fabricCanvas.discardActiveObject()
+    fabricCanvas.requestRenderAll()
+    saveState()
+    const dataUrl = fabricCanvas.toDataURL({ format: 'png' })
+    await nodeStore.mergeWholeCanvas(dataUrl, alt.id)
+    changeDetected.value = false
     saveState()
   }
   // else if (allUtilStore.isLassoMode) {
@@ -1072,7 +1080,38 @@ watch(
             left: pointer.x,
             top: pointer.y,
           })
+          // Add skewX control (top-middle)
+          // SkewX (horizontal handle – right)
+          fabricImage.controls.skewXControl = new fabric.Control({
+            x: 0.5,
+            y: 0,
+            offsetX: 20,
+            cursorStyle: 'ew-resize',
+            render: fabric.controlsUtils.renderCircleControl,
+            actionHandler: function (eventData, transform) {
+              const target = transform.target
+              const deltaX = eventData.movementX || 0
+              const currentSkewX = target.skewX || 0
+              target.set('skewX', currentSkewX + deltaX / 20) // smaller step
+              return true
+            },
+          })
 
+          // SkewY (vertical handle – top)
+          fabricImage.controls.skewYControl = new fabric.Control({
+            x: 0,
+            y: -0.5,
+            offsetY: -20,
+            cursorStyle: 'ns-resize',
+            render: fabric.controlsUtils.renderCircleControl,
+            actionHandler: function (eventData, transform) {
+              const target = transform.target
+              const deltaY = eventData.movementY || 0
+              const currentSkewY = target.skewY || 0
+              target.set('skewY', currentSkewY + deltaY / 10) // smaller step
+              return true
+            },
+          })
           fabricImage.scaleToWidth(fabricCanvas.width)
           fabricImage.set('idInLayers', newPayload.id) // assign your own ID
           if (existingImage) {
@@ -1081,7 +1120,7 @@ watch(
           fabricCanvas.add(fabricImage)
           fabricCanvas.renderAll()
           objectStore.obj = {}
-
+          changeDetected.value = true
           // Save state after adding image
           console.log('Saving state after adding dragged image')
           saveState()
@@ -1139,6 +1178,37 @@ watch(
           hasControls: true,
           left: 0,
           top: 0,
+        })
+        // SkewX (horizontal handle – right)
+        fabricImage.controls.skewXControl = new fabric.Control({
+          x: 0.5,
+          y: 0,
+          offsetX: 20,
+          cursorStyle: 'ew-resize',
+          render: fabric.controlsUtils.renderCircleControl,
+          actionHandler: function (eventData, transform) {
+            const target = transform.target
+            const deltaX = eventData.movementX || 0
+            const currentSkewX = target.skewX || 0
+            target.set('skewX', currentSkewX + deltaX / 20) // smaller step
+            return true
+          },
+        })
+
+        // SkewY (vertical handle – top)
+        fabricImage.controls.skewYControl = new fabric.Control({
+          x: 0,
+          y: -0.5,
+          offsetY: -20,
+          cursorStyle: 'ns-resize',
+          render: fabric.controlsUtils.renderCircleControl,
+          actionHandler: function (eventData, transform) {
+            const target = transform.target
+            const deltaY = eventData.movementY || 0
+            const currentSkewY = target.skewY || 0
+            target.set('skewY', currentSkewY + deltaY / 10) // smaller step
+            return true
+          },
         })
 
         fabricImage.scaleToWidth(fabricCanvas.width)
