@@ -8,6 +8,7 @@ import {
   Lock,
   LockOpen,
   ImageMinus,
+  ArrowUpWideNarrow,
 } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { Collapse } from 'bootstrap'
@@ -16,20 +17,24 @@ import * as fabric from 'fabric'
 const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso', 'removeBg'])
 
 const allUtilStore = useAllUtil()
-
+function propagateChange() {
+  allUtilStore.switchPropagateMode()
+  if (allUtilStore.isPropagate) closeColorPicker()
+}
 function switchLasso() {
   allUtilStore.switchLassoMode()
 
   // Hide color picker when lasso is activated (after the toggle)
-  if (allUtilStore.isLassoMode) {
-    setTimeout(() => {
-      const collapseEl = document.getElementById('collapseExample')
-      if (collapseEl && collapseEl.classList.contains('show')) {
-        const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
-        bsCollapse.hide()
-      }
-    }, 10) // Small delay to ensure toggle has completed
-  }
+  if (allUtilStore.isLassoMode) closeColorPicker()
+}
+function closeColorPicker() {
+  setTimeout(() => {
+    const collapseEl = document.getElementById('collapseExample')
+    if (collapseEl && collapseEl.classList.contains('show')) {
+      const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
+      bsCollapse.hide()
+    }
+  }, 10) // Small delay to ensure toggle has completed
 }
 
 function switchColorPen() {
@@ -70,6 +75,18 @@ function switchStepLock() {
     </button>
     <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
       <ImageMinus color="black" :size="15"></ImageMinus>
+    </button>
+    <button
+      title="Propagate Change"
+      @click="propagateChange()"
+      :class="['btn btn-sm btn-light', { active: allUtilStore.isPropagate }]"
+    >
+      <ArrowUpWideNarrow
+        style="transform: rotate(90deg)"
+        color="black"
+        :size="15"
+      ></ArrowUpWideNarrow
+      >Propagate
     </button>
 
     <button
