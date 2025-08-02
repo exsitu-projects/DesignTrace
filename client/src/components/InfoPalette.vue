@@ -13,11 +13,21 @@
       <EditableLabel
         v-model="row.name"
         style="min-width: 80px"
-        :class="['my-auto bg-transparent ']"
+        :class="[
+          'my-auto ',
+          clickedStates[rowIdx]?.propertyName ? 'bg-dark text-light' : 'bg-light text-dark',
+        ]"
         :draggable="true"
         @dragstart="(e) => handleDragStart(e, row, row.name)"
         @mouseup="handleMouseUp(rowIdx, row.name)"
-        @click.stop="handlePropertyNameClick(rowIdx, row)"
+        @editing-changed="(editing) => onEditingChanged(rowIdx, 'propertyName', editing)"
+        @click.stop="
+          () => {
+            if (!editingStates[rowIdx]?.propertyName) {
+              handlePropertyNameClick(rowIdx, row)
+            }
+          }
+        "
         :isPropertyName="true"
         @property-name-finalized="
           (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
@@ -45,7 +55,7 @@
               userSelect: 'none',
             }"
             @click.stop="!editingStates[rowIdx]?.[tagIdx] && toggleTagSelection(rowIdx, tagIdx)"
-            class="badge m-1 tag-selectable"
+            class="badge m-1"
             :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
           >
             <EditableLabel
@@ -142,7 +152,7 @@
           top: mousePosition.y - 10 + 'px',
         }"
       >
-        <Lasso color="black" :size="15"></Lasso>
+        <Split style="transform: rotate(90deg)" color="black" :size="15"></Split>
         <!-- Property mode: show individual tag elements -->
         <div v-if="infoStore.isPropertyMode" class="property-tags-container">
           <div
@@ -170,7 +180,7 @@ import { useGeneration } from '@/stores/generationStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { onMounted, onUnmounted, ref, watch, Teleport, reactive } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
-import { Lasso, SquareStack } from 'lucide-vue-next'
+import { Lasso, SquareStack, Split } from 'lucide-vue-next'
 
 const infoStore = useInfoStore()
 const objectStore = useObject()
@@ -591,6 +601,7 @@ const handleMouseMove = (event) => {
 // Function to exit lasso mode
 const exitLassoMode = (skipStoreUpdate = false) => {
   allUtilStore.isToolTip = false
+  clickedStates.value = {}
   infoStore.selectedTags = []
   infoStore.lassoTagContent = ''
   infoStore.isPropertyMode = false
@@ -603,6 +614,7 @@ const exitLassoMode = (skipStoreUpdate = false) => {
     allUtilStore.switchLassoMode() // Only toggle if currently on
   }
 }
+const clickedStates = ref({})
 
 // Function to handle property name click
 const handlePropertyNameClick = (rowIdx, row) => {
@@ -621,6 +633,19 @@ const handlePropertyNameClick = (rowIdx, row) => {
     infoStore.propertyTags = []
     exitLassoMode()
   } else {
+    if (clickedStates.value) exitLassoMode()
+    if (!clickedStates.value[rowIdx]) clickedStates.value[rowIdx] = {}
+    clickedStates.value[rowIdx].propertyName = true
+    const row = rows.value[rowIdx]
+    row.tags.forEach((tag, tagIdx) => {
+      infoStore.selectedTags.push({
+        propName: row.name,
+        tag: tag.tag,
+        rowIdx,
+        tagIdx,
+      })
+    })
+
     // Set property mode and store individual tags
     infoStore.isPropertyMode = true
     infoStore.propertyTags = tagTexts
