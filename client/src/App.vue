@@ -12,15 +12,8 @@
       <Check color="green" :size="15" />&nbsp;Collapse Other Nodes
     </button>
     <!-- nodes & alts overlay -->
-    <div
-      class="svg-wrapper"
-      @keydown.delete="handleDelete"
-      tabindex="0"
-      ref="svgWrapper"
-      style="outline: none"
-    >
+    <div @keydown.delete="handleDelete" tabindex="0" ref="svgWrapper" style="outline: none">
       <svg
-        class="arrows-layer"
         :width="nodeStore.nodeXR"
         :height="nodeStore.nodeYB"
         style="position: absolute; top: 0; left: 0; pointer-events: none"
@@ -348,47 +341,46 @@ function onDrag(x, y, alt) {
 }
 
 function ensureNodeInView(nodeXL, nodeYT) {
-  const draggingXR = nodeXL + nodeStore.nodeW.value
-  const draggingYB = nodeYT + nodeStore.nodeH.value
-  
+  const draggingXR = nodeXL + nodeStore.nodeW
+  const draggingYB = nodeYT + nodeStore.nodeH
   // Handle positive boundaries (right and bottom)
   if (nodeStore.nodeXR < draggingXR) nodeStore.setNodeXR(draggingXR)
   if (nodeStore.nodeYB < draggingYB) nodeStore.setNodeYB(draggingYB)
-  
+
   // Handle negative boundaries (left and top)
   if (nodeXL < 0) {
     // Shift all existing nodes to the right by the absolute value of the negative X
     const offsetX = Math.abs(nodeXL)
-    
+
     // Update all alt positions
-    nodeStore.nodeBranchList.forEach(branch => {
-      branch.nodes.forEach(node => {
-        node.alts.forEach(alt => {
+    nodeStore.nodeBranchList.forEach((branch) => {
+      branch.nodes.forEach((node) => {
+        node.alts.forEach((alt) => {
           alt.position.x += offsetX
         })
       })
     })
-    
+
     // Extend the right boundary to accommodate the shift
     nodeStore.setNodeXR(nodeStore.nodeXR + offsetX)
   }
-  
+
   if (nodeYT < 0) {
     // Shift all existing nodes down by the absolute value of the negative Y
     const offsetY = Math.abs(nodeYT)
-    
+
     // Update all alt positions
-    nodeStore.nodeBranchList.forEach(branch => {
-      branch.nodes.forEach(node => {
-        node.alts.forEach(alt => {
+    nodeStore.nodeBranchList.forEach((branch) => {
+      branch.nodes.forEach((node) => {
+        node.alts.forEach((alt) => {
           alt.position.y += offsetY
         })
       })
     })
-    
+
     // Extend the bottom boundary to accommodate the shift
     nodeStore.setNodeYB(nodeStore.nodeYB + offsetY)
-    
+
     // Update the top boundary reference if it exists
     if (nodeStore.nodeYT !== undefined) {
       nodeStore.nodeYT = Math.max(0, nodeStore.nodeYT + offsetY)
@@ -471,7 +463,6 @@ onMounted(() => {
 .nodes-layer {
   position: absolute;
   inset: 0; /* full overlay */
-  pointer-events: none;
 }
 
 /* direct children (each VueDraggableResizable) regain events */

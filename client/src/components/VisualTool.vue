@@ -68,6 +68,9 @@ function switchStepLock() {
     >
       <Lasso color="black" :size="15" />
     </button>
+    <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
+      <ImageMinus color="black" :size="15"></ImageMinus>
+    </button>
 
     <button
       :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"
@@ -89,9 +92,7 @@ function switchStepLock() {
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
-  <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm ms-2">
-    <ImageMinus color="black" :size="15"></ImageMinus>
-  </button>
+
   <!--  <button-->
   <!--    type="button"-->
   <!--    @click="switchStepLock()"-->

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useGeneration } from '@/stores/generationStore.js'
 
 /**
@@ -37,8 +37,8 @@ export const useNode = defineStore('nodes', () => {
   const layerPayload = ref(null)
 
   // Layout boundaries
-  const nodeXR = ref(0) // Right boundary
-  const nodeYB = ref(0) // Bottom boundary
+  const nodeXR = ref(1920) // Right boundary
+  const nodeYB = ref(1080) // Bottom boundary
   const nodeYT = ref(0) // Top boundary
   const offsetY = ref(0) // Vertical offset for positioning
 
@@ -1126,8 +1126,10 @@ export const useNode = defineStore('nodes', () => {
     if (!toAlt.prevAltId) {
       toAlt.prevAltId = fromAltId
     }
+    nextTick(() => {
+      // DOM re-render completed
+    })
 
-    console.log(`Added edge: ${fromAltId} -> ${toAltId}`)
     return true
   }
 

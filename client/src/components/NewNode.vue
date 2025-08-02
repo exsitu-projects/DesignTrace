@@ -1600,13 +1600,11 @@ function stopResize() {
 .node-tags {
   display: flex;
   flex-wrap: nowrap; /* no wrapping, keep single line */
-  gap: 0.2rem;
   flex: 1; /* take available space but don't expand parent */
   max-width: 100%;
   box-sizing: border-box;
-  padding: 0.3rem;
   /* optionally set a fixed height */
-  height: 2rem; /* adjust to fit your tag buttons nicely */
+  height: auto; /* adjust to fit your tag buttons nicely */
   align-items: center; /* vertically center buttons */
   overflow-x: auto; /* enable horizontal scrolling */
   overflow-y: hidden; /* hide vertical scrolling */
