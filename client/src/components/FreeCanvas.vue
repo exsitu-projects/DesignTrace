@@ -29,7 +29,11 @@
       @change="uploadFiles"
       style="display: none"
     />
-    <VisualTool @forwardLayer="forwardOneLayer" @backwardLayer="backwardOneLayer"></VisualTool>
+    <VisualTool
+      @removeBg="removeBg"
+      @forwardLayer="forwardOneLayer"
+      @backwardLayer="backwardOneLayer"
+    ></VisualTool>
 
     <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
     <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
@@ -80,7 +84,6 @@ import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
 import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
-
 import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
@@ -91,6 +94,7 @@ import ColorPicker from '@/components/colorPicker.vue'
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
+const generationStore = useGeneration()
 const nodeStore = useNode()
 const layoutStore = useLayout()
 const $ = (id) => document.getElementById(id)
@@ -297,7 +301,28 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
     console.error('Failed to load image')
   }
 }
+async function removeBg() {
+  const activeObj = canvas.getActiveObject()
+  if (!activeObj) {
+    console.warn('No active object selected.')
+    return // Or handle this case as needed
+  }
 
+  let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
+  for (const obj of objectsToProcess) {
+    // 1. Export object as base64 (you may want to export just that object)
+    const base64Url = obj.toDataURL({
+      format: 'png',
+      multiplier: 2,
+    })
+
+    // 2. Call your bg removal API
+    const newBase64Url = await generationStore.removeBg(base64Url)
+    canvas.remove(obj)
+    // 3. Create new Fabric.Image from processed base64
+    loadImgFromUrl(newBase64Url, obj.idInUpload, obj.left, obj.top)
+  }
+}
 const addBranchNodeAlt = () => {
   // it opens a new node and add a new alt
   nodeStore.addNodeBranch()

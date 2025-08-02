@@ -14,8 +14,16 @@
       <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
         <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
       </button>
+      <button
+        title="Remove background"
+        v-show="objectActive"
+        @click="removeBg()"
+        class="btn btn-sm ms-2"
+      >
+        <ImageMinus color="gray" :size="20"></ImageMinus>
+      </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
-        Merge Edits
+        Merge All
       </button>
 
       <!-- Undo/Redo Controls -->
@@ -149,6 +157,7 @@ import {
   ArrowRight,
   Split,
   UndoDot,
+  ImageMinus,
   GitPullRequestCreate,
   Lock,
   LockOpen,
@@ -404,7 +413,10 @@ onMounted(() => {
   setTimeout(() => {
     saveState()
   }, 100)
-
+  // Listen to selection events on fabricCanvas and update reactive ref
+  fabricCanvas.on('selection:created', (e) => (activeObject.value = e.target))
+  fabricCanvas.on('selection:updated', (e) => (activeObject.value = e.target))
+  fabricCanvas.on('selection:cleared', () => (activeObject.value = null))
   fabricCanvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       // Check if clicking on existing lasso area
@@ -740,6 +752,42 @@ const handleCanvasKeyDown = (e) => {
     e.preventDefault()
     e.stopPropagation()
     deleteSelectedObjects()
+  }
+}
+const activeObject = ref(null)
+
+const objectActive = computed(() => activeObject.value !== null)
+async function removeBg() {
+  const activeObj = fabricCanvas.getActiveObject()
+  if (!activeObj) {
+    console.warn('No active object selected.')
+    return // Or handle this case as needed
+  }
+
+  let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
+  for (const obj of objectsToProcess) {
+    // 1. Export object as base64 (you may want to export just that object)
+    const base64Url = obj.toDataURL({
+      format: 'png',
+      multiplier: 2,
+    })
+
+    // 2. Call your bg removal API
+    generationStore.currentGenId = alt.id
+    const newBase64Url = await generationStore.removeBg(base64Url)
+    fabricCanvas.remove(obj)
+    // 3. Create new Fabric.Image from processed base64
+    nodeStore.addAltImgPayload = {
+      url: newBase64Url,
+      altId: alt.id,
+      left: obj.left,
+      top: obj.top,
+      scaleX: obj.scaleX,
+      scaleY: obj.scaleY,
+      angle: obj.angle,
+      originX: obj.originX,
+      originY: obj.originY,
+    }
   }
 }
 
@@ -1176,8 +1224,13 @@ watch(
           selectable: true,
           perPixelTargetFind: true,
           hasControls: true,
-          left: 0,
-          top: 0,
+          left: newPayload.left || 0,
+          top: newPayload.top || 0,
+          scaleX: newPayload.scaleX || 1,
+          scaleY: newPayload.scaleY || 1,
+          angle: newPayload.angle || 0,
+          originX: newPayload.originX || 'left', // assuming default 'left' if undefined
+          originY: newPayload.originY || 'top', // assuming default 'top' if undefined
         })
         // SkewX (horizontal handle – right)
         fabricImage.controls.skewXControl = new fabric.Control({

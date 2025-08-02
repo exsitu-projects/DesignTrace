@@ -248,6 +248,34 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
       alert('Image generation failed. Please try again.')
     }
   }
+  async function removeBg(base64Url) {
+    loadingStatus.value = 'loading'
+    try {
+      const response = await fetch('http://localhost:5555/remove-bg', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          src: base64Url,
+        }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        console.log(result.output)
+        return result.output
+      } else {
+        console.log(result.error)
+        return null
+      }
+    } catch (err) {
+      console.log(err.message)
+      return null
+    } finally {
+      loadingStatus.value = 'finished'
+    }
+  }
 
   async function generateOpenAIImg({ original_image, total_mask, prompt, altId }) {
     loadingStatus.value = 'loading'
@@ -381,5 +409,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     getGhostTagsForRow,
     ghostTagsPerRow,
     isGhostTagsLoading,
+    removeBg,
   }
 })

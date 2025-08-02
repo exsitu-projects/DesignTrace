@@ -92,6 +92,33 @@ def static_to_base64(file_path: str) -> str:
         b64 = base64.b64encode(f.read()).decode('utf-8')
 
     return f'data:{mime};base64,{b64}'
+def base64_to_static(base64_url, output_dir="static/assets"):
+    # Ensure the directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Split the header and the base64 data
+    if ',' not in base64_url:
+        raise ValueError("Invalid base64 image URL")
+
+    header, encoded = base64_url.split(",", 1)
+
+    # Determine the image extension from the header
+    if "image/png" in header:
+        ext = "png"
+    elif "image/jpeg" in header:
+        ext = "jpg"
+    else:
+        raise ValueError("Unsupported image format")
+
+    # Generate unique filename
+    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(output_dir, unique_name)
+
+    # Decode and save
+    with open(file_path, "wb") as f:
+        f.write(base64.b64decode(encoded))
+
+    return file_path  # e.g., 'static/assets/abc123.png'
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
@@ -135,73 +162,22 @@ def remove_bg(src_img_path, out_img_path):
 
 @app.route('/remove-bg', methods=['POST'])
 def remove_bg_endpoint():
+    # remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
     json_data = request.get_json()
-    if not json_data or 'src' not in json_data or 'dst' not in json_data:
+    if not json_data or 'src' not in json_data:
         return jsonify({"error": "JSON must include 'src' and 'dst'"}), 400
-
     src_path = json_data['src']
-    dst_path = json_data['dst']
+    if 'static' not in src_path:
+        src_path = base64_to_static(src_path)
+    unique_name = str(uuid.uuid4())  # e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+    dst_path = f"static/assets/{unique_name}.png"
 
     try:
         remove_bg(src_path, dst_path)
-        return jsonify({"status": "success", "output": dst_path})
+        return jsonify({"status": "success", "output": static_to_base64(dst_path)})
     except Exception as e:
+        print(f"Error during remove_bg: {e}")  # Optional: for debugging
         return jsonify({"error": str(e)}), 500
-
-@app.route('/merge-everything', methods=['POST'])
-def merge_everything():
-    json_data = request.get_json()
-    if not json_data or 'image_base64' not in json_data or 'output_path' not in json_data:
-        return jsonify({"error": "JSON must include 'image_base64' and 'output_path'"}), 400
-
-    image_base64 = json_data['image_base64']
-    prompt = json_data.get('prompt', '')
-    output_path = json_data['output_path']
-
-    if image_base64.startswith("data:image"):
-        image_base64 = image_base64.split(",", 1)[1]
-
-    try:
-        input_path = "static/assets/input.png"
-        os.makedirs(os.path.dirname(input_path), exist_ok=True)
-
-        # Save the uploaded image to a file
-        with open(input_path, "wb") as f:
-            f.write(base64.b64decode(image_base64))
-
-        # Call OpenAI API directly with the file
-        with open(input_path, "rb") as image_file:
-            result = client.images.edit(
-                model="gpt-image-1",
-                image=image_file,
-                prompt=prompt,
-                quality="high",
-                size="1024x1024",
-            )
-
-        # Process result
-        result_base64 = result.data[0].b64_json
-        output_bytes = base64.b64decode(result_base64)
-
-        # Resize and save
-        image = Image.open(io.BytesIO(output_bytes))
-        resized_image = image.resize((512, 512), Image.LANCZOS)
-        resized_image.save(output_path)
-
-        # Convert to base64 for response
-        buffered = io.BytesIO()
-        resized_image.save(buffered, format="PNG")
-        output_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        output_base64 = f"data:image/png;base64,{output_base64}"
-        return jsonify({
-            "status": "success",
-            "output": output_base64,
-        })
-
-    except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
 
 @app.route('/sample-properties', methods=['POST'])
@@ -374,7 +350,7 @@ def image_to_labels():
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
-# remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
+
 # Imports the Google Cloud client library
 # from google.cloud import vision
 # @app.route("/api/run-vision")
@@ -391,6 +367,64 @@ def image_to_labels():
 #     label_descriptions = [label.description for label in labels]
 #
 #     return jsonify({"labels": label_descriptions})
+
+
+
+# @app.route('/merge-everything', methods=['POST'])
+# def merge_everything():
+#     json_data = request.get_json()
+#     if not json_data or 'image_base64' not in json_data or 'output_path' not in json_data:
+#         return jsonify({"error": "JSON must include 'image_base64' and 'output_path'"}), 400
+#
+#     image_base64 = json_data['image_base64']
+#     prompt = json_data.get('prompt', '')
+#     output_path = json_data['output_path']
+#
+#     if image_base64.startswith("data:image"):
+#         image_base64 = image_base64.split(",", 1)[1]
+#
+#     try:
+#         input_path = "static/assets/input.png"
+#         os.makedirs(os.path.dirname(input_path), exist_ok=True)
+#
+#         # Save the uploaded image to a file
+#         with open(input_path, "wb") as f:
+#             f.write(base64.b64decode(image_base64))
+#
+#         # Call OpenAI API directly with the file
+#         with open(input_path, "rb") as image_file:
+#             result = client.images.edit(
+#                 model="gpt-image-1",
+#                 image=image_file,
+#                 prompt=prompt,
+#                 quality="high",
+#                 size="1024x1024",
+#             )
+#
+#         # Process result
+#         result_base64 = result.data[0].b64_json
+#         output_bytes = base64.b64decode(result_base64)
+#
+#         # Resize and save
+#         image = Image.open(io.BytesIO(output_bytes))
+#         resized_image = image.resize((512, 512), Image.LANCZOS)
+#         resized_image.save(output_path)
+#
+#         # Convert to base64 for response
+#         buffered = io.BytesIO()
+#         resized_image.save(buffered, format="PNG")
+#         output_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+#         output_base64 = f"data:image/png;base64,{output_base64}"
+#         return jsonify({
+#             "status": "success",
+#             "output": output_base64,
+#         })
+#
+#     except Exception as e:
+#         traceback_str = traceback.format_exc()
+#         print(traceback_str)
+#         return jsonify({"error": str(e), "traceback": traceback_str}), 500
+#
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5555)

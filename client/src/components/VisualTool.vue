@@ -1,17 +1,25 @@
 <script setup>
 import { ref } from 'vue'
-import { Lasso, ArrowBigUpDash, ArrowBigDownDash, SprayCan, Lock, LockOpen } from 'lucide-vue-next'
+import {
+  Lasso,
+  ArrowBigUpDash,
+  ArrowBigDownDash,
+  SprayCan,
+  Lock,
+  LockOpen,
+  ImageMinus,
+} from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { Collapse } from 'bootstrap'
 
 import * as fabric from 'fabric'
-const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso'])
+const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso', 'removeBg'])
 
 const allUtilStore = useAllUtil()
 
 function switchLasso() {
   allUtilStore.switchLassoMode()
-  
+
   // Hide color picker when lasso is activated (after the toggle)
   if (allUtilStore.isLassoMode) {
     setTimeout(() => {
@@ -26,7 +34,7 @@ function switchLasso() {
 
 function switchColorPen() {
   allUtilStore.switchColorPen()
-  
+
   // Show color picker when color pen is activated
   if (allUtilStore.isColorPen) {
     const collapseEl = document.getElementById('collapseExample')
@@ -81,6 +89,9 @@ function switchStepLock() {
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
+  <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm ms-2">
+    <ImageMinus color="black" :size="15"></ImageMinus>
+  </button>
   <!--  <button-->
   <!--    type="button"-->
   <!--    @click="switchStepLock()"-->

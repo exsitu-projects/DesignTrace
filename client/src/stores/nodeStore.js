@@ -1201,6 +1201,7 @@ export const useNode = defineStore('nodes', () => {
   function mergeCanvasPrompt() {
     return 'Rerender this image to make it visually consistent. Blend in any foreign or out-of-place objects so that the entire scene looks coherent and naturally composed.'
   }
+
   async function mergeWholeCanvas(dataUrl, altId) {
     try {
       let imgUrl = null
