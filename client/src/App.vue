@@ -57,12 +57,12 @@
         :key="alt.id"
         :x="alt.position.x"
         :y="alt.position.y"
-        :w="nodeStore.nodeW"
+        :w="alt.sizing.nodeWidth"
         :h="'auto'"
         :z="alt.z"
         :class="[
           'design-space-container alt-item',
-          { 'card-hover tooltip-wrapper': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
+          { 'card-hover': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
           isSelected(alt.id) ? 'selected' : '',
         ]"
         @mouseup="
@@ -83,6 +83,9 @@
         <transition name="tooltip-fade">
           <div
             v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]"
+            :style="{
+              width: alt.sizing.nodeWidth + 'px',
+            }"
             class="tooltip-popout text-white"
             @click="applyToFullImg(alt.id)"
           >
@@ -509,7 +512,7 @@ onMounted(() => {
   transform: scale(1);
 }
 .alt-item.selected {
-  border: 2px solid #42b983; /* Green border */
+  outline: 3px solid #42b983; /* Green border */
 }
 .card-hover:hover {
   box-shadow:

@@ -812,7 +812,7 @@ export const useNode = defineStore('nodes', () => {
     // Update the alt's sizing while maintaining aspect ratio (1:1 for canvas)
     alt.sizing.canvasWidth = canvasWidth
     alt.sizing.nodeWidth = canvasWidth + 20
-    alt.sizing.nodeHeight = canvasWidth + 120
+    alt.sizing.nodeHeight = canvasWidth + 100
   }
 
   /**
