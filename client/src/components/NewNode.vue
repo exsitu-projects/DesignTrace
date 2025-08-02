@@ -27,7 +27,7 @@
           title="Undo"
           @mouseup.stop
         >
-          ⟲
+          <ArrowLeft color="gray" :size="13"></ArrowLeft>
         </button>
         <button
           @click="redo($event)"
@@ -36,15 +36,21 @@
           title="Redo"
           @mouseup.stop
         >
-          ⟳
+          <ArrowRight color="gray" :size="13"></ArrowRight>
         </button>
         <button
-          @click="switchStepLock(alt.id)"
+          @click.stop="switchStepLock(alt.id)"
           :class="['btn btn-sm ', { active: alt.isStepLock }]"
           @mouseup.stop
         >
-          <Lock v-show="alt.isStepLock" class="mb-1" color="gray" :size="13"></Lock>
-          <LockOpen v-show="!alt.isStepLock" class="mb-1" color="gray" :size="13"></LockOpen>
+          <UndoDot v-show="alt.isStepLock" class="mb-1" color="gray" :size="13"></UndoDot>
+          <Split
+            style="transform: rotate(90deg); transform-origin: center"
+            v-show="!alt.isStepLock"
+            class="mb-1"
+            color="gray"
+            :size="13"
+          ></Split>
         </button>
         <button
           @click="deleteAlt($event)"
@@ -138,7 +144,16 @@ import {
   toRaw,
   toRef,
 } from 'vue'
-import { Lock, LockOpen, SquareArrowUpLeft } from 'lucide-vue-next'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Split,
+  UndoDot,
+  GitPullRequestCreate,
+  Lock,
+  LockOpen,
+  SquareArrowUpLeft,
+} from 'lucide-vue-next'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -1218,14 +1233,18 @@ async function undo(event) {
 }
 
 function exportAltToFreeCanv(event) {
-  const x = event.clientX - fabricCanvas.getWidth()
-  const y = event.clientY - fabricCanvas.getHeight()
-  const base64CanvasUrl = fabricCanvas.toDataURL({
-    format: 'png',
-    multiplier: 1,
-  })
-  const unique_id = crypto.randomUUID() // e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
-  nodeStore.exportAltToFreeCanv(base64CanvasUrl, unique_id, x, y)
+  if (fabricCanvas.getObjects().length > 0) {
+    const x = event.clientX - fabricCanvas.getWidth()
+    const y = event.clientY - fabricCanvas.getHeight()
+    const base64CanvasUrl = fabricCanvas.toDataURL({
+      format: 'png',
+      multiplier: 1,
+    })
+    const unique_id = crypto.randomUUID() // e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+    nodeStore.exportAltToFreeCanv(base64CanvasUrl, unique_id, x, y)
+  } else {
+    alert('No content to export to Free Canvas.')
+  }
 }
 
 async function redo(event) {

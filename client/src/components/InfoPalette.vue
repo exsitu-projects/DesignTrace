@@ -119,11 +119,11 @@
       class="btn btn-sm btn-light"
       role="button"
       data-bs-trigger="focus"
-      >+ Add Attributes</a
+      >+ Add Asset</a
     >
     <div class="d-flex justify-content-end">
       <button @click.stop="makeTool" class="btn btn-sm btn-light" role="button">
-        <SquareStack color="black" :size="15" /> Save Smart Lasso
+        <SquareStack color="black" :size="15" /> Save Combination
       </button>
     </div>
 
@@ -308,9 +308,10 @@ const createPopoverContent = () => {
       <div class="mb-2">
         <input
           type="text"
-          class="form-control form-control-sm"
+          class="form-control form-control-sm w-100"
           id="customAttributeInput"
           placeholder="Type any attribute..."
+          style="min-width: 200px; width: 80%;"
         >
         <small class="text-muted mt-1 d-block">Or choose from:</small>
       </div>
