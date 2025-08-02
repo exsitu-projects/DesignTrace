@@ -149,6 +149,21 @@ watch(
 )
 
 watch(
+  () => nodeStore.exportAlt.flag,
+  (flag) => {
+    if (flag) {
+      loadImgFromUrl(
+        nodeStore.exportAlt.base64CanvasUrl,
+        nodeStore.exportAlt.unique_id,
+        nodeStore.exportAlt.x,
+        nodeStore.exportAlt.y,
+      )
+    }
+    nodeStore.exportAlt.flag = false
+  },
+)
+
+watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
     lassoStart = newVal
@@ -223,13 +238,15 @@ const uploadFiles = async (event) => {
   }
 }
 
-const loadImgFromUrl = (url, id) => {
+const loadImgFromUrl = (url, id, x = 0, y = 0) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = url
   img.onload = () => {
     try {
       const fabricImage = new fabric.Image(img, {
+        left: x,
+        top: y,
         selectable: true,
         hasControls: true,
         perPixelTargetFind: true,

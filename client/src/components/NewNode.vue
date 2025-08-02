@@ -15,7 +15,9 @@
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
         Transform
       </button>
-
+      <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
+        <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
+      </button>
       <!-- Undo/Redo Controls -->
       <div class="d-flex align-items-center gap-1 ms-auto">
         <button
@@ -47,7 +49,7 @@
         <button
           @click="deleteAlt($event)"
           class="btn btn-sm transparent-btn red-symbol"
-          title="Delete Alt"
+          title="Delete"
           @mouseup.stop
         >
           ✕
@@ -136,7 +138,7 @@ import {
   toRaw,
   toRef,
 } from 'vue'
-import { Lock, LockOpen } from 'lucide-vue-next'
+import { Lock, LockOpen, SquareArrowUpLeft } from 'lucide-vue-next'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
@@ -1213,6 +1215,17 @@ async function undo(event) {
   } finally {
     isLoadingState.value = false
   }
+}
+
+function exportAltToFreeCanv(event) {
+  const x = event.clientX - fabricCanvas.getWidth()
+  const y = event.clientY - fabricCanvas.getHeight()
+  const base64CanvasUrl = fabricCanvas.toDataURL({
+    format: 'png',
+    multiplier: 1,
+  })
+  const unique_id = crypto.randomUUID() // e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+  nodeStore.exportAltToFreeCanv(base64CanvasUrl, unique_id, x, y)
 }
 
 async function redo(event) {

@@ -20,6 +20,7 @@ export const useNode = defineStore('nodes', () => {
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
 
+  const exportAlt = ref({})
   // ===== REACTIVE SIZING =====
   // Global default sizes (can be modified)
   const defaultCanvasWidth = ref(DEFAULT_CANVAS_WIDTH)
@@ -1198,6 +1199,16 @@ export const useNode = defineStore('nodes', () => {
     }
   }
 
+  function exportAltToFreeCanv(base64CanvasUrl, unique_id, x, y) {
+    exportAlt.value = {
+      flag: true,
+      base64CanvasUrl,
+      unique_id,
+      x,
+      y,
+    }
+  }
+
   // ===== EXPORTED VALUES AND FUNCTIONS =====
   return {
     // Constants and Reactive Sizing
@@ -1264,5 +1275,7 @@ export const useNode = defineStore('nodes', () => {
 
     // Alt Sizing Management
     updateAltSizing,
+    exportAltToFreeCanv,
+    exportAlt,
   }
 })
