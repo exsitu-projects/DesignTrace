@@ -52,6 +52,7 @@
       @removeBg="removeBg"
       @forwardLayer="forwardOneLayer"
       @backwardLayer="backwardOneLayer"
+      @exportBranchTags="exportBranchTags"
     ></VisualTool>
 
     <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
@@ -113,7 +114,7 @@ import ColorPicker from '@/components/colorPicker.vue'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
-const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes'])
+const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes', 'exportBranchTags'])
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
@@ -378,6 +379,10 @@ const backwardOneLayer = () => {
     canvas.sendObjectToBack(activeObject, true)
     canvas.renderAll()
   }
+}
+
+const exportBranchTags = () => {
+  emit('exportBranchTags')
 }
 
 const deleteSelectedObjects = () => {

@@ -7,6 +7,7 @@
       :childActiveSelected="childActiveSelected"
       @forwardLayerFromNodes="handleForwardLayerFromNodes"
       @backwardLayerFromNodes="handleBackwardLayerFromNodes"
+      @exportBranchTags="handleExportBranchTags"
     />
     <button
       v-show="nodesSelected"
@@ -95,6 +96,8 @@
           { 'propagate-blink': allUtilStore.isPropagate && allUtilStore.isSelectingStartAlt },
           { 'propagate-start': allUtilStore.propagationStartAlt === alt.id },
           { 'propagate-range': allUtilStore.propagationRange.includes(alt.id) },
+          { 'branch-highlighted': highlightedBranchId === alt.branchId },
+          { 'export-mode': isExportingBranch },
         ]"
         @mouseup="
           mouseUpNode(
@@ -249,6 +252,10 @@ const notification = reactive({
   message: '',
   fadeOut: false,
 })
+
+// Branch export state
+const isExportingBranch = ref(false)
+const highlightedBranchId = ref(null)
 
 // Propagation state
 
@@ -454,6 +461,72 @@ function handleBackwardLayerFromNodes() {
     }
   }
 }
+
+function handleExportBranchTags() {
+  // Activate export mode - user needs to click on a node to select the branch
+  isExportingBranch.value = true
+  showNotification('Click on any node to select and export the branch tags')
+}
+
+function exportBranchTags(branchId) {
+  // Find the branch by ID
+  const branch = nodeStore.nodeBranchList.find(b => b.id === branchId)
+  if (!branch) {
+    showNotification('Branch not found')
+    return
+  }
+
+  // Collect all tags from expanded alts in this branch
+  const branchTags = new Set()
+  let expandedAltCount = 0
+  
+  branch.nodes.forEach(node => {
+    node.alts.forEach(alt => {
+      if (alt.expand) { // Only collect from expanded nodes
+        expandedAltCount++
+        if (alt.properties && alt.properties.length > 0) {
+          alt.properties.forEach(property => {
+            if (property.tag && property.tag.trim()) {
+              branchTags.add(`${property.tag} (${property.propName || 'property'})`)
+            }
+          })
+        }
+      }
+    })
+  })
+
+  // Convert Set to Array and sort
+  const tagsArray = Array.from(branchTags).sort()
+  
+  if (tagsArray.length === 0) {
+    showNotification(`No tags found in ${expandedAltCount} expanded nodes of this branch`)
+    return
+  }
+
+  // Create export content
+  const exportContent = {
+    branchId: branchId,
+    exportDate: new Date().toISOString(),
+    expandedNodesCount: expandedAltCount,
+    totalTags: tagsArray.length,
+    uniqueTags: tagsArray
+  }
+
+  // Create and download JSON file
+  const dataStr = JSON.stringify(exportContent, null, 2)
+  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(dataBlob)
+  
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `branch-${branchId}-tags-${new Date().toISOString().split('T')[0]}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+
+  showNotification(`Exported ${tagsArray.length} unique tags from ${expandedAltCount} expanded nodes`)
+}
 function handleKeyUp(e) {
   if (e.key === 'Control') nodeStore.ctrlPressed = false
 }
@@ -470,6 +543,17 @@ function toggleDesignSpace() {
 }
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
+  // Handle branch export mode
+  if (isExportingBranch.value) {
+    highlightedBranchId.value = branchId
+    // Export tags for this branch
+    exportBranchTags(branchId)
+    // Reset export mode
+    isExportingBranch.value = false
+    highlightedBranchId.value = null
+    return
+  }
+
   // Handle propagation mode
   if (allUtilStore.isPropagate) {
     if (allUtilStore.isSelectingStartAlt) {
@@ -743,6 +827,29 @@ onMounted(() => {
 .propagate-range {
   outline: 3px solid #45b7d1 !important;
   box-shadow: 0 0 10px rgba(69, 183, 209, 0.5) !important;
+}
+
+/* Branch export highlighting */
+.export-mode {
+  cursor: pointer !important;
+}
+
+.branch-highlighted {
+  outline: 3px solid #ff9500 !important;
+  box-shadow: 0 0 15px rgba(255, 149, 0, 0.7) !important;
+  animation: branch-pulse 1s ease-in-out;
+}
+
+@keyframes branch-pulse {
+  0% {
+    box-shadow: 0 0 15px rgba(255, 149, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 149, 0, 0.9);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(255, 149, 0, 0.7);
+  }
 }
 .card-hover:hover {
   box-shadow:

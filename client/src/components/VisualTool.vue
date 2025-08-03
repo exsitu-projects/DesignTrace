@@ -9,12 +9,19 @@ import {
   LockOpen,
   ImageOff,
   ArrowUpWideNarrow,
+  Download,
 } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { Collapse } from 'bootstrap'
 
 import * as fabric from 'fabric'
-const emit = defineEmits(['forwardLayer', 'backwardLayer', 'switchLasso', 'removeBg'])
+const emit = defineEmits([
+  'forwardLayer',
+  'backwardLayer',
+  'switchLasso',
+  'removeBg',
+  'exportBranchTags',
+])
 
 const allUtilStore = useAllUtil()
 function propagateChange() {
@@ -81,6 +88,7 @@ function switchStepLock() {
   <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
     <ImageOff color="black" :size="15"></ImageOff> Remove Bg
   </button>
+
   <div class="btn-group m-2" role="group" aria-label="Basic example">
     <button
       type="button"
@@ -133,7 +141,9 @@ function switchStepLock() {
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
-
+  <button title="Export Branch Tags" @click="emit('exportBranchTags')" class="btn btn-sm btn-light">
+    <Download color="black" :size="15"></Download>
+  </button>
   <!--  <button-->
   <!--    type="button"-->
   <!--    @click="switchStepLock()"-->
