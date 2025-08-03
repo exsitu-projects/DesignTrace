@@ -9,36 +9,46 @@
       @mouseleave="((hoveredRowIndex = null), hideGhostTagsWithDelay())"
     >
       <!-- Editable property name tag (not draggable) -->
-
-      <EditableLabel
-        v-model="row.name"
-        style="min-width: 80px"
+      <div
+        class="badge m-1 d-flex bg-light border border-2 border-dark fw-bold"
         :class="[
           'my-auto ',
           clickedStates[rowIdx]?.propertyName ? 'bg-dark text-light' : 'bg-light text-dark',
         ]"
-        :draggable="true"
-        @dragstart="(e) => handleDragStart(e, row, row.name)"
-        @mouseup="handleMouseUp(rowIdx, row.name)"
-        @editing-changed="(editing) => onEditingChanged(rowIdx, 'propertyName', editing)"
-        @click.stop="
-          () => {
-            if (!editingStates[rowIdx]?.propertyName) {
-              handlePropertyNameClick(rowIdx, row)
-            }
-          }
-        "
-        :isPropertyName="true"
-        @property-name-finalized="
-          (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
-        "
-      ></EditableLabel
-      ><span
-        v-show="hoveredRowIndex === rowIdx && objectStore.obj && objectStore.obj.type === 'image'"
-        class="my-auto badge rounded-pill text-bg-success"
-        >+</span
       >
-
+        <EditableLabel
+          v-model="row.name"
+          style="min-width: 80px"
+          :draggable="true"
+          @dragstart="(e) => handleDragStart(e, row, row.name)"
+          @mouseup="handleMouseUp(rowIdx, row.name)"
+          @editing-changed="(editing) => onEditingChanged(rowIdx, 'propertyName', editing)"
+          @click.stop="
+            () => {
+              if (!editingStates[rowIdx]?.propertyName) {
+                handlePropertyNameClick(rowIdx, row)
+              }
+            }
+          "
+          :isPropertyName="true"
+          @property-name-finalized="
+            (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
+          "
+        ></EditableLabel>
+        <!-- Row delete button -->
+        <button
+          class="btn btn-sm btn-outline-danger border-0 p-0 lh-1"
+          @click.stop="removeRow(rowIdx)"
+          title="Remove row"
+        >
+          &times;
+        </button>
+        <span
+          v-show="hoveredRowIndex === rowIdx && objectStore.obj && objectStore.obj.type === 'image'"
+          class="my-auto badge rounded-pill text-bg-success ms-1"
+          >+</span
+        >
+      </div>
       <!-- Draggable area for tags -->
       <draggable
         v-model="row.tags"
@@ -354,6 +364,7 @@ const createPopoverContent = () => {
 const addRow = () => infoStore.addRow()
 const addTag = (rowIdx) => infoStore.addTag(rowIdx)
 const removeTag = (rowIdx, tagIdx) => infoStore.removeTag(rowIdx, tagIdx)
+const removeRow = (rowIdx) => infoStore.removeRow(rowIdx)
 
 // Handle clicking on ghost tags
 const addGhostTag = (rowIdx, tagText) => {

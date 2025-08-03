@@ -68,6 +68,12 @@ export const useInfoStore = defineStore('infoStore', () => {
     if (row) row.tags.splice(tagIdx, 1)
   }
 
+  const removeRow = (rowIdx) => {
+    if (rowIdx >= 0 && rowIdx < rows.value.length) {
+      rows.value.splice(rowIdx, 1)
+    }
+  }
+
   const generateLayer = async (currentPrompt) => {
     const response = await fetch('http://localhost:53577/api/generatelayer', {
       method: 'POST',
@@ -105,6 +111,7 @@ export const useInfoStore = defineStore('infoStore', () => {
     addRow,
     addTag,
     removeTag,
+    removeRow,
     generateThumbnail,
     addThumbnailToTag,
   }
