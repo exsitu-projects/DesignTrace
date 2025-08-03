@@ -23,7 +23,7 @@
         <ImageOff color="gray" :size="20"></ImageOff>
       </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
-        Merge All
+        Merge
       </button>
 
       <!-- Undo/Redo Controls -->

@@ -35,10 +35,10 @@
     <div class="collapse" id="collapseExample">
       <ColorPicker></ColorPicker>
     </div>
-    <button class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
+    <button title="Add Node" class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
 
     <button class="btn btn-sm btn-light m-1" @click="triggerFileSelect">
-      <ImageUp color="black" :size="15" />
+      <ImageUp color="black" :size="15" /> Upload
     </button>
     <input
       type="file"

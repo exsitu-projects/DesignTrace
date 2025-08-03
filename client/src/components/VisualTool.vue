@@ -71,36 +71,37 @@ function switchStepLock() {
 </script>
 
 <template>
+  <button
+    title="Generate AI Image"
+    @click="switchTxt2Img"
+    :class="['btn btn-sm btn-light mx-1', { active: allUtilStore.isTxt2Img }]"
+  >
+    <img src="../../public/assets/ai-file.png" alt="description" width="20" height="20" /> Generate
+  </button>
+  <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
+    <ImageOff color="black" :size="15"></ImageOff> Remove Bg
+  </button>
   <div class="btn-group m-2" role="group" aria-label="Basic example">
     <button
       type="button"
       @click="switchLasso()"
       :class="['btn btn-sm btn-light', { active: allUtilStore.isLassoMode }]"
     >
-      <Lasso color="black" :size="15" />
+      <Lasso color="black" :size="15" /> Lasso
     </button>
-    <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
-      <ImageOff color="black" :size="15"></ImageOff>
-    </button>
-    <button
-      title="Propagate Change"
-      @click="propagateChange()"
-      :class="['btn btn-sm btn-light', { active: allUtilStore.isPropagate }]"
-    >
-      <ArrowUpWideNarrow
-        style="transform: rotate(90deg)"
-        color="black"
-        :size="15"
-      ></ArrowUpWideNarrow
-      >Propagate
-    </button>
-    <button
-      title="Generate AI Image"
-      @click="switchTxt2Img"
-      :class="['btn btn-sm btn-light', { active: allUtilStore.isTxt2Img }]"
-    >
-      <img src="../../public/assets/ai-file.png" alt="description" width="20" height="20" />
-    </button>
+
+    <!--    <button-->
+    <!--      title="Propagate Change"-->
+    <!--      @click="propagateChange()"-->
+    <!--      :class="['btn btn-sm btn-light', { active: allUtilStore.isPropagate }]"-->
+    <!--    >-->
+    <!--      <ArrowUpWideNarrow-->
+    <!--        style="transform: rotate(90deg)"-->
+    <!--        color="black"-->
+    <!--        :size="15"-->
+    <!--      ></ArrowUpWideNarrow-->
+    <!--      >Propagate-->
+    <!--    </button>-->
 
     <!--    <button-->
     <!--      :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"-->
@@ -115,10 +116,20 @@ function switchStepLock() {
   </div>
 
   <div class="btn-group m-1" role="group" aria-label="Basic example">
-    <button @click="emit('forwardLayer')" type="button" class="btn btn-sm btn-light">
+    <button
+      title="Move Image Forward"
+      @click="emit('forwardLayer')"
+      type="button"
+      class="btn btn-sm btn-light"
+    >
       <ArrowBigUpDash color="black" :size="15" /> Forward
     </button>
-    <button @click="emit('backwardLayer')" type="button" class="btn btn-sm btn-light">
+    <button
+      title="Move Image Backward"
+      @click="emit('backwardLayer')"
+      type="button"
+      class="btn btn-sm btn-light"
+    >
       <ArrowBigDownDash color="black" :size="15" /> Backward
     </button>
   </div>
