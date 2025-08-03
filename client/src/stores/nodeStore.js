@@ -647,12 +647,7 @@ export const useNode = defineStore('nodes', () => {
       }
     } catch (error) {
       console.error('Object detection failed:', error)
-      return {
-        adjObjectText: '',
-        objectText: '',
-        visibleProps: '',
-        objOrProp: '',
-      }
+      return null
     }
   }
 

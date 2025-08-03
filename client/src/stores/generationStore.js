@@ -205,19 +205,26 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       const raw = await describeImage(lassoBoundUrl, propsString, nonPropsSysPrompt)
 
-      const [adjObjectText = '', objectText = '', visibleProps = '', objOrProp = ''] = raw
-        .split(':')
-        .map((s) => s.trim())
-      if (!raw || typeof raw !== 'string') {
-        throw new Error('describeImage returned empty or non‑string')
+      if (!raw || typeof raw !== 'string' || !raw.includes(':')) {
+        throw new Error('describeImage returned invalid format: ' + raw)
       }
+
+      const parts = raw.split(':').map((s) => s.trim())
+      if (parts.length < 4) {
+        throw new Error('describeImage returned too few parts: ' + JSON.stringify(parts))
+      }
+
+      const [adjObjectText, objectText, visibleProps, objOrProp] = parts
+
       return {
-        adjObjectText: adjObjectText, // e.g. "elegant wooden leather sofa"
-        objectText: objectText, // e.g. "sofa"
-        visibleProps: visibleProps, // e.g. "color, texture, material, pattern, shape, structure, surface detail"
-        objOrProp: objOrProp,
+        adjObjectText,
+        objectText,
+        visibleProps,
+        objOrProp,
       }
-    } finally {
+    } catch (err) {
+      console.error('excludePropObject failed:', err)
+      throw err
     }
   }
 
