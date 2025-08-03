@@ -9,8 +9,17 @@
       class="btn btn-sm btn-outline-success m-1 mx-auto"
       style="z-index: 5000; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
     >
-      <Check color="green" :size="15" />&nbsp;Collapse Other Nodes
+      <Check color="green" :size="15" />&nbsp;Save Step
     </button>
+
+    <!-- Copy/Paste notification -->
+    <div
+      v-if="notification.visible"
+      class="notification-toast"
+      :class="{ 'fade-out': notification.fadeOut }"
+    >
+      {{ notification.message }}
+    </div>
 
     <!-- Propagation confirm button -->
     <button
@@ -226,7 +235,118 @@ const sourceAltId = ref(null)
 const hoveredConnectionDot = ref(null)
 const tempEdge = ref(null)
 
+// Copy/Paste state
+const copiedNodes = ref([])
+const notification = reactive({
+  visible: false,
+  message: '',
+  fadeOut: false
+})
+
 // Propagation state
+
+// Copy/Paste functions
+function showNotification(message) {
+  notification.message = message
+  notification.visible = true
+  notification.fadeOut = false
+  
+  // Auto-hide after 1.5 seconds
+  setTimeout(() => {
+    notification.fadeOut = true
+    setTimeout(() => {
+      notification.visible = false
+    }, 300) // Wait for fade-out animation to complete
+  }, 1500)
+}
+
+function copySelectedNodes() {
+  if (nodeStore.selectedIndices.length === 0) return
+  
+  // Deep copy selected nodes data with current canvas state
+  const selectedAlts = allAlts.value.filter(alt => 
+    nodeStore.selectedIndices.includes(alt.id)
+  )
+  
+  copiedNodes.value = selectedAlts.map(alt => {
+    // Get current canvas state from the NewNode component
+    const canvasRef = nodeCanvasRefs[alt.id]
+    const currentCanvasState = canvasRef?.getCurrentCanvasState?.()
+    
+    return {
+      ...JSON.parse(JSON.stringify(alt)), // Deep copy to avoid reference issues
+      originalId: alt.id, // Keep reference to original for positioning
+      currentCanvasState: currentCanvasState // Store current canvas state
+    }
+  })
+  
+  showNotification('Nodes copied!')
+}
+
+async function pasteNodes() {
+  if (copiedNodes.value.length === 0) return
+  
+  const PASTE_OFFSET = 50 // Offset for pasted nodes
+  
+  for (const copiedAlt of copiedNodes.value) {
+    // Create new alt based on copied data
+    const newPosition = {
+      x: copiedAlt.position.x + PASTE_OFFSET,
+      y: copiedAlt.position.y + PASTE_OFFSET
+    }
+    
+    // Add new node and alt
+    nodeStore.addNodeBranch()
+    nodeStore.addNode(nodeStore.currentBranchId)
+    nodeStore.addAlt(
+      copiedAlt.properties || [],  // properties
+      nodeStore.currentBranchId,   // branchId
+      nodeStore.currentNodeId,     // nodeId
+      newPosition.x,               // x position
+      newPosition.y,               // y position
+      null                         // prevAltId
+    )
+    
+    // Update position after creation
+    const newBranch = nodeStore.nodeBranchList.find(b => b.id === nodeStore.currentBranchId)
+    if (newBranch && newBranch.nodes.length > 0) {
+      const newNode = newBranch.nodes[newBranch.nodes.length - 1]
+      if (newNode.alts.length > 0) {
+        const newAlt = newNode.alts[newNode.alts.length - 1]
+        newAlt.position.x = newPosition.x
+        newAlt.position.y = newPosition.y
+        
+        // Copy canvas data if it exists
+        if (copiedAlt.history && copiedAlt.history.undoStack.length > 0) {
+          // Copy the latest canvas state
+          const latestState = copiedAlt.history.undoStack[copiedAlt.history.undoStack.length - 1]
+          if (latestState && latestState.canvasData) {
+            newAlt.history.undoStack = [{ ...latestState }]
+            newAlt.history.currentIndex = 0
+          }
+        }
+        
+        // Apply the current canvas state after the component is mounted
+        await nextTick() // Wait for the component to be rendered
+        
+        // Try to apply canvas state with a small delay to ensure canvas is initialized
+        setTimeout(async () => {
+          const newCanvasRef = nodeCanvasRefs[newAlt.id]
+          if (newCanvasRef && copiedAlt.currentCanvasState) {
+            try {
+              await newCanvasRef.setCanvasState?.(copiedAlt.currentCanvasState)
+              console.log('Canvas state applied to pasted node:', newAlt.id)
+            } catch (error) {
+              console.error('Failed to apply canvas state to pasted node:', error)
+            }
+          }
+        }, 100) // Small delay to ensure canvas is fully initialized
+      }
+    }
+  }
+  
+  showNotification('Nodes pasted!')
+}
 
 function selectEdge(edge) {
   selectedEdge.value = edge
@@ -276,6 +396,19 @@ function handleKeyDown(e) {
 
   if (e.key === 'Escape') {
     cancelConnection()
+    return
+  }
+
+  // Copy/Paste shortcuts
+  if (e.ctrlKey && e.key === 'c') {
+    e.preventDefault()
+    copySelectedNodes()
+    return
+  }
+
+  if (e.ctrlKey && e.key === 'v') {
+    e.preventDefault()
+    pasteNodes()
     return
   }
 
@@ -675,5 +808,46 @@ onMounted(() => {
 .edge-line:hover {
   stroke-width: 2.5;
   stroke: #42b983;
+}
+
+/* Notification toast styles */
+.notification-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #42b983;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-weight: 500;
+  z-index: 10000;
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification-toast.fade-out {
+  animation: slideOut 0.3s ease-in forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
 }
 </style>

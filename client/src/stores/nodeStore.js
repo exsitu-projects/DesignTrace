@@ -542,7 +542,6 @@ export const useNode = defineStore('nodes', () => {
     visibleProps,
     objOrProp,
   ) {
-    console.log('objOrProp', objOrProp)
     if (objOrProp === 'object') {
       return (
         `${descriptors.join(' and ')}, in ` + visibleProps

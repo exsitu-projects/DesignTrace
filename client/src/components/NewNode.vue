@@ -1032,9 +1032,27 @@ function transformImage() {
     }
   }
 }
+// Function to get current canvas state for copying
+function getCurrentCanvasState() {
+  if (!fabricCanvas) return null
+  return JSON.stringify(fabricCanvas.toJSON(['idInLayers']))
+}
+
+// Function to set canvas state for pasting
+async function setCanvasState(canvasStateJson) {
+  if (!fabricCanvas || !canvasStateJson) return
+  try {
+    await loadCanvasState(canvasStateJson)
+  } catch (error) {
+    console.error('Failed to set canvas state:', error)
+  }
+}
+
 defineExpose({
   deleteSelectedObjects,
   applyToFullImg,
+  getCurrentCanvasState,
+  setCanvasState,
 })
 
 function applyToFullImg() {
