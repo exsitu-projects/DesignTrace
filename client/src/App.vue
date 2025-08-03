@@ -2,7 +2,11 @@
   <div id="app">
     <!-- wrapper provides the relative positioning context -->
 
-    <FreeCanvas ref="freeCanvasRef" />
+    <FreeCanvas 
+      ref="freeCanvasRef" 
+      @forwardLayerFromNodes="handleForwardLayerFromNodes"
+      @backwardLayerFromNodes="handleBackwardLayerFromNodes"
+    />
     <button
       v-show="nodesSelected"
       @click="confirmNodes"
@@ -428,6 +432,26 @@ function handleKeyDown(e) {
 function applyToFullImg(altId) {
   // Apply the current node's properties to the whole image
   nodeCanvasRefs[altId]?.applyToFullImg()
+}
+
+function handleForwardLayerFromNodes() {
+  // Iterate through all node canvas refs to find one with active objects
+  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+    if (canvasRef?.forwardOneLayer?.()) {
+      // If forwardOneLayer returns true, an object was moved
+      break
+    }
+  }
+}
+
+function handleBackwardLayerFromNodes() {
+  // Iterate through all node canvas refs to find one with active objects
+  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+    if (canvasRef?.backwardOneLayer?.()) {
+      // If backwardOneLayer returns true, an object was moved
+      break
+    }
+  }
 }
 function handleKeyUp(e) {
   if (e.key === 'Control') nodeStore.ctrlPressed = false

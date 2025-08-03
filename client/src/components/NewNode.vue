@@ -1053,6 +1053,8 @@ defineExpose({
   applyToFullImg,
   getCurrentCanvasState,
   setCanvasState,
+  forwardOneLayer,
+  backwardOneLayer,
 })
 
 function applyToFullImg() {
@@ -1065,7 +1067,7 @@ function applyToFullImg() {
 }
 
 function deleteSelectedObjects() {
-  const canvas = fabricCanvas // this component’s own instance
+  const canvas = fabricCanvas // this component's own instance
   const activeObjects = canvas.getActiveObjects()
   if (activeObjects.length > 0) {
     activeObjects.forEach((obj) => canvas.remove(obj))
@@ -1074,6 +1076,26 @@ function deleteSelectedObjects() {
   } else {
     emit('remove') // remove this whole node if nothing selected
   }
+}
+
+function forwardOneLayer() {
+  const activeObject = fabricCanvas.getActiveObject()
+  if (activeObject) {
+    fabricCanvas.bringObjectForward(activeObject, true)
+    fabricCanvas.renderAll()
+    return true // Return true if an object was moved
+  }
+  return false // Return false if no object was found
+}
+
+function backwardOneLayer() {
+  const activeObject = fabricCanvas.getActiveObject()
+  if (activeObject) {
+    fabricCanvas.sendObjectToBack(activeObject, true)
+    fabricCanvas.renderAll()
+    return true // Return true if an object was moved
+  }
+  return false // Return false if no object was found
 }
 
 function storeLassoInfo() {

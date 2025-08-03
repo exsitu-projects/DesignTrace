@@ -110,6 +110,8 @@ import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import ColorPicker from '@/components/colorPicker.vue'
+
+const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes'])
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
@@ -360,6 +362,9 @@ const forwardOneLayer = () => {
   if (activeObject) {
     canvas.bringObjectForward(activeObject, true)
     canvas.renderAll()
+  } else {
+    // Emit event to check node canvases if no active object on main canvas
+    emit('forwardLayerFromNodes')
   }
 }
 const backwardOneLayer = () => {
@@ -367,6 +372,9 @@ const backwardOneLayer = () => {
   if (activeObject) {
     canvas.sendObjectToBack(activeObject, true)
     canvas.renderAll()
+  } else {
+    // Emit event to check node canvases if no active object on main canvas
+    emit('backwardLayerFromNodes')
   }
 }
 
