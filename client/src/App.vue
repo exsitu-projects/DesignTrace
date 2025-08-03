@@ -2,8 +2,9 @@
   <div id="app">
     <!-- wrapper provides the relative positioning context -->
 
-    <FreeCanvas 
-      ref="freeCanvasRef" 
+    <FreeCanvas
+      ref="freeCanvasRef"
+      :childActiveSelected="childActiveSelected"
       @forwardLayerFromNodes="handleForwardLayerFromNodes"
       @backwardLayerFromNodes="handleBackwardLayerFromNodes"
     />
@@ -123,6 +124,7 @@
           </div>
         </transition>
         <NewNode
+          @selection-changed="handleSelectionChanged"
           :onCanvasHover="setNodeHover"
           @remove="() => deleteAlt(alt.id)"
           :alt="alt"
@@ -216,6 +218,7 @@ const nodeHoverStates = reactive({})
 const nodeStore = useNode()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
+const childActiveSelected = ref(false)
 /* --- plain state --- */
 const availableModels = ref([])
 const allAlts = computed(() =>
@@ -244,7 +247,7 @@ const copiedNodes = ref([])
 const notification = reactive({
   visible: false,
   message: '',
-  fadeOut: false
+  fadeOut: false,
 })
 
 // Propagation state
@@ -254,7 +257,7 @@ function showNotification(message) {
   notification.message = message
   notification.visible = true
   notification.fadeOut = false
-  
+
   // Auto-hide after 1.5 seconds
   setTimeout(() => {
     notification.fadeOut = true
@@ -266,60 +269,58 @@ function showNotification(message) {
 
 function copySelectedNodes() {
   if (nodeStore.selectedIndices.length === 0) return
-  
+
   // Deep copy selected nodes data with current canvas state
-  const selectedAlts = allAlts.value.filter(alt => 
-    nodeStore.selectedIndices.includes(alt.id)
-  )
-  
-  copiedNodes.value = selectedAlts.map(alt => {
+  const selectedAlts = allAlts.value.filter((alt) => nodeStore.selectedIndices.includes(alt.id))
+
+  copiedNodes.value = selectedAlts.map((alt) => {
     // Get current canvas state from the NewNode component
     const canvasRef = nodeCanvasRefs[alt.id]
     const currentCanvasState = canvasRef?.getCurrentCanvasState?.()
-    
+
     return {
       ...JSON.parse(JSON.stringify(alt)), // Deep copy to avoid reference issues
       originalId: alt.id, // Keep reference to original for positioning
-      currentCanvasState: currentCanvasState // Store current canvas state
+      currentCanvasState: currentCanvasState, // Store current canvas state
     }
   })
-  
+
   showNotification('Nodes copied!')
 }
 
 async function pasteNodes() {
   if (copiedNodes.value.length === 0) return
-  
+
   const PASTE_OFFSET = 50 // Offset for pasted nodes
-  
+
   for (const copiedAlt of copiedNodes.value) {
     // Create new alt based on copied data
     const newPosition = {
       x: copiedAlt.position.x + PASTE_OFFSET,
-      y: copiedAlt.position.y + PASTE_OFFSET
+      y: copiedAlt.position.y + PASTE_OFFSET,
     }
-    
+
     // Add new node and alt
     nodeStore.addNodeBranch()
     nodeStore.addNode(nodeStore.currentBranchId)
     nodeStore.addAlt(
-      copiedAlt.properties || [],  // properties
-      nodeStore.currentBranchId,   // branchId
-      nodeStore.currentNodeId,     // nodeId
-      newPosition.x,               // x position
-      newPosition.y,               // y position
-      null                         // prevAltId
+      copiedAlt.properties || [], // properties
+      nodeStore.currentBranchId, // branchId
+      nodeStore.currentNodeId, // nodeId
+      newPosition.x, // x position
+      newPosition.y, // y position
+      null, // prevAltId
     )
-    
+
     // Update position after creation
-    const newBranch = nodeStore.nodeBranchList.find(b => b.id === nodeStore.currentBranchId)
+    const newBranch = nodeStore.nodeBranchList.find((b) => b.id === nodeStore.currentBranchId)
     if (newBranch && newBranch.nodes.length > 0) {
       const newNode = newBranch.nodes[newBranch.nodes.length - 1]
       if (newNode.alts.length > 0) {
         const newAlt = newNode.alts[newNode.alts.length - 1]
         newAlt.position.x = newPosition.x
         newAlt.position.y = newPosition.y
-        
+
         // Copy canvas data if it exists
         if (copiedAlt.history && copiedAlt.history.undoStack.length > 0) {
           // Copy the latest canvas state
@@ -329,10 +330,10 @@ async function pasteNodes() {
             newAlt.history.currentIndex = 0
           }
         }
-        
+
         // Apply the current canvas state after the component is mounted
         await nextTick() // Wait for the component to be rendered
-        
+
         // Try to apply canvas state with a small delay to ensure canvas is initialized
         setTimeout(async () => {
           const newCanvasRef = nodeCanvasRefs[newAlt.id]
@@ -348,7 +349,7 @@ async function pasteNodes() {
       }
     }
   }
-  
+
   showNotification('Nodes pasted!')
 }
 
@@ -644,7 +645,9 @@ function cancelConnection() {
 function removeEdgeConnection(edge) {
   nodeStore.removeEdgeConnection(edge.fromAltId, edge.toAltId)
 }
-
+function handleSelectionChanged(val) {
+  childActiveSelected.value = val
+}
 onMounted(() => {
   svgWrapper.value?.focus()
   window.addEventListener('keydown', handleKeyDown)

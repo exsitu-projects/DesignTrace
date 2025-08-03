@@ -110,7 +110,9 @@ import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import ColorPicker from '@/components/colorPicker.vue'
-
+const props = defineProps({
+  childActiveSelected: Boolean,
+})
 const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes'])
 let canvas = null
 const objectStore = useObject()
@@ -359,22 +361,22 @@ const addBranchNodeAlt = () => {
 
 const forwardOneLayer = () => {
   const activeObject = canvas.getActiveObject()
-  if (activeObject) {
-    canvas.bringObjectForward(activeObject, true)
-    canvas.renderAll()
-  } else {
+  if (props.childActiveSelected) {
     // Emit event to check node canvases if no active object on main canvas
     emit('forwardLayerFromNodes')
+  } else if (activeObject) {
+    canvas.bringObjectForward(activeObject, true)
+    canvas.renderAll()
   }
 }
 const backwardOneLayer = () => {
   const activeObject = canvas.getActiveObject()
-  if (activeObject) {
-    canvas.sendObjectToBack(activeObject, true)
-    canvas.renderAll()
-  } else {
+  if (props.childActiveSelected) {
     // Emit event to check node canvases if no active object on main canvas
     emit('backwardLayerFromNodes')
+  } else if (activeObject) {
+    canvas.sendObjectToBack(activeObject, true)
+    canvas.renderAll()
   }
 }
 

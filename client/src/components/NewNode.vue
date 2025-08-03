@@ -173,7 +173,7 @@ import { CannyJS } from '@/js/canny'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useInfoStore } from '@/stores/infoStore.js'
 
-const emit = defineEmits(['remove']) // or whatever event you want to emit
+const emit = defineEmits(['remove', 'selection-changed']) // or whatever event you want to emit
 
 const props = defineProps({
   alt: {
@@ -756,7 +756,9 @@ const handleCanvasKeyDown = (e) => {
   }
 }
 const activeObject = ref(null)
-
+watch(activeObject, (val) => {
+  emit('selection-changed', val !== null) // send true/false to parent
+})
 const objectActive = computed(() => activeObject.value !== null)
 async function removeBg() {
   const activeObj = fabricCanvas.getActiveObject()
