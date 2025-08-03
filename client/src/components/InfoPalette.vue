@@ -353,8 +353,9 @@ const createPopoverContent = () => {
         <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Text">🗛 Text</button>
         <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Material">💠 Material</button>
         <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Lighting">💡 Lighting</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Lighting">📍 Landmark</button>
         <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Visual Composition">🖼️ Visual Composition</button>
-        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="The most unique visual feature">📍 The most unique visual feature</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="The most unique visual feature">💭 The most unique visual feature</button>
       </div>
     </div>
   `.trim()

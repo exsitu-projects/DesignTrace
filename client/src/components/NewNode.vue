@@ -92,7 +92,6 @@
       </button>
     </div>
     <div
-      v-if="alt.expand"
       @mouseenter="() => props.onCanvasHover(alt.id, false)"
       @mouseleave="() => props.onCanvasHover(alt.id, true)"
       @click.stop
@@ -123,7 +122,7 @@
     </div>
 
     <!-- Resize handles -->
-    <div class="resize-handles" v-if="alt.expand">
+    <div class="resize-handles">
       <div class="resize-handle resize-handle-nw" @mousedown="startResize($event, 'nw')"></div>
       <div class="resize-handle resize-handle-ne" @mousedown="startResize($event, 'ne')"></div>
       <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
