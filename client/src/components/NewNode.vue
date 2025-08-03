@@ -1,5 +1,10 @@
 <template>
-  <div ref="nodeEl" :id="alt.id" class="node">
+  <div
+    ref="nodeEl"
+    :id="alt.id"
+    class="node"
+    :class="{ collapsed: !(alt.expand || alt.dragAgain) }"
+  >
     <div
       v-if="alt.expand || alt.dragAgain"
       @click="handleClick(alt.id, alt.branchId)"
@@ -100,6 +105,7 @@
       </button>
     </div>
     <div
+      v-if="alt.expand || alt.dragAgain"
       @mouseenter="() => props.onCanvasHover(alt.id, false)"
       @mouseleave="() => props.onCanvasHover(alt.id, true)"
       @click.stop
@@ -1590,6 +1596,18 @@ function stopResize() {
   flex-direction: column;
   position: relative;
   overflow: hidden; /* prevent internal overflow from expanding node */
+}
+
+/* When collapsed, adjust the height to fit only the tags */
+.node.collapsed {
+  height: auto;
+  min-height: auto;
+  padding: 0;
+}
+
+.node.collapsed .node-tags {
+  margin: 2px;
+  padding: 6px 10px;
 }
 
 .nodeHandle {
