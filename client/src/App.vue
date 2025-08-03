@@ -11,6 +11,20 @@
     >
       <Check color="green" :size="15" />&nbsp;Collapse Other Nodes
     </button>
+
+    <!-- Propagation confirm button -->
+    <button
+      v-show="
+        allUtilStore.isPropagate &&
+        allUtilStore.isSelectingRange &&
+        allUtilStore.propagationRange.length > 1
+      "
+      @click="confirmPropagationRange"
+      class="btn btn-sm btn-outline-primary m-1 mx-auto"
+      style="z-index: 5000; position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%)"
+    >
+      <Check color="blue" :size="15" />&nbsp;Confirm Propagating Range
+    </button>
     <!-- nodes & alts overlay -->
     <div @keydown.delete="handleDelete" tabindex="0" ref="svgWrapper" style="outline: none">
       <svg
@@ -64,6 +78,9 @@
           'design-space-container alt-item',
           { 'card-hover': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
           isSelected(alt.id) ? 'selected' : '',
+          { 'propagate-blink': allUtilStore.isPropagate && allUtilStore.isSelectingStartAlt },
+          { 'propagate-start': allUtilStore.propagationStartAlt === alt.id },
+          { 'propagate-range': allUtilStore.propagationRange.includes(alt.id) },
         ]"
         @mouseup="
           mouseUpNode(
@@ -209,6 +226,8 @@ const sourceAltId = ref(null)
 const hoveredConnectionDot = ref(null)
 const tempEdge = ref(null)
 
+// Propagation state
+
 function selectEdge(edge) {
   selectedEdge.value = edge
 }
@@ -217,6 +236,12 @@ function handleDelete() {
     removeEdgeConnection(selectedEdge.value)
     selectedEdge.value = null
   }
+}
+
+function confirmPropagationRange() {
+  const selectedAlts = allUtilStore.confirmPropagationRange()
+  // Reset propagation mode after confirmation
+  // allUtilStore.switchPropagateMode()
 }
 
 /* example async — not used right now */
@@ -287,6 +312,23 @@ function toggleDesignSpace() {
 }
 
 async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepLock, e) {
+  // Handle propagation mode
+  if (allUtilStore.isPropagate) {
+    if (allUtilStore.isSelectingStartAlt) {
+      // Set the starting alt
+      allUtilStore.setStartAlt(altId)
+      return
+    } else if (allUtilStore.isSelectingRange) {
+      // Add or remove alt from range
+      if (allUtilStore.propagationRange.includes(altId)) {
+        allUtilStore.removeFromRange(altId)
+      } else {
+        allUtilStore.addToRange(altId)
+      }
+      return
+    }
+  }
+
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
@@ -513,6 +555,33 @@ onMounted(() => {
 }
 .alt-item.selected {
   outline: 3px solid #42b983; /* Green border */
+}
+
+/* Propagation animations */
+@keyframes propagate-blink {
+  0%,
+  50% {
+    outline: 3px solid #ffcc25;
+    box-shadow: 0 0 10px rgb(255, 218, 149);
+  }
+  100% {
+    outline: 3px solid transparent;
+    box-shadow: none;
+  }
+}
+
+.propagate-blink {
+  animation: propagate-blink 1s infinite;
+}
+
+.propagate-start {
+  outline: 3px solid #4ecdc4 !important;
+  box-shadow: 0 0 15px rgba(78, 205, 196, 0.7) !important;
+}
+
+.propagate-range {
+  outline: 3px solid #45b7d1 !important;
+  box-shadow: 0 0 10px rgba(69, 183, 209, 0.5) !important;
 }
 .card-hover:hover {
   box-shadow:

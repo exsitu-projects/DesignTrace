@@ -845,6 +845,7 @@ function handleClick(altId, branchId) {
     allUtilStore.nodeOnDrag = false // always reset
     return
   }
+  if (allUtilStore.isPropagate) return
   if (nodeStore.ctrlPressed) {
     // Toggle selection
     const idx = nodeStore.selectedIndices.indexOf(altId)
