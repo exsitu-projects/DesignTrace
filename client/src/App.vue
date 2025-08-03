@@ -507,6 +507,7 @@ onMounted(() => {
 }
 .nodes-layer {
   position: absolute;
+  pointer-events: none;
   inset: 0; /* full overlay */
 }
 
