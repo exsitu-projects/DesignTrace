@@ -1,12 +1,7 @@
 <template>
-  <div
-    ref="nodeEl"
-    :id="alt.id"
-    class="node"
-    :class="{ collapsed: !(alt.expand || alt.dragAgain) }"
-  >
+  <div ref="nodeEl" :id="alt.id" class="node" :class="{ collapsed: !alt.expand }">
     <div
-      v-if="alt.expand || alt.dragAgain"
+      v-if="alt.expand"
       @click="handleClick(alt.id, alt.branchId)"
       class="nodeHandle rounded-top pe-2 d-flex align-items-center py-1"
       style="background: #ededed"
@@ -105,7 +100,7 @@
       </button>
     </div>
     <div
-      v-if="alt.expand || alt.dragAgain"
+      v-if="alt.expand"
       @mouseenter="() => props.onCanvasHover(alt.id, false)"
       @mouseleave="() => props.onCanvasHover(alt.id, true)"
       @click.stop
@@ -136,7 +131,7 @@
     </div>
 
     <!-- Resize handles -->
-    <div class="resize-handles" v-if="alt.expand || alt.dragAgain">
+    <div class="resize-handles" v-if="alt.expand">
       <div class="resize-handle resize-handle-nw" @mousedown="startResize($event, 'nw')"></div>
       <div class="resize-handle resize-handle-ne" @mousedown="startResize($event, 'ne')"></div>
       <div class="resize-handle resize-handle-sw" @mousedown="startResize($event, 'sw')"></div>
@@ -1216,6 +1211,14 @@ watch(
       isHoveringPrevLasso = false
       removeHoverOverlay()
     }
+  },
+)
+
+watch(
+  () => alt.expand,
+  (newExpand) => {
+    // This runs whenever either changes
+    nodeStore.updateVisibleEdges()
   },
 )
 watch(

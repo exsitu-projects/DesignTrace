@@ -372,7 +372,7 @@ function onDrag(x, y, alt) {
   const clampedY = Math.max(0, y)
   allUtilStore.nodeOnDrag = true
   if (alt !== undefined) {
-    alt.dragAgain = true
+    alt.expand = true
     //dragging an alt
     alt.position.x = clampedX
     alt.position.y = clampedY

@@ -19,6 +19,7 @@ export const useNode = defineStore('nodes', () => {
   const INITIAL_NODE_X = 150
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
+  const stackingMap = new Map() // 🆕 key = parentAltId, value = stack count
 
   const exportAlt = ref({})
   // ===== REACTIVE SIZING =====
@@ -246,7 +247,7 @@ export const useNode = defineStore('nodes', () => {
       nodes: [],
       parents: [],
       steps: [],
-      expandedAltIds: [],
+      collapsedAltIds: [],
     }
 
     currentBranchId.value = newBranch.id
@@ -359,94 +360,82 @@ export const useNode = defineStore('nodes', () => {
   // NOTE: Change variable name: 'visible' to 'hidden'
   // It no longer means visible since we are hidding alts under parents
   function updateParents(selectedAltIdArr, branchId) {
-    console.log(selectedAltIdArr)
+    console.log('selectedAltIdArr', selectedAltIdArr)
     const branch = nodeBranchList.value.find((b) => b.id === branchId)
     if (!branch) {
       console.warn(`Branch with ID ${branchId} not found`)
       return
     }
 
-    // Get all alts in the branch and all alts in previous steps
     const allAlts = branch.nodes.flatMap((n) => n.alts)
     const allAltsInSteps = branch.steps.flatMap((step) => step)
 
     const newParents = []
 
     for (const alt of allAlts) {
-      // iterate through all alts, if it is hidden/visible, means that we have visited it before,
-      // then we dont need to visit it again
       if (alt.expand === true) {
-        // If an alt is not included in steps, means we have not visited this alt
         if (!allAltsInSteps.includes(alt.id)) {
           let childAlt = alt
           let currentChildId = alt.id
           let currentParentId = childAlt.prevAltId
-          // While the parent of current alt is not in steps, then we need to search the parent of parent
 
           while (currentParentId && !allAltsInSteps.includes(currentParentId)) {
-            // here we move to the parent of parent
-            // This might looks odd, but it makes sense because since the currentparent is not in steps,
-            // so we need to keep searching from here
             childAlt = allAlts.find((a) => a.id === currentParentId)
+            if (!childAlt) break
+
             childAlt.expand = false
 
-            // childAlt.visibleEdges = childAlt.visibleEdges.filter(
-            //   (edge) => edge.toAltId !== currentChildId,
-            // )
             currentChildId = currentParentId
-            // IO dont know if this assignment works or not
-            // Right now, we have currentChildId = currentParentId
-            // Update CurrParentID, so we move forward to check if the parent of childAlt is inside steps
             currentParentId = childAlt?.prevAltId || null
           }
-          // Remove the visibleEdge from currentParent (a parent in steps) to the alt that we are looking at
+
           const parentAlt = allAlts.find((a) => a.id === currentParentId)
-          // parentAlt.visibleEdges = parentAlt.visibleEdges.filter(
-          //   (edge) => edge.toAltId !== currentChildId,
-          // )
-          // Then we are still in the for loop, we need to know if alt is slected or not:
+
           if (selectedAltIdArr.includes(alt.id)) {
+            console.log('haha', alt.id)
             alt.expand = true
             if (parentAlt) {
-              // parentAlt.visible = true
               parentAlt.visibleEdges.push({
                 fromAltId: currentParentId,
                 toAltId: alt.id,
+                show: true,
               })
             }
           } else {
-            branch.expandedAltIds.push(alt.id)
-            console.log(branch.expandedAltIds)
-            // console.log('allAltsInSteps', allAltsInSteps)
-            if (branch.expandedAltIds.includes(alt.id) && !allAltsInSteps.includes(alt.id)) {
-              // unselected alt, so we move it to the parentAlt position
+            branch.collapsedAltIds.push(alt.id)
+            console.log(branch.collapsedAltIds)
+
+            if (branch.collapsedAltIds.includes(alt.id) && !allAltsInSteps.includes(alt.id)) {
               alt.expand = false
 
-              // Count how many other expanded alts are already stacked at this parent's position
-              const stackedAltsAtParent = branch.expandedAltIds.filter((expandedId) => {
-                const expandedAlt = allAlts.find((a) => a.id === expandedId)
-                return (
-                  expandedAlt &&
-                  expandedAlt.id !== alt.id &&
-                  expandedAlt.prevAltId === alt.prevAltId
-                )
-              }).length
+              const stackOffsetY = 35
+              const stackOffsetX = 3
+              const stackOffsetZ = 1
 
-              const stackOffset = 35 // pixels between each stacked card
+              if (parentAlt) {
+                const parentId = parentAlt.id
+                const BASE_Z = 10000
+                // Get how many alts are *already stacked* on this parent
+                // Get and increment stack count before using it
+                const stackedCount = (stackingMap.get(parentId) || 0) + 1
+                stackingMap.set(parentId, stackedCount) // update early
 
-              // Position at parent's location with stacking
-              alt.position.x = parentAlt.position.x + stackedAltsAtParent * 3 // slight horizontal offset
-              alt.position.y = parentAlt.position.y - (50 + stackedAltsAtParent * stackOffset) // stack vertically above parent
-              alt.z = parentAlt.z - 1 - stackedAltsAtParent // layer below parent, with proper ordering
+                parentAlt.z = BASE_Z
+
+                alt.position.x = parentAlt.position.x + (stackedCount - 1) * stackOffsetX
+                alt.position.y = Math.max(0, parentAlt.position.y - stackedCount * stackOffsetY)
+                alt.z = BASE_Z - stackedCount * stackOffsetZ
+              }
             }
           }
 
           newParents.push(alt.id)
         }
       }
-      branch.parents.push(newParents)
-      branch.steps.push(newParents)
     }
+
+    branch.parents.push(newParents)
+    branch.steps.push(newParents)
   }
 
   // ===== ALT MANAGEMENT =====
@@ -475,6 +464,7 @@ export const useNode = defineStore('nodes', () => {
       z: 1000,
       properties: altObj,
       visible: true,
+
       history: {
         undoStack: [],
         redoStack: [],
@@ -599,7 +589,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = openAIMaskPrompt(
           propsAltered,
@@ -614,7 +604,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -1195,6 +1185,31 @@ export const useNode = defineStore('nodes', () => {
       incoming: incomingEdges,
     }
   }
+
+  /**
+   * Update visible edges based on alt expand/drag state
+   * Hides edges when alt is collapsed, shows them when expanded/dragged
+   */
+  function updateVisibleEdges() {
+    // Iterate through all alts to update their edge visibility
+    for (const branch of nodeBranchList.value) {
+      for (const node of branch.nodes) {
+        for (const alt of node.alts) {
+          const isVisible = alt.expand
+          // Alt is collapsed - hide all its edges
+          alt.visibleEdges.forEach((edge) => (edge.show = isVisible))
+          if (alt.prevAltId) {
+            // If alt has a previous alt, ensure it is not connected to this alt
+            const prevAlt = findAlt(alt.prevAltId)
+            if (prevAlt) {
+              prevAlt.visibleEdges.forEach((edge) => (edge.show = isVisible))
+            }
+          }
+        }
+      }
+    }
+  }
+
   function mergeCanvasPrompt() {
     return 'Rerender this image to make it visually consistent. Blend in any foreign or out-of-place objects so that the entire scene looks coherent and naturally composed.'
   }
@@ -1292,6 +1307,7 @@ export const useNode = defineStore('nodes', () => {
     addEdgeConnection,
     removeEdgeConnection,
     getAltEdges,
+    updateVisibleEdges,
 
     // Alt Sizing Management
     updateAltSizing,
