@@ -1,5 +1,14 @@
 <template>
   <canvas id="freeCanvas"></canvas>
+  <div
+    v-show="generationStore.textGenStatus === 'loading'"
+    class="position-absolute top-50 start-50 translate-middle"
+    style="z-index: 500"
+  >
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
   <!-- Cutout tooltip -->
   <div
     v-if="isDraggingCutout && cutoutTooltip.visible"
@@ -13,6 +22,16 @@
     <img :src="cutoutTooltip.imageData" alt="cutout" />
   </div>
   <div class="drawing-mode-options border border-black rounded-1 p-1">
+    <div v-show="allUtilStore.isTxt2Img" class="input-group">
+      <textarea
+        v-model="generationStore.generalPrompt"
+        class="form-control"
+        aria-label="With textarea"
+      ></textarea>
+      <button class="btn-outline-dark input-group-text btn" @click="generateImage()">
+        Generate
+      </button>
+    </div>
     <div class="collapse" id="collapseExample">
       <ColorPicker></ColorPicker>
     </div>
@@ -841,6 +860,17 @@ onBeforeUnmount(() => {
 defineExpose({
   deleteSelectedObjects,
 })
+async function generateImage() {
+  try {
+    const imgUrl = await generationStore.txt2Img({
+      prompt: generationStore.generalPrompt,
+    })
+    const uuid = crypto.randomUUID()
+    loadImgFromUrl(imgUrl, uuid)
+  } catch (error) {
+    console.error('Error generating image:', error)
+  }
+}
 </script>
 
 <style>

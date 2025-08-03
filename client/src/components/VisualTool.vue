@@ -7,7 +7,7 @@ import {
   SprayCan,
   Lock,
   LockOpen,
-  ImageMinus,
+  ImageOff,
   ArrowUpWideNarrow,
 } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
@@ -26,6 +26,12 @@ function switchLasso() {
 
   // Hide color picker when lasso is activated (after the toggle)
   if (allUtilStore.isLassoMode) closeColorPicker()
+}
+
+function switchTxt2Img() {
+  allUtilStore.switchTxt2Img()
+  // Hide color picker when text to image is activated
+  closeColorPicker()
 }
 function closeColorPicker() {
   setTimeout(() => {
@@ -74,7 +80,7 @@ function switchStepLock() {
       <Lasso color="black" :size="15" />
     </button>
     <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
-      <ImageMinus color="black" :size="15"></ImageMinus>
+      <ImageOff color="black" :size="15"></ImageOff>
     </button>
     <button
       title="Propagate Change"
@@ -88,13 +94,20 @@ function switchStepLock() {
       ></ArrowUpWideNarrow
       >Propagate
     </button>
-
     <button
-      :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"
-      @click="switchColorPen"
+      title="Generate AI Image"
+      @click="switchTxt2Img"
+      :class="['btn btn-sm btn-light', { active: allUtilStore.isTxt2Img }]"
     >
-      <SprayCan color="black" :size="15"></SprayCan>
+      <img src="../../public/assets/ai-file.png" alt="description" width="20" height="20" />
     </button>
+
+    <!--    <button-->
+    <!--      :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"-->
+    <!--      @click="switchColorPen"-->
+    <!--    >-->
+    <!--      <SprayCan color="black" :size="15"></SprayCan>-->
+    <!--    </button>-->
 
     <!--    <button type="button" class="btn btn-light">Left</button>-->
     <!--    <button type="button" class="btn btn-light">Middle</button>-->

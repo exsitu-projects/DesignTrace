@@ -10,6 +10,8 @@ export const useGeneration = defineStore('generation', () => {
   const promiseLoadImageLabel = ref('')
   const shouldTriggerT2I = ref(false)
   const currentGenId = ref('')
+  const generalPrompt = ref('')
+  const textGenStatus = ref('finished') // Track text generation status
   const ghostTagsPerRow = ref({}) // Store ghost tags for each row by rowIndex
   const ghostTagsLoading = ref({}) // Track loading state for each row
   const generationParams = {
@@ -255,6 +257,35 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
       alert('Image generation failed. Please try again.')
     }
   }
+
+  async function txt2Img({ prompt }) {
+    try {
+      textGenStatus.value = 'loading'
+      const response = await fetch('http://localhost:5555/text-to-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+        }),
+      })
+      const result = await response.json()
+
+      if (response.ok) {
+        // return result.result
+        return result.output
+      } else {
+        console.log(result.error)
+        return null // Optional: explicitly return null on error
+      }
+    } catch (err) {
+      console.log(err.message)
+      return null // Optional: consistently return on error
+    } finally {
+      textGenStatus.value = 'finished'
+    }
+  }
   async function removeBg(base64Url) {
     loadingStatus.value = 'loading'
     try {
@@ -417,5 +448,8 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     ghostTagsPerRow,
     isGhostTagsLoading,
     removeBg,
+    generalPrompt,
+    txt2Img,
+    textGenStatus,
   }
 })

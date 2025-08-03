@@ -207,11 +207,11 @@ def sample_properties():
 @app.route('/text-to-image', methods=['POST'])
 def text_to_image():
     json_data = request.get_json()
-    if not json_data or 'prompt' not in json_data or 'output_path' not in json_data:
+    if not json_data or 'prompt' not in json_data:
         return jsonify({"error": "JSON must include 'image_base64' and 'output_path'"}), 400
 
     prompt = json_data.get('prompt', '')
-    output_path = json_data['output_path']
+    # output_path = json_data['output_path']
 
     try:
         result = client.images.generate(
@@ -223,21 +223,22 @@ def text_to_image():
 
         # Process result
         result_base64 = result.data[0].b64_json
-        output_bytes = base64.b64decode(result_base64)
-
-        # Resize and save
-        image = Image.open(io.BytesIO(output_bytes))
-        resized_image = image.resize((512, 512), Image.LANCZOS)
-        resized_image.save(output_path)
-
-        # Convert to base64 for response
-        buffered = io.BytesIO()
-        resized_image.save(buffered, format="PNG")
-        output_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        output_base64 = f"data:image/png;base64,{output_base64}"
+        result_base64 = f"data:image/png;base64,{result_base64}"
+        # output_bytes = base64.b64decode(result_base64)
+        #
+        # # Resize and save
+        # image = Image.open(io.BytesIO(output_bytes))
+        # resized_image = image.resize((512, 512), Image.LANCZOS)
+        # resized_image.save(output_path)
+        #
+        # # Convert to base64 for response
+        # buffered = io.BytesIO()
+        # resized_image.save(buffered, format="PNG")
+        # output_base64 = base64.b64encode(buffered.getvalue()).decode('utf-8')
+        # output_base64 = f"data:image/png;base64,{output_base64}"
         return jsonify({
             "status": "success",
-            "output": output_base64,
+            "output": result_base64,
         })
 
     except Exception as e:

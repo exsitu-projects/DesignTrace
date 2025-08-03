@@ -20,7 +20,7 @@
         @click="removeBg()"
         class="btn btn-sm ms-2"
       >
-        <ImageMinus color="gray" :size="20"></ImageMinus>
+        <ImageOff color="gray" :size="20"></ImageOff>
       </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
         Merge All
@@ -158,7 +158,7 @@ import {
   ArrowRight,
   Split,
   UndoDot,
-  ImageMinus,
+  ImageOff,
   GitPullRequestCreate,
   Lock,
   LockOpen,
