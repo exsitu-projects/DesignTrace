@@ -14,14 +14,6 @@
       <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
         <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
       </button>
-      <button
-        title="Remove background"
-        v-show="objectActive"
-        @click="removeBg()"
-        class="btn btn-sm ms-2"
-      >
-        <ImageOff color="gray" :size="20"></ImageOff>
-      </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
         Merge
       </button>
@@ -158,7 +150,6 @@ import {
   ArrowRight,
   Split,
   UndoDot,
-  ImageOff,
   GitPullRequestCreate,
   Lock,
   LockOpen,
@@ -764,7 +755,7 @@ async function removeBg() {
   const activeObj = fabricCanvas.getActiveObject()
   if (!activeObj) {
     console.warn('No active object selected.')
-    return // Or handle this case as needed
+    return false // Return false if no object was found
   }
 
   let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
@@ -792,6 +783,7 @@ async function removeBg() {
       originY: obj.originY,
     }
   }
+  return true // Return true if objects were processed
 }
 
 onBeforeUnmount(() => {
@@ -1057,6 +1049,7 @@ defineExpose({
   setCanvasState,
   forwardOneLayer,
   backwardOneLayer,
+  removeBg,
 })
 
 function applyToFullImg() {

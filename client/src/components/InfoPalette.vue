@@ -339,10 +339,12 @@ const createPopoverContent = () => {
       </div>
       <div class="d-flex flex-wrap gap-1">
         <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;" data-attribute="Color Palette">🎨 Color Palette</button>
-        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Primary Font">🗛 Primary Font</button>
-        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Graphic Design Layout">💠 Graphic Design Layout</button>
-        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Visual Contrast">🖼️ Visual Contrast</button>
-        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Landmark">📍 Landmark</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Form">🗿 Form</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Text">🗛 Text</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Material">💠 Material</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Lighting">💡 Lighting</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="Visual Composition">🖼️ Visual Composition</button>
+        <button class="btn btn-light attribute-btn" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" data-attribute="The most unique visual feature">📍 The most unique visual feature</button>
       </div>
     </div>
   `.trim()

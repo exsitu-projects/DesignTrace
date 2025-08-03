@@ -8,6 +8,7 @@
       @forwardLayerFromNodes="handleForwardLayerFromNodes"
       @backwardLayerFromNodes="handleBackwardLayerFromNodes"
       @exportBranchTags="handleExportBranchTags"
+      @removeBgFromNodes="handleRemoveBgFromNodes"
     />
     <button
       v-show="nodesSelected"
@@ -458,6 +459,19 @@ function handleBackwardLayerFromNodes() {
     if (canvasRef?.backwardOneLayer?.()) {
       // If backwardOneLayer returns true, an object was moved
       break
+    }
+  }
+}
+
+async function handleRemoveBgFromNodes() {
+  // Iterate through all node canvas refs to find one with active objects
+  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+    if (canvasRef?.removeBg) {
+      const result = await canvasRef.removeBg()
+      if (result) {
+        // If removeBg returns true, objects were processed
+        break
+      }
     }
   }
 }

@@ -114,7 +114,7 @@ import ColorPicker from '@/components/colorPicker.vue'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
-const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes', 'exportBranchTags'])
+const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes', 'exportBranchTags', 'removeBgFromNodes'])
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
@@ -327,24 +327,24 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
 }
 async function removeBg() {
   const activeObj = canvas.getActiveObject()
-  if (!activeObj) {
-    console.warn('No active object selected.')
-    return // Or handle this case as needed
-  }
+  if (props.childActiveSelected) {
+    // Emit event to check node canvases if child has active object
+    emit('removeBgFromNodes')
+  } else if (activeObj) {
+    let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
+    for (const obj of objectsToProcess) {
+      // 1. Export object as base64 (you may want to export just that object)
+      const base64Url = obj.toDataURL({
+        format: 'png',
+        multiplier: 2,
+      })
 
-  let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
-  for (const obj of objectsToProcess) {
-    // 1. Export object as base64 (you may want to export just that object)
-    const base64Url = obj.toDataURL({
-      format: 'png',
-      multiplier: 2,
-    })
-
-    // 2. Call your bg removal API
-    const newBase64Url = await generationStore.removeBg(base64Url)
-    canvas.remove(obj)
-    // 3. Create new Fabric.Image from processed base64
-    loadImgFromUrl(newBase64Url, obj.idInUpload, obj.left, obj.top)
+      // 2. Call your bg removal API
+      const newBase64Url = await generationStore.removeBg(base64Url)
+      canvas.remove(obj)
+      // 3. Create new Fabric.Image from processed base64
+      loadImgFromUrl(newBase64Url, obj.idInUpload, obj.left, obj.top)
+    }
   }
 }
 const addBranchNodeAlt = () => {

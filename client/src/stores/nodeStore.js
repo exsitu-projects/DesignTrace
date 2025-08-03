@@ -588,7 +588,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       } else if (copiedPayload.type === 'lasso') {
         const prompt = openAIMaskPrompt(
           propsAltered,
@@ -603,7 +603,7 @@ export const useNode = defineStore('nodes', () => {
 
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       }
 
       if (imgUrl) {
