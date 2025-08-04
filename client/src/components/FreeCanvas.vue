@@ -114,7 +114,12 @@ import ColorPicker from '@/components/colorPicker.vue'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
-const emit = defineEmits(['forwardLayerFromNodes', 'backwardLayerFromNodes', 'exportBranchTags', 'removeBgFromNodes'])
+const emit = defineEmits([
+  'forwardLayerFromNodes',
+  'backwardLayerFromNodes',
+  'exportBranchTags',
+  'removeBgFromNodes',
+])
 let canvas = null
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
@@ -328,10 +333,12 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
 async function removeBg() {
   const activeObj = canvas.getActiveObject()
   if (props.childActiveSelected) {
-    // Emit event to check node canvases if child has active object
+    canvas.discardActiveObject()
+    canvas.requestRenderAll() // Emit event to check node canvases if child has active object
     emit('removeBgFromNodes')
   } else if (activeObj) {
-    let objectsToProcess = activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
+    let objectsToProcess =
+      activeObj.type === 'activeSelection' ? activeObj.getObjects() : [activeObj]
     for (const obj of objectsToProcess) {
       // 1. Export object as base64 (you may want to export just that object)
       const base64Url = obj.toDataURL({

@@ -287,7 +287,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     }
   }
   async function removeBg(base64Url) {
-    loadingStatus.value = 'loading'
+    textGenStatus.value = 'loading'
     try {
       const response = await fetch('http://localhost:5555/remove-bg', {
         method: 'POST',
@@ -311,7 +311,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
       console.log(err.message)
       return null
     } finally {
-      loadingStatus.value = 'finished'
+      textGenStatus.value = 'finished'
     }
   }
 
