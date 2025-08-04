@@ -484,7 +484,7 @@ function handleExportBranchTags() {
 
 function exportBranchTags(branchId) {
   // Find the branch by ID
-  const branch = nodeStore.nodeBranchList.find(b => b.id === branchId)
+  const branch = nodeStore.nodeBranchList.find((b) => b.id === branchId)
   if (!branch) {
     showNotification('Branch not found')
     return
@@ -493,13 +493,14 @@ function exportBranchTags(branchId) {
   // Collect all tags from expanded alts in this branch
   const branchTags = new Set()
   let expandedAltCount = 0
-  
-  branch.nodes.forEach(node => {
-    node.alts.forEach(alt => {
-      if (alt.expand) { // Only collect from expanded nodes
+
+  branch.nodes.forEach((node) => {
+    node.alts.forEach((alt) => {
+      if (alt.expand) {
+        // Only collect from expanded nodes
         expandedAltCount++
         if (alt.properties && alt.properties.length > 0) {
-          alt.properties.forEach(property => {
+          alt.properties.forEach((property) => {
             if (property.tag && property.tag.trim()) {
               branchTags.add(`${property.tag} (${property.propName || 'property'})`)
             }
@@ -511,7 +512,7 @@ function exportBranchTags(branchId) {
 
   // Convert Set to Array and sort
   const tagsArray = Array.from(branchTags).sort()
-  
+
   if (tagsArray.length === 0) {
     showNotification(`No tags found in ${expandedAltCount} expanded nodes of this branch`)
     return
@@ -523,14 +524,14 @@ function exportBranchTags(branchId) {
     exportDate: new Date().toISOString(),
     expandedNodesCount: expandedAltCount,
     totalTags: tagsArray.length,
-    uniqueTags: tagsArray
+    uniqueTags: tagsArray,
   }
 
   // Create and download JSON file
   const dataStr = JSON.stringify(exportContent, null, 2)
   const dataBlob = new Blob([dataStr], { type: 'application/json' })
   const url = URL.createObjectURL(dataBlob)
-  
+
   const link = document.createElement('a')
   link.href = url
   link.download = `branch-${branchId}-tags-${new Date().toISOString().split('T')[0]}.json`
@@ -539,7 +540,9 @@ function exportBranchTags(branchId) {
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 
-  showNotification(`Exported ${tagsArray.length} unique tags from ${expandedAltCount} expanded nodes`)
+  showNotification(
+    `Exported ${tagsArray.length} unique tags from ${expandedAltCount} expanded nodes`,
+  )
 }
 function handleKeyUp(e) {
   if (e.key === 'Control') nodeStore.ctrlPressed = false
@@ -878,6 +881,7 @@ onMounted(() => {
   z-index: 20;
 }
 .tooltip-popout {
+  z-index: 900000;
   cursor: pointer;
   background-color: rgba(25, 135, 84, 0.9); /* Bootstrap green */
   padding: 6px 0; /* vertical padding, no horizontal */

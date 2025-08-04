@@ -734,7 +734,7 @@ const makeTool = () => {
   border-radius: 4px;
   font-size: 12px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 9999999;
   white-space: pre-line;
   max-width: 300px;
   word-wrap: break-word;
