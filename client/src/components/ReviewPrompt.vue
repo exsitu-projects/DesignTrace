@@ -9,24 +9,53 @@
       <div class="modal-body">
         <div class="form-group">
           <label class="switch-container">
-            <input 
-              type="checkbox" 
-              v-model="generationStore.alwaysReview"
-              class="switch-input"
-            >
+            <input type="checkbox" v-model="generationStore.alwaysReview" class="switch-input" />
             <span class="switch-slider"></span>
             <span class="switch-label">Always Review</span>
           </label>
         </div>
         <div class="form-group">
           <label for="prompt-textarea">Generated Prompt:</label>
-          <textarea 
+          <textarea
             id="prompt-textarea"
             v-model="generationStore.currentPrompt"
             class="prompt-textarea"
             rows="8"
             placeholder="Generated prompt will appear here..."
           ></textarea>
+        </div>
+
+        <!-- Prompt Template Section -->
+        <div class="form-group">
+          <label>Prompt Templates:</label>
+
+          <!-- OpenAI Template -->
+          <div class="template-section">
+            <h6>Whole Image Editing Template:</h6>
+            <div class="template-preview">
+              <EditableText v-model="generationStore.promptTemplates.openAI.prefix" />
+              <span class="variable-text">${propsAltered}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAI.middle1" />
+              <span class="variable-text">${adjObjectText} ${objectText}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAI.middle2" />
+              <span class="variable-text">${descriptors}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAI.suffix" />
+            </div>
+          </div>
+
+          <!-- OpenAI Mask Template -->
+          <div class="template-section">
+            <h6>Selected Area Editing Template:</h6>
+            <div class="template-preview">
+              <EditableText v-model="generationStore.promptTemplates.openAIMask.prefix" />
+              <span class="variable-text">${objectText}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAIMask.middle1" />
+              <span class="variable-text">${descriptors}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAIMask.middle2" />
+              <span class="variable-text">${visibleProps}</span>
+              <EditableText v-model="generationStore.promptTemplates.openAIMask.suffix" />
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -38,9 +67,78 @@
 </template>
 
 <script setup>
+import { ref, nextTick, defineComponent } from 'vue'
 import { useGeneration } from '../stores/generationStore'
 
+// EditableText component
+const EditableText = defineComponent({
+  name: 'EditableText',
+  props: {
+    modelValue: {
+      type: String,
+      required: true,
+    },
+  },
+  emits: ['update:modelValue'],
+  template: `
+    <span
+      v-if="!isEditing"
+      @click="startEditing"
+      class="editable-text"
+      :title="modelValue"
+    >
+      {{ modelValue }}
+    </span>
+    <input
+      v-else
+      v-model="localValue"
+      @blur="stopEditing"
+      @keyup.enter="stopEditing"
+      @keyup.escape="cancelEditing"
+      class="editable-input"
+      ref="inputRef"
+    />
+  `,
+  setup(props, { emit }) {
+    const isEditing = ref(false)
+    const localValue = ref('')
+    const inputRef = ref(null)
+
+    const startEditing = () => {
+      localValue.value = props.modelValue
+      isEditing.value = true
+      nextTick(() => {
+        inputRef.value?.focus()
+        inputRef.value?.select()
+      })
+    }
+
+    const stopEditing = () => {
+      emit('update:modelValue', localValue.value)
+      isEditing.value = false
+    }
+
+    const cancelEditing = () => {
+      isEditing.value = false
+    }
+
+    return {
+      isEditing,
+      localValue,
+      inputRef,
+      startEditing,
+      stopEditing,
+      cancelEditing,
+    }
+  },
+})
+
 const generationStore = useGeneration()
+
+// Register components
+const components = {
+  EditableText,
+}
 
 const closeDialog = () => {
   generationStore.showReviewDialog = false
@@ -51,14 +149,14 @@ const closeDialog = () => {
 const generateImage = async () => {
   if (generationStore.pendingGeneration && generationStore.currentPrompt.trim()) {
     const { copiedPayload, altId, resolve } = generationStore.pendingGeneration
-    
+
     // Update the payload with the reviewed prompt
     copiedPayload.prompt = generationStore.currentPrompt.trim()
     copiedPayload.altId = altId
-    
+
     // Close dialog immediately when user clicks generate
     closeDialog()
-    
+
     try {
       const imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       resolve(imgUrl)
@@ -252,5 +350,67 @@ const generateImage = async () => {
 
 .btn-primary:hover {
   background-color: #0056b3;
+}
+
+/* Template Section Styles */
+.template-section {
+  margin-bottom: 20px;
+  padding: 15px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  background-color: #f8f9fa;
+}
+
+.template-section h6 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-weight: 600;
+}
+
+.template-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.8;
+}
+
+.variable-text {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.editable-text {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.editable-text:hover {
+  background-color: #ffeaa7;
+  border-color: #f39c12;
+}
+
+.editable-input {
+  padding: 2px 6px;
+  border: 1px solid #007bff;
+  border-radius: 3px;
+  background-color: white;
+  font-size: 14px;
+  min-width: 100px;
+}
+
+.editable-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 </style>

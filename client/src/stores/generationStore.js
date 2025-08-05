@@ -18,6 +18,22 @@ export const useGeneration = defineStore('generation', () => {
   const showReviewDialog = ref(false) // Controls review dialog visibility
   const currentPrompt = ref('') // Current prompt being reviewed
   const pendingGeneration = ref(null) // Stores pending generation data
+  
+  // Prompt template strings for openAIPrompt
+  const promptTemplates = reactive({
+    openAI: {
+      prefix: ref('Change the'),
+      middle1: ref('of the'),
+      middle2: ref('into'),
+      suffix: ref('while other visual properties remain the same.')
+    },
+    openAIMask: {
+      prefix: ref('Transform the selected'),
+      middle1: ref('in the mask to'),
+      middle2: ref('in the same style, keeping its'),
+      suffix: ref('. Keep other unmasked parts of the image intact.')
+    }
+  })
   const generationParams = {
     ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
     auto_save: false,
@@ -459,5 +475,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     showReviewDialog,
     currentPrompt,
     pendingGeneration,
+    promptTemplates,
   }
 })

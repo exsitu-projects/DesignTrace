@@ -490,19 +490,8 @@ export const useNode = defineStore('nodes', () => {
    * @returns {string} Formatted prompt
    */
   function openAIPrompt(propsAltered, adjObjectText, objectText, descriptors) {
-    return `Change the ${propsAltered} of the ${adjObjectText} ${objectText} into ${descriptors.join(' and ')} while other visual properties remain the same.`
-  }
-
-  /**
-   * Generate a prompt for MagicQuill image generation
-   * @param {string} propsAltered - Comma-separated property names being altered
-   * @param {string} guessPrompt - Additional context for prompt
-   * @param {string} objectText - Object name from detection
-   * @param {string[]} descriptors - Array of property descriptions
-   * @returns {string} Formatted prompt
-   */
-  function magicQPrompt(propsAltered, guessPrompt, objectText, descriptors) {
-    return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
+    const templates = generationStore.promptTemplates.openAI
+    return `${templates.prefix} ${propsAltered} ${templates.middle1} ${adjObjectText} ${objectText} ${templates.middle2} ${descriptors.join(' and ')} ${templates.suffix}`
   }
 
   /**
@@ -524,16 +513,22 @@ export const useNode = defineStore('nodes', () => {
     visibleProps,
     objOrProp,
   ) {
-    return (
-      'Transform the selected ' +
-      objectText +
-      ' in the mask to ' +
-      `${descriptors.join(' and ')}` +
-      ' in the same style, keeping its ' +
-      visibleProps +
-      '. Keep other unmasked parts of the image intact.'
-    )
+    const templates = generationStore.promptTemplates.openAIMask
+    return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors.join(' and ')} ${templates.middle2} ${visibleProps}${templates.suffix}`
   }
+
+  /**
+   * Generate a prompt for MagicQuill image generation
+   * @param {string} propsAltered - Comma-separated property names being altered
+   * @param {string} guessPrompt - Additional context for prompt
+   * @param {string} objectText - Object name from detection
+   * @param {string[]} descriptors - Array of property descriptions
+   * @returns {string} Formatted prompt
+   */
+  function magicQPrompt(propsAltered, guessPrompt, objectText, descriptors) {
+    return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
+  }
+
   function imagenPrompt(
     propsAltered,
     adjObjectText,
@@ -595,20 +590,20 @@ export const useNode = defineStore('nodes', () => {
           objOrProp,
         )
       }
-      
+
       console.log('Generated prompt:', prompt)
 
       if (generationStore.alwaysReview) {
         // Show review dialog and wait for user action
         generationStore.currentPrompt = prompt
         generationStore.showReviewDialog = true
-        
+
         // Create a promise that resolves when the user generates or cancels
         imgUrl = await new Promise((resolve) => {
           generationStore.pendingGeneration = {
             copiedPayload,
             altId,
-            resolve
+            resolve,
           }
         })
       } else {
