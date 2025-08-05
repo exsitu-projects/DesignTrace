@@ -197,6 +197,10 @@
         <InfoPalette />
       </div>
     </VueDraggableResizable>
+    
+    <!-- Review Prompt Components -->
+    <ReviewPromptTab />
+    <ReviewPrompt />
   </div>
 </template>
 
@@ -209,6 +213,8 @@ import VueDraggableResizable from 'vue-draggable-resizable'
 import FreeCanvas from '@/components/FreeCanvas.vue'
 import NewNode from '@/components/NewNode.vue'
 import InfoPalette from '@/components/InfoPalette.vue'
+import ReviewPrompt from '@/components/ReviewPrompt.vue'
+import ReviewPromptTab from '@/components/ReviewPromptTab.vue'
 
 /* Pinia stores */
 import { useNode } from '@/stores/nodeStore.js'

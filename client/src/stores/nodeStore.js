@@ -582,15 +582,11 @@ export const useNode = defineStore('nodes', () => {
       let imgUrl = null
 
       // Generate appropriate prompt and image based on payload type
+      let prompt = ''
       if (copiedPayload.type === 'full-img') {
-        const prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
-        console.log('Generated prompt:', prompt)
-
-        copiedPayload.prompt = prompt
-        copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
       } else if (copiedPayload.type === 'lasso') {
-        const prompt = openAIMaskPrompt(
+        prompt = openAIMaskPrompt(
           propsAltered,
           adjObjectText,
           objectText,
@@ -598,9 +594,25 @@ export const useNode = defineStore('nodes', () => {
           visibleProps,
           objOrProp,
         )
-        //'Transform the selected strawberry in the mask to banana in the same style, while keeping other unmasked parts of the packaging intact'
-        console.log('Generated prompt:', prompt)
+      }
+      
+      console.log('Generated prompt:', prompt)
 
+      if (generationStore.alwaysReview) {
+        // Show review dialog and wait for user action
+        generationStore.currentPrompt = prompt
+        generationStore.showReviewDialog = true
+        
+        // Create a promise that resolves when the user generates or cancels
+        imgUrl = await new Promise((resolve) => {
+          generationStore.pendingGeneration = {
+            copiedPayload,
+            altId,
+            resolve
+          }
+        })
+      } else {
+        // Direct generation without review
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
         imgUrl = await generationStore.generateOpenAIImg(copiedPayload)

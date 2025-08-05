@@ -14,6 +14,10 @@ export const useGeneration = defineStore('generation', () => {
   const textGenStatus = ref('finished') // Track text generation status
   const ghostTagsPerRow = ref({}) // Store ghost tags for each row by rowIndex
   const ghostTagsLoading = ref({}) // Track loading state for each row
+  const alwaysReview = ref(false) // Whether to always show prompt review dialog
+  const showReviewDialog = ref(false) // Controls review dialog visibility
+  const currentPrompt = ref('') // Current prompt being reviewed
+  const pendingGeneration = ref(null) // Stores pending generation data
   const generationParams = {
     ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
     auto_save: false,
@@ -451,5 +455,9 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     generalPrompt,
     txt2Img,
     textGenStatus,
+    alwaysReview,
+    showReviewDialog,
+    currentPrompt,
+    pendingGeneration,
   }
 })
