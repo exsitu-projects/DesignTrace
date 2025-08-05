@@ -1,5 +1,9 @@
 <template>
-  <div class="content" style="z-index: 0" :class="{ 'lasso-cursor': allUtilStore.isToolTip }">
+  <div
+    class="content lasso-active-space"
+    style="z-index: 0"
+    :class="{ 'lasso-cursor': allUtilStore.isToolTip }"
+  >
     <!-- One row per visual property -->
     <div
       v-for="(row, rowIdx) in rows"
@@ -23,13 +27,7 @@
           @dragstart="(e) => handleDragStart(e, row, row.name)"
           @mouseup="handleMouseUp(rowIdx, row.name)"
           @editing-changed="(editing) => onEditingChanged(rowIdx, 'propertyName', editing)"
-          @click.stop="
-            () => {
-              if (!editingStates[rowIdx]?.propertyName) {
-                handlePropertyNameClick(rowIdx, row)
-              }
-            }
-          "
+          @click.stop="onPropertyNameClick($event, rowIdx, row)"
           :isPropertyName="true"
           @property-name-finalized="
             (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
@@ -64,7 +62,7 @@
               cursor: editingStates[rowIdx]?.[tagIdx] ? 'default' : 'pointer',
               userSelect: 'none',
             }"
-            @click.stop="!editingStates[rowIdx]?.[tagIdx] && toggleTagSelection(rowIdx, tagIdx)"
+            @click.stop="onTagNameClick($event, rowIdx, tagIdx)"
             class="badge m-1"
             :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
           >
@@ -228,6 +226,22 @@ function onEditingChanged(rowIdx, tagIdx, editing) {
   editingStates[rowIdx][tagIdx] = editing
 }
 
+function onPropertyNameClick(event, rowIdx, row) {
+  if (!event.ctrlKey) return
+
+  if (!editingStates[rowIdx]?.propertyName) {
+    handlePropertyNameClick(rowIdx, row)
+  }
+}
+
+function onTagNameClick(event, rowIdx, tagIdx) {
+  if (!event.ctrlKey) return
+
+  if (!editingStates[rowIdx]?.[tagIdx]) {
+    toggleTagSelection(rowIdx, tagIdx)
+  }
+}
+
 // Functions to handle ghost tag visibility with delay
 const showGhostTags = (rowIdx) => {
   // Clear any existing timeout
@@ -297,7 +311,9 @@ const updateCursorTooltip = () => {
     infoStore.propertyTags = []
     // Enter lasso mode with crosshair cursor
     allUtilStore.isToolTip = true
-    document.body.classList.add('lasso-cursor-global')
+    document.querySelectorAll('.lasso-active-space').forEach((el) => {
+      el.classList.add('lasso-cursor-global')
+    })
 
     // Activate the real lasso tool in allUtilStore
     if (!allUtilStore.isLassoMode) {
@@ -560,7 +576,9 @@ onUnmounted(() => {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('click', exitLassoMode)
   // Clean up global cursor class
-  document.body.classList.remove('lasso-cursor-global')
+  document.querySelectorAll('.lasso-active-space').forEach((el) => {
+    el.classList.remove('lasso-cursor-global')
+  })
 })
 
 const handleMouseUp = async (rowIdx, propName) => {
@@ -621,7 +639,9 @@ const exitLassoMode = (skipStoreUpdate = false) => {
   infoStore.isPropertyMode = false
   infoStore.propertyTags = []
   // Remove global cursor style
-  document.body.classList.remove('lasso-cursor-global')
+  document.querySelectorAll('.lasso-active-space').forEach((el) => {
+    el.classList.remove('lasso-cursor-global')
+  })
 
   // Deactivate the real lasso tool in allUtilStore (unless called from watcher to avoid loops)
   if (!skipStoreUpdate && allUtilStore.isLassoMode) {
@@ -668,7 +688,9 @@ const handlePropertyNameClick = (rowIdx, row) => {
     // Enter lasso mode with crosshair cursor
     allUtilStore.isToolTip = true
     // Add global cursor style to body
-    document.body.classList.add('lasso-cursor-global')
+    document.querySelectorAll('.lasso-active-space').forEach((el) => {
+      el.classList.add('lasso-cursor-global')
+    })
     // Activate the real lasso tool in allUtilStore
     if (!allUtilStore.isLassoMode) {
       allUtilStore.switchLassoMode() // Only toggle if currently off
@@ -751,8 +773,8 @@ const makeTool = () => {
 }
 
 /* Global lasso cursor style (not scoped) */
-body.lasso-cursor-global,
-body.lasso-cursor-global * {
+.lasso-cursor-global,
+.lasso-cursor-global * {
   cursor: crosshair !important;
 }
 </style>
