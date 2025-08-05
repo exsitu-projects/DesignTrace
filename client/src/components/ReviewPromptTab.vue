@@ -24,7 +24,7 @@ const openReviewDialog = () => {
   padding: 12px 8px;
   border-radius: 8px 0 0 8px;
   cursor: pointer;
-  z-index: 1000;
+  z-index: 3000;
   transition: all 0.3s ease;
   writing-mode: vertical-rl;
   text-orientation: mixed;
