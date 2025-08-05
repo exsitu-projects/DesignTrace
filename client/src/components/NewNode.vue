@@ -19,6 +19,13 @@
       <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
         <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
       </button>
+      <button
+        v-show="changeDetected"
+        @click="eraseLasso()"
+        class="btn btn-outline-dark btn-sm ms-2"
+      >
+        <Eraser color="gray" :size="20"></Eraser>
+      </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
         Merge
       </button>
@@ -158,6 +165,7 @@ import {
   Lock,
   LockOpen,
   SquareArrowUpLeft,
+  Eraser,
 } from 'lucide-vue-next'
 import * as fabric from 'fabric'
 import EditableLabel from './EditableLabel.vue'
@@ -1095,6 +1103,25 @@ function backwardOneLayer() {
     return true // Return true if an object was moved
   }
   return false // Return false if no object was found
+}
+
+async function eraseLasso() {
+  storeLassoInfo()
+  if (allUtilStore.isLassoMode) {
+    console.log('Erasing lasso area')
+    fabricCanvas.discardActiveObject()
+    fabricCanvas.requestRenderAll()
+    saveState()
+    lassoPayload.value.prompt = 'Remove the masked object from this image'
+    lassoPayload.value.altId = alt.id
+    //({ original_image, total_mask, prompt, altId })
+    const imgUrl = await generationStore.generateOpenAIImg(lassoPayload.value)
+    if (imgUrl) {
+      nodeStore.addAltImgPayload = { url: imgUrl, altId: alt.id }
+    }
+    changeDetected.value = false
+    saveState()
+  }
 }
 
 function storeLassoInfo() {
