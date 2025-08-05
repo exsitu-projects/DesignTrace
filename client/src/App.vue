@@ -187,7 +187,7 @@
       @dragging="(x, y) => onDrag(x, y)"
     >
       <div class="header handle small fw-bolder">
-        Conceptual Assets
+        Make Smart Lasso Tool
         <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
           <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
         </button>

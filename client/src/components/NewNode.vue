@@ -1,5 +1,10 @@
 <template>
-  <div ref="nodeEl" :id="alt.id" class="node" :class="{ collapsed: !alt.expand }">
+  <div
+    ref="nodeEl"
+    :id="alt.id"
+    class="node lasso-active-space"
+    :class="{ collapsed: !alt.expand }"
+  >
     <div
       v-if="alt.expand"
       @click="handleClick(alt.id, alt.branchId)"
