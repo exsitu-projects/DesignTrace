@@ -3,7 +3,7 @@
   <div
     v-show="generationStore.textGenStatus === 'loading'"
     class="position-absolute top-50 start-50 translate-middle"
-    style="z-index: 500"
+    style="z-index: 9000"
   >
     <div class="spinner-border" role="status">
       <span class="visually-hidden">Loading...</span>

@@ -95,7 +95,7 @@ function switchStepLock() {
       @click="switchLasso()"
       :class="['btn btn-sm btn-light', { active: allUtilStore.isLassoMode }]"
     >
-      <Lasso color="black" :size="15" /> Lasso
+      <Lasso color="black" :size="15" /> Select
     </button>
 
     <!--    <button-->

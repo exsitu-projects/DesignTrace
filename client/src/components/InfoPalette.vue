@@ -145,6 +145,9 @@
       >+ Add Asset</a
     >
     <div class="d-flex justify-content-end">
+      <button @click.stop="exitLassoMode" class="btn btn-sm btn-light mx-1" role="button">
+        Deselect All
+      </button>
       <button @click.stop="makeTool" class="btn btn-sm btn-light" role="button">
         <SquareStack color="black" :size="15" /> Save Combination
       </button>
