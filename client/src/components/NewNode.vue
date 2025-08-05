@@ -19,11 +19,7 @@
       <button title="Export" class="btn btn-sm ms-2" @click.stop="exportAltToFreeCanv($event)">
         <SquareArrowUpLeft color="gray" :size="20"></SquareArrowUpLeft>
       </button>
-      <button
-        v-show="changeDetected"
-        @click="eraseLasso()"
-        class="btn btn-outline-dark btn-sm ms-2"
-      >
+      <button v-show="allUtilStore.isLassoMode" @click="eraseLasso()" class="btn btn-sm ms-2">
         <Eraser color="gray" :size="20"></Eraser>
       </button>
       <button v-show="changeDetected" @click="transform()" class="btn btn-outline-dark btn-sm ms-2">
