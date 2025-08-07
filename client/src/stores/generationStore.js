@@ -18,21 +18,21 @@ export const useGeneration = defineStore('generation', () => {
   const showReviewDialog = ref(false) // Controls review dialog visibility
   const currentPrompt = ref('') // Current prompt being reviewed
   const pendingGeneration = ref(null) // Stores pending generation data
-  
+
   // Prompt template strings for openAIPrompt
   const promptTemplates = reactive({
     openAI: {
       prefix: ref('Change the'),
       middle1: ref('of the'),
       middle2: ref('into'),
-      suffix: ref('while other visual properties remain the same.')
+      suffix: ref('while other visual properties remain the same.'),
     },
     openAIMask: {
       prefix: ref('Transform the selected'),
       middle1: ref('in the mask to'),
       middle2: ref('in the same style, keeping its'),
-      suffix: ref('. Keep other unmasked parts of the image intact.')
-    }
+      suffix: ref('. Keep other unmasked parts of the image intact.'),
+    },
   })
   const generationParams = {
     ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
@@ -61,7 +61,7 @@ export const useGeneration = defineStore('generation', () => {
         'Please give three common examples for the visual attribute ' +
         propertyName +
         '. Return only the values, separated by colons. No explanation.'
-      const response = await fetch('http://localhost:5555/sample-properties', {
+      const response = await fetch('http://localhost:10000/sample-properties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       promiseLoadImageLabel.value = 'loading'
 
-      const response = await fetch('http://localhost:5555/image-to-labels', {
+      const response = await fetch('http://localhost:10000/image-to-labels', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +281,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function txt2Img({ prompt }) {
     try {
       textGenStatus.value = 'loading'
-      const response = await fetch('http://localhost:5555/text-to-image', {
+      const response = await fetch('http://localhost:10000/text-to-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +309,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function removeBg(base64Url) {
     textGenStatus.value = 'loading'
     try {
-      const response = await fetch('http://localhost:5555/remove-bg', {
+      const response = await fetch('http://localhost:10000/remove-bg', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,7 +340,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       currentGenId.value = altId
       promiseLoadImageLabel.value = 'loading'
-      const response = await fetch('http://localhost:5555/edit-image', {
+      const response = await fetch('http://localhost:10000/edit-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -373,7 +373,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       loadingStatus.value = 'loading'
       currentGenId.value = altId
-      const response = await fetch('http://localhost:5555/gen-img-imagen', {
+      const response = await fetch('http://localhost:10000/gen-img-imagen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

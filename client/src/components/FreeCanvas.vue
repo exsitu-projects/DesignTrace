@@ -255,7 +255,7 @@ const uploadFiles = async (event) => {
     formData.append('file', file)
 
     try {
-      const response = await fetch('http://localhost:5555/upload', {
+      const response = await fetch('http://localhost:10000/upload', {
         method: 'POST',
         body: formData,
       })

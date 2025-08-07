@@ -7,15 +7,16 @@ import uuid
 from backgroundremover.bg import remove
 from openai import OpenAI
 import base64, mimetypes
+from datetime import datetime
 from io import BytesIO
 import traceback
 from PIL import Image
 from io import BytesIO
 import base64
+import glob
 
-# app = Flask(__name__)
 app = Flask(__name__, static_folder='client/dist', static_url_path='')
-CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175"]}})
+CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175", "http://127.0.0.1:10000"]}})
 
 client = OpenAI()
 
@@ -62,27 +63,41 @@ def base64_to_static(base64_url, output_dir="static/assets"):
 
 @app.route('/upload', methods=['POST'])
 def upload_image():
+    print("Upload route hit")
     if 'file' not in request.files:
+        print("No file part in request")
         return jsonify({"error": "No file part"}), 400
 
     file = request.files['file']
     if file.filename == '':
+        print("Empty filename")
         return jsonify({"error": "No selected file"}), 400
 
-    # Generate unique filename with UUID
-    unique_name = str(uuid.uuid4())  # e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+    unique_name = str(uuid.uuid4())
     filename = f"{unique_name}.png"
 
-    UPLOAD_FOLDER = os.path.join('static','assets')
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
+    UPLOAD_FOLDER = os.path.join('static', 'assets')
+    print(f"Upload folder path: {UPLOAD_FOLDER}")
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     save_path = os.path.join(UPLOAD_FOLDER, filename)
-    filepath = f"http://localhost:5555/static/assets/{filename}"
-    print(save_path)
-    file.save(save_path)
+    filepath = f"http://localhost:10000/static/assets/{filename}"
+    try:
+        file.save(save_path)
+        print(f"File saved at {save_path}")
+    except Exception as e:
+        print(f"Exception when saving file: {e}")
+        return jsonify({"error": "Failed to save file"}), 500
+
+    # Verify file exists immediately after saving
+    if not os.path.exists(save_path):
+        print("File does not exist after saving!")
+        return jsonify({"error": "File missing after save"}), 500
+    else:
+        print("File verified on disk")
 
     return jsonify({"message": "File saved", "filepath": filepath, "id": unique_name})
+
 
 def remove_bg(src_img_path, out_img_path):
     model_choices = ["u2net", "u2net_human_seg", "u2netp"]
@@ -144,8 +159,10 @@ def sample_properties():
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
-@app.route('/text-to-image', methods=['POST'])
+@app.route('/text-to-image', methods=['POST','OPTIONS'])
 def text_to_image():
+    if request.method == "OPTIONS":
+        return "", 200
     json_data = request.get_json()
     if not json_data or 'prompt' not in json_data:
         return jsonify({"error": "JSON must include 'image_base64' and 'output_path'"}), 400
@@ -186,8 +203,10 @@ def text_to_image():
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 
-@app.route('/edit-image', methods=['POST'])
+@app.route('/edit-image', methods=['POST','OPTIONS'])
 def edit_image():
+    if request.method == "OPTIONS":
+        return "", 200
     json_data = request.get_json()
 
     prompt = json_data.get('prompt', '')
@@ -214,6 +233,7 @@ def edit_image():
                 mask=open(total_mask_path, "rb"),
                 prompt=prompt,
                 size="1024x1024",
+
             )
         else:
             print('openai edit whole image')
@@ -222,6 +242,7 @@ def edit_image():
                 image=open(original_image_path, "rb"),
                 prompt=prompt,
                 size="1024x1024",
+
             )
         result_base64 = result.data[0].b64_json
         result_base64 = f"data:image/png;base64,{result_base64}"
@@ -230,6 +251,60 @@ def edit_image():
 #         note: dalle2 model only has .url not the .b64_json!!!
         # Process result
 
+
+        return jsonify({
+            "status": "success",
+            "output": result_base64,
+        })
+
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        print(traceback_str)
+        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+
+@app.route('/edit-with-ref', methods=['POST', 'OPTIONS'])
+def edit_with_ref():
+    if request.method == 'OPTIONS':
+        # Respond to preflight with OK status
+        return '', 200
+    json_data = request.get_json()
+
+    prompt = json_data.get('prompt', '')
+    # original_image = json_data.get('original_image')  #  base64
+    ref_images = json_data.get('ref_images')  #  [base64, base64, ...]
+    try:
+        # Create a unique temporary folder for this request
+        request_id = datetime.now().strftime('%Y%m%d%H%M%S') + '_' + str(uuid.uuid4())
+        temp_dir = Path(f"static/temp/{request_id}")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+
+        ref_image_paths = []
+        for i, ref_img in enumerate(ref_images):
+            try:
+                if ref_img.startswith("data:image"):
+                    ref_img = ref_img.split(",", 1)[1]
+
+                ref_path = temp_dir / f"ref_image_{i}.png"
+                with open(ref_path, "wb") as f:
+                    f.write(base64.b64decode(ref_img))
+                ref_image_paths.append(str(ref_path))
+            except Exception as e:
+                print(f"Error saving ref_image_{i}: {e}")
+
+        # Open all as binary file objects
+        ref_image_files = [open(path, "rb") for path in ref_image_paths]
+
+        result = client.images.edit(
+            model="gpt-image-1",
+            # image=[open(original_image_path, "rb")] + ref_image_files,
+            image=ref_image_files,
+            prompt=prompt,
+            size="1024x1024",
+
+        )
+
+        result_base64 = result.data[0].b64_json
+        result_base64 = f"data:image/png;base64,{result_base64}"
 
         return jsonify({
             "status": "success",
@@ -372,8 +447,33 @@ def serve_index():
     return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory(app.static_folder, path)
+def serve_files(path):
+    # 1. Try frontend build folder (client/dist)
+    frontend_path = os.path.join(app.static_folder, path)
+    if os.path.exists(frontend_path):
+        return send_from_directory(app.static_folder, path)
+
+    # 2. Try static/assets/
+    assets_path = os.path.join('static/assets', path)
+    if os.path.exists(assets_path):
+        return send_from_directory('static/assets', path)
+
+    # 3. Try static/temp/
+    temp_path = os.path.join('static/temp', path)
+    if os.path.exists(temp_path):
+        return send_from_directory('static/temp', path)
+
+    # 4. Try static/ base folder
+    static_path = os.path.join('static', path)
+    if os.path.exists(static_path):
+        return send_from_directory('static', path)
+
+    # 5. Not found anywhere
+    abort(404)
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)  # Render exposes this port by default
