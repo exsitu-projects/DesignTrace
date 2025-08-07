@@ -83,7 +83,7 @@ function switchStepLock() {
     @click="switchTxt2Img"
     :class="['btn btn-sm btn-light mx-1', { active: allUtilStore.isTxt2Img }]"
   >
-    <img src="../../public/assets/ai-file.png" alt="description" width="20" height="20" /> Generate
+    <img src="/assets/ai-file.png" alt="description" width="20" height="20" /> Generate
   </button>
   <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
     <ImageOff color="black" :size="15"></ImageOff> Remove Bg
