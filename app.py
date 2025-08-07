@@ -13,7 +13,8 @@ from PIL import Image
 from io import BytesIO
 import base64
 
-app = Flask(__name__)
+# app = Flask(__name__)
+app = Flask(__name__, static_folder='client/dist', static_url_path='')
 CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175"]}})
 
 client = OpenAI()
@@ -366,5 +367,13 @@ def image_to_labels():
 #         return jsonify({"error": str(e), "traceback": traceback_str}), 500
 #
 
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(app.static_folder, path)
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5555)
+    app.run(host='0.0.0.0', port=10000)  # Render exposes this port by default
