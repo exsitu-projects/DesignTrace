@@ -188,7 +188,7 @@ const generateImage = async () => {
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1;
+  z-index: 5000;
 }
 
 .modal-content {
@@ -200,7 +200,7 @@ const generateImage = async () => {
   max-height: 80vh;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  z-index: 2;
+  z-index: 9999;
 }
 
 .modal-header {
