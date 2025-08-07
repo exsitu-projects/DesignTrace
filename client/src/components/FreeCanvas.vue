@@ -742,6 +742,7 @@ onMounted(() => {
 
   canvas.on({
     'object:moving': function (e) {
+      allUtilStore.isLassoMode = false
       e.target.opacity = 0.5
     },
     'object:modified': function (e) {

@@ -491,6 +491,7 @@ export const useNode = defineStore('nodes', () => {
    */
   function openAIPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     const templates = generationStore.promptTemplates.openAI
+    if (propsAltered === 'Customized Attributes') propsAltered = 'visual'
     return `${templates.prefix} ${propsAltered} ${templates.middle1} ${adjObjectText} ${objectText} ${templates.middle2} ${descriptors.join(' and ')} ${templates.suffix}`
   }
 
