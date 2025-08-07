@@ -9,75 +9,14 @@ from openai import OpenAI
 import base64, mimetypes
 from io import BytesIO
 import traceback
-from google import genai
-from google.genai import types
 from PIL import Image
 from io import BytesIO
 import base64
 
-from google.genai.types import (
-    EditImageConfig,
-    GenerateImagesConfig,
-    Image,
-    MaskReferenceConfig,
-    MaskReferenceImage,
-    RawReferenceImage,
-)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175"]}})
 
-
-googleClient = genai.Client(vertexai=True, project='bionic-bison-402313', location='us-central1')
 client = OpenAI()
-
-
-@app.route('/gen-img-imagen', methods=['POST'])
-def mask_gen_img_imagen():
-    json_data = request.get_json()
-    output_file = "static/assets/output-image.png"
-    prompt = json_data.get('prompt', '')
-    original_image = json_data.get('original_image')  # base64
-    total_mask = json_data.get('total_mask')  # base64
-
-
-
-    ori_header, ori_data = original_image.split(",", 1)
-    ori_bytes = base64.b64decode(ori_data)
-
-    mask_header, mask_data = total_mask.split(",", 1)
-    mask_bytes = base64.b64decode(mask_data)
-    raw_ref = RawReferenceImage(
-        reference_id=0,
-        # reference_image=Image.from_file(location='static/assets/ori.png'), reference_id=0)
-        reference_image=Image(image_bytes=ori_bytes, mime_type='image/png'))
-    mask_ref = MaskReferenceImage(
-        reference_id=1,
-        # reference_image=Image.from_file(location='static/assets/mask.png'),
-        reference_image=Image(image_bytes=mask_bytes, mime_type='image/png'),
-        config=MaskReferenceConfig(
-            mask_mode="MASK_MODE_USER_PROVIDED",
-            mask_dilation=0.02,
-        ),
-    )
-
-    image = googleClient.models.edit_image(
-        model="imagen-3.0-capability-001",
-        prompt=prompt,
-        reference_images=[raw_ref, mask_ref],
-        config=EditImageConfig(
-            edit_mode="EDIT_MODE_INPAINT_INSERTION",
-            aspect_ratio="1:1",
-            person_generation="DONT_ALLOW",
-        ),
-    )
-
-    gen_image = image.generated_images[0].image
-    gen_image.save(output_file)
-
-    return jsonify({"message": "File saved", "filepath": static_to_base64(output_file)})
-
-
-
 
 
 def static_to_base64(file_path: str) -> str:
