@@ -111,6 +111,7 @@ import { useGeneration } from '@/stores/generationStore.js'
 import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import ColorPicker from '@/components/colorPicker.vue'
+import { BACKEND_URL } from '@/../public/endpoint.js'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
@@ -255,13 +256,13 @@ const uploadFiles = async (event) => {
     formData.append('file', file)
 
     try {
-      const response = await fetch('http://localhost:10000/upload', {
+      const response = await fetch(BACKEND_URL + '/upload', {
         method: 'POST',
         body: formData,
       })
       const data = await response.json()
       if (response.ok) {
-        loadImgFromUrl(data.filepath, data.id)
+        loadImgFromUrl(BACKEND_URL + data.filepath, data.id)
       } else {
         console.error(`Failed to upload ${file.name}: ${data.error}`)
       }
@@ -274,6 +275,7 @@ const uploadFiles = async (event) => {
 const loadImgFromUrl = (url, id, x = 0, y = 0) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
+
   img.src = url
   img.onload = () => {
     try {

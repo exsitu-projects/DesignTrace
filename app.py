@@ -16,8 +16,8 @@ import base64
 import glob
 
 app = Flask(__name__, static_folder='client/dist', static_url_path='')
-CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175", "http://127.0.0.1:10000"]}})
-
+# CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175", "http://127.0.0.1:10000"]}})
+CORS(app)
 client = OpenAI()
 
 
@@ -81,7 +81,8 @@ def upload_image():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     save_path = os.path.join(UPLOAD_FOLDER, filename)
-    filepath = f"http://localhost:10000/static/assets/{filename}"
+    filepath = f"/static/assets/{filename}"
+    # filepath = f"http://localhost:10000/static/assets/{filename}"
     try:
         file.save(save_path)
         print(f"File saved at {save_path}")

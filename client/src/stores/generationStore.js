@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
-
+import { BACKEND_URL } from '@/../public/endpoint.js'
 export const useGeneration = defineStore('generation', () => {
   // 'notDragging', 'startDragging', 'finishedDragging'
   const img2imgOut = ref({ src: '' })
@@ -61,7 +61,7 @@ export const useGeneration = defineStore('generation', () => {
         'Please give three common examples for the visual attribute ' +
         propertyName +
         '. Return only the values, separated by colons. No explanation.'
-      const response = await fetch('http://localhost:10000/sample-properties', {
+      const response = await fetch('sample-properties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       promiseLoadImageLabel.value = 'loading'
 
-      const response = await fetch('http://localhost:10000/image-to-labels', {
+      const response = await fetch(BACKEND_URL + '/image-to-labels', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +281,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function txt2Img({ prompt }) {
     try {
       textGenStatus.value = 'loading'
-      const response = await fetch('http://localhost:10000/text-to-image', {
+      const response = await fetch(BACKEND_URL + '/text-to-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +309,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function removeBg(base64Url) {
     textGenStatus.value = 'loading'
     try {
-      const response = await fetch('http://localhost:10000/remove-bg', {
+      const response = await fetch(BACKEND_URL + '/remove-bg', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,7 +340,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       currentGenId.value = altId
       promiseLoadImageLabel.value = 'loading'
-      const response = await fetch('http://localhost:10000/edit-image', {
+      const response = await fetch(BACKEND_URL + '/edit-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -373,7 +373,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     try {
       loadingStatus.value = 'loading'
       currentGenId.value = altId
-      const response = await fetch('http://localhost:10000/gen-img-imagen', {
+      const response = await fetch(BACKEND_URL + '/gen-img-imagen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
