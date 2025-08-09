@@ -4,7 +4,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import uuid
-from backgroundremover.bg import remove
+# from backgroundremover.bg import remove
 from openai import OpenAI
 import base64, mimetypes
 from datetime import datetime
