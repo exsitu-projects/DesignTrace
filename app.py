@@ -4,7 +4,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import uuid
-# from backgroundremover.bg import remove
+from backgroundremover.bg import remove
 from openai import OpenAI
 import base64, mimetypes
 from datetime import datetime
@@ -116,24 +116,24 @@ def remove_bg(src_img_path, out_img_path):
     with open(out_img_path, "wb") as f:
         f.write(img)
 
-# @app.route('/remove-bg', methods=['POST'])
-# def remove_bg_endpoint():
-#     # remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
-#     json_data = request.get_json()
-#     if not json_data or 'src' not in json_data:
-#         return jsonify({"error": "JSON must include 'src' and 'dst'"}), 400
-#     src_path = json_data['src']
-#     if 'static' not in src_path:
-#         src_path = base64_to_static(src_path)
-#     unique_name = str(uuid.uuid4())  # e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
-#     dst_path = f"static/assets/{unique_name}.png"
-#
-#     try:
-#         remove_bg(src_path, dst_path)
-#         return jsonify({"status": "success", "output": static_to_base64(dst_path)})
-#     except Exception as e:
-#         print(f"Error during remove_bg: {e}")  # Optional: for debugging
-#         return jsonify({"error": str(e)}), 500
+@app.route('/remove-bg', methods=['POST'])
+def remove_bg_endpoint():
+    # remove_bg('static/assets/cherry.jpg', 'static/assets/cherryout.jpg')
+    json_data = request.get_json()
+    if not json_data or 'src' not in json_data:
+        return jsonify({"error": "JSON must include 'src' and 'dst'"}), 400
+    src_path = json_data['src']
+    if 'static' not in src_path:
+        src_path = base64_to_static(src_path)
+    unique_name = str(uuid.uuid4())  # e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
+    dst_path = f"static/assets/{unique_name}.png"
+
+    try:
+        remove_bg(src_path, dst_path)
+        return jsonify({"status": "success", "output": static_to_base64(dst_path)})
+    except Exception as e:
+        print(f"Error during remove_bg: {e}")  # Optional: for debugging
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/sample-properties', methods=['POST'])
