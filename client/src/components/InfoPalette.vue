@@ -743,11 +743,6 @@ const makeTool = () => {
   max-width: 80px;
 }
 
-/* Lasso cursor mode */
-.lasso-cursor {
-  cursor: crosshair !important;
-}
-
 .lasso-cursor * {
   cursor: crosshair !important;
 }

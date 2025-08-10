@@ -122,6 +122,7 @@
       <!-- Canvas stays behind the spinner -->
       <canvas
         ref="canvasEl"
+        :class="{ 'lasso-cursor': allUtilStore.isLassoMode }"
         class="border border-1 rounded rounded-1 shadow-sm"
         :width="canvasW"
         :height="canvasW"
@@ -1008,9 +1009,9 @@ function transformImage() {
   } else {
     objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
   }
-
+  console.log(objContent)
   // Apply the same logic as mouseUpNode
-  if (objContent.length > 0) {
+  if (objContent.length > 0 && objContent[0].tag.length > 0) {
     if (alt.isStepLock) {
       // Constrain generation inside this node
       nodeStore.addOnExistingAlt(

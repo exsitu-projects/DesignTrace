@@ -9,7 +9,10 @@
   transform: translateX(-50%);
   z-index: 2000;
 }
-
+/* Lasso cursor mode */
+.lasso-cursor {
+  cursor: crosshair !important;
+}
 /* 1. Import primary web fonts (you can trim weights you don't use) */
 
 /* 2. Font‑family variables for easy reuse */
