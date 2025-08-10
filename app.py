@@ -380,3 +380,6 @@ def serve_files(path):
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory('static', filename)
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))  # fallback to 10000 locally
+    app.run(host='0.0.0.0', port=port)

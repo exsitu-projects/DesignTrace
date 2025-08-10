@@ -1,1 +1,1 @@
-export const BACKEND_URL = 'https://designquill-production.up.railway.app'
+export const BACKEND_URL = 'http://127.0.0.1:10000'

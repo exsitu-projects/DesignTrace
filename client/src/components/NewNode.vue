@@ -122,7 +122,6 @@
       <!-- Canvas stays behind the spinner -->
       <canvas
         ref="canvasEl"
-        :class="{ 'lasso-cursor': allUtilStore.isLassoMode }"
         class="border border-1 rounded rounded-1 shadow-sm"
         :width="canvasW"
         :height="canvasW"
