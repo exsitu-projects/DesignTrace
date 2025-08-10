@@ -1,1 +1,1 @@
-export const BACKEND_URL = 'http://localhost:10000'
+export const BACKEND_URL = 'https://designquill-production.up.railway.app'
