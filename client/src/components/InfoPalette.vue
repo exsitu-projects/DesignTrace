@@ -94,44 +94,43 @@
         </template>
 
         <!-- footer (adds a tag) -->
-        <template #footer>
-          <button
-            class="btn btn-sm btn-outline-secondary me-1 mb-1"
-            @click="addTag(rowIdx)"
-            @mouseenter="showGhostTags(rowIdx)"
-            @mouseleave="hideGhostTagsWithDelay"
-          >
-            +
-          </button>
-
-          <!-- Ghost tag suggestions -->
-          <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
-            <!-- Show spinner while loading ghost tags -->
-            <div
-              v-if="generationStore.isGhostTagsLoading(rowIdx)"
-              class="spinner-border spinner-border-sm text-muted me-1 mb-1"
-              style="width: 1rem; height: 1rem"
-              role="status"
-            >
-              <span class="visually-hidden">Loading ghost tags...</span>
-            </div>
-
-            <!-- Show ghost tags when loaded -->
-            <span
-              v-else
-              v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
-              :key="`ghost-${rowIdx}-${index}`"
-              class="badge bg-light text-muted border me-1 mb-1 ghost-tag"
-              style="opacity: 0.6; cursor: pointer; border-style: dashed !important"
-              @click="addGhostTag(rowIdx, ghostTag)"
-              @mouseenter="cancelGhostTagHiding"
-              @mouseleave="hideGhostTagsWithDelay"
-            >
-              {{ ghostTag }}
-            </span>
-          </template>
-        </template>
+        <template #footer> </template>
       </draggable>
+      <button
+        class="my-auto btn btn-sm btn-outline-secondary"
+        @click="addTag(rowIdx)"
+        @mouseenter="showGhostTags(rowIdx)"
+        @mouseleave="hideGhostTagsWithDelay"
+      >
+        +
+      </button>
+
+      <!-- Ghost tag suggestions -->
+      <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
+        <!-- Show spinner while loading ghost tags -->
+        <div
+          v-if="generationStore.isGhostTagsLoading(rowIdx)"
+          class="mx-1 my-auto spinner-border spinner-border-sm text-muted"
+          style="width: 1rem; height: 1rem"
+          role="status"
+        >
+          <span class="visually-hidden">Loading ghost tags...</span>
+        </div>
+
+        <!-- Show ghost tags when loaded -->
+        <span
+          v-else
+          v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
+          :key="`ghost-${rowIdx}-${index}`"
+          class="my-auto badge bg-light text-muted border mx-1 ghost-tag"
+          style="opacity: 0.6; cursor: pointer; border-style: dashed !important"
+          @click="addGhostTag(rowIdx, ghostTag)"
+          @mouseenter="cancelGhostTagHiding"
+          @mouseleave="hideGhostTagsWithDelay"
+        >
+          {{ ghostTag }}
+        </span>
+      </template>
     </div>
 
     <!-- Add new property row -->
@@ -139,7 +138,7 @@
       ref="popoverButton"
       tabindex="0"
       @click="addRow"
-      class="btn btn-sm btn-light"
+      class="mx-1 btn btn-sm btn-light"
       role="button"
       data-bs-trigger="focus"
       >+ Add Asset</a

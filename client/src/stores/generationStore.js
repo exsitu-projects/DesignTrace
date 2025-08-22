@@ -61,7 +61,7 @@ export const useGeneration = defineStore('generation', () => {
         'Please give three common examples for the visual attribute ' +
         propertyName +
         '. Return only the values, separated by colons. No explanation.'
-      const response = await fetch('sample-properties', {
+      const response = await fetch(BACKEND_URL + '/sample-properties', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
