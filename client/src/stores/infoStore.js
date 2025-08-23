@@ -10,6 +10,7 @@ export const useInfoStore = defineStore('infoStore', () => {
   const promiseThumbnailUpdate = ref('')
   const currentUID = ref('')
   const propertyTags = ref([])
+  const lassoPropsContent = ref('')
   const selectedTags = ref([])
   const isPropertyMode = ref(false)
   const lassoTagContent = ref('')
@@ -108,6 +109,7 @@ export const useInfoStore = defineStore('infoStore', () => {
     selectedTags,
     isPropertyMode,
     lassoTagContent,
+    lassoPropsContent,
     addRow,
     addTag,
     removeTag,

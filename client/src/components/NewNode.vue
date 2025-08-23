@@ -1006,9 +1006,8 @@ function transformImage() {
   if (infoStore.isPropertyMode) {
     objContent = [...infoStore.propertyTags]
   } else {
-    objContent = [{ tag: infoStore.lassoTagContent, propName: 'visual property' }]
+    objContent = [{ tag: infoStore.lassoTagContent, propName: infoStore.lassoPropsContent }]
   }
-  console.log(objContent)
   // Apply the same logic as mouseUpNode
   if (objContent.length > 0 && objContent[0].tag.length > 0) {
     if (alt.isStepLock) {

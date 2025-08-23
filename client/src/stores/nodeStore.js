@@ -383,7 +383,7 @@ export const useNode = defineStore('nodes', () => {
             childAlt = allAlts.find((a) => a.id === currentParentId)
             if (!childAlt) break
 
-            childAlt.expand = false
+            childAlt.expand = true
 
             currentChildId = currentParentId
             currentParentId = childAlt?.prevAltId || null
@@ -491,8 +491,22 @@ export const useNode = defineStore('nodes', () => {
    */
   function openAIPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     const templates = generationStore.promptTemplates.openAI
+    console.log(propsAltered, descriptors)
     if (propsAltered === 'Customized Attributes') propsAltered = 'visual'
-    return `${templates.prefix} ${propsAltered} ${templates.middle1} ${adjObjectText} ${objectText} ${templates.middle2} ${descriptors.join(' and ')} ${templates.suffix}`
+    if (propsAltered.includes(',')) {
+      const propsArr = propsAltered.split(',')
+      const descriptorsArr = descriptors.split(',')
+
+      // Generate strings for each pair
+      const results = propsArr.map((prop, i) => {
+        return `${templates.prefix} ${prop.trim()} ${templates.middle2} ${descriptorsArr[i].trim()}`
+      })
+
+      // Join all strings together
+      const finalString = results.join('; ')
+      return finalString + ` ${templates.suffix}`
+    }
+    return `${templates.prefix} ${propsAltered} ${templates.middle1} ${adjObjectText} ${objectText} ${templates.middle2} ${descriptors} ${templates.suffix}`
   }
 
   /**
@@ -515,7 +529,7 @@ export const useNode = defineStore('nodes', () => {
     objOrProp,
   ) {
     const templates = generationStore.promptTemplates.openAIMask
-    return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors.join(' and ')} ${templates.middle2} ${visibleProps}${templates.suffix}`
+    return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors} ${templates.middle2} ${visibleProps}${templates.suffix}`
   }
 
   /**
@@ -573,7 +587,7 @@ export const useNode = defineStore('nodes', () => {
     altId,
   ) {
     try {
-      const descriptors = properties.map((p) => `${p.tag} ${p.propName}`)
+      const descriptors = properties[0].tag
       const copiedPayload = { ...selectionPayload.value }
       let imgUrl = null
 
@@ -600,18 +614,18 @@ export const useNode = defineStore('nodes', () => {
         generationStore.showReviewDialog = true
 
         // Create a promise that resolves when the user generates or cancels
-        imgUrl = await new Promise((resolve) => {
-          generationStore.pendingGeneration = {
-            copiedPayload,
-            altId,
-            resolve,
-          }
-        })
+        // imgUrl = await new Promise((resolve) => {
+        //   generationStore.pendingGeneration = {
+        //     copiedPayload,
+        //     altId,
+        //     resolve,
+        //   }
+        // })
       } else {
         // Direct generation without review
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -821,7 +835,7 @@ export const useNode = defineStore('nodes', () => {
     const totalAlts = existingAlts.length + numNewAlts
 
     // Calculate the total height needed for all alts
-    const totalSpacing = nodeHeight * (totalAlts - 1)
+    const totalSpacing = nodeHeight * (totalAlts - 1) * 1.05
     const topY = centerY - totalSpacing / 2
 
     // Ensure minimum Y position is at least 50px from top
@@ -834,7 +848,7 @@ export const useNode = defineStore('nodes', () => {
     // Create array of all positions (existing + new)
     const allPositions = []
     for (let i = 0; i < totalAlts; i++) {
-      const y = adjustedTopY + nodeHeight * i
+      const y = adjustedTopY + nodeHeight * i * 1.05
       allPositions.push({
         x: centerX,
         y: y,

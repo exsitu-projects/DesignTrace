@@ -307,7 +307,9 @@ const toggleTagSelection = (rowIdx, tagIdx) => {
 const updateCursorTooltip = () => {
   if (infoStore.selectedTags.length > 0) {
     // Enable lasso mode and show selected tags inline
+    const propsTexts = infoStore.selectedTags.map((item) => item.propName)
     const tagTexts = infoStore.selectedTags.map((item) => item.tag)
+    infoStore.lassoPropsContent = propsTexts.join(', ')
     infoStore.lassoTagContent = tagTexts.join(', ')
     infoStore.isPropertyMode = false // Use regular text display for accumulated tags
     infoStore.propertyTags = []
@@ -639,6 +641,7 @@ const exitLassoMode = (skipStoreUpdate = false) => {
   clickedStates.value = {}
   infoStore.selectedTags = []
   infoStore.lassoTagContent = ''
+  infoStore.lassoPropsContent = ''
   infoStore.isPropertyMode = false
   infoStore.propertyTags = []
   // Remove global cursor style
@@ -687,7 +690,7 @@ const handlePropertyNameClick = (rowIdx, row) => {
     infoStore.isPropertyMode = true
     infoStore.propertyTags = tagTexts
     infoStore.lassoTagContent = '' // Clear regular content since we'll use propertyTags
-
+    infoStore.lassoPropsContent = ''
     // Enter lasso mode with crosshair cursor
     allUtilStore.isToolTip = true
     // Add global cursor style to body
