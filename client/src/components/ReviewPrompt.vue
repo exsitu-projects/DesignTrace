@@ -52,7 +52,7 @@
               <EditableText v-model="generationStore.promptTemplates.openAIMask.middle1" />
               <span class="variable-text">${descriptors}</span>
               <EditableText v-model="generationStore.promptTemplates.openAIMask.middle2" />
-              <span class="variable-text">${visibleProps}</span>
+              <span class="variable-text">${adjObjectText}</span>
               <EditableText v-model="generationStore.promptTemplates.openAIMask.suffix" />
             </div>
           </div>
@@ -175,7 +175,7 @@ const generateImage = async () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999;
+  z-index: 99999;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,7 +200,7 @@ const generateImage = async () => {
   max-height: 80vh;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  z-index: 9999;
+  z-index: 99999;
 }
 
 .modal-header {

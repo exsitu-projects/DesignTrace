@@ -1,14 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
-.drawing-mode-options{
-  cursor:pointer;
-  width: 40%;
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2000;
-}
 /* Lasso cursor mode */
 .lasso-cursor {
   cursor: crosshair !important;

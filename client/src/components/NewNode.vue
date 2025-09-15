@@ -109,7 +109,8 @@
       <!-- Spinner positioned absolutely inside the container -->
       <div
         v-show="
-          generationStore.currentGenId === alt.id && generationStore.loadingStatus === 'loading'
+          generationStore.currentGenIds.includes(alt.id) &&
+          generationStore.loadingStatus === 'loading'
         "
         class="position-absolute top-50 start-50 translate-middle"
         style="z-index: 10"
@@ -775,7 +776,7 @@ async function removeBg() {
     })
 
     // 2. Call your bg removal API
-    generationStore.currentGenId = alt.id
+    generationStore.currentGenIds = [alt.id] // show spinner
     const newBase64Url = await generationStore.removeBg(base64Url)
     fabricCanvas.remove(obj)
     // 3. Create new Fabric.Image from processed base64

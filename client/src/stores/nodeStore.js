@@ -520,49 +520,9 @@ export const useNode = defineStore('nodes', () => {
    * @returns {string} Formatted prompt
    */
 
-  function openAIMaskPrompt(
-    propsAltered,
-    adjObjectText,
-    objectText,
-    descriptors,
-    visibleProps,
-    objOrProp,
-  ) {
+  function openAIMaskPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     const templates = generationStore.promptTemplates.openAIMask
-    return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors} ${templates.middle2} ${visibleProps}${templates.suffix}`
-  }
-
-  /**
-   * Generate a prompt for MagicQuill image generation
-   * @param {string} propsAltered - Comma-separated property names being altered
-   * @param {string} guessPrompt - Additional context for prompt
-   * @param {string} objectText - Object name from detection
-   * @param {string[]} descriptors - Array of property descriptions
-   * @returns {string} Formatted prompt
-   */
-  function magicQPrompt(propsAltered, guessPrompt, objectText, descriptors) {
-    return `${descriptors.join(' and ')}${guessPrompt} ${objectText}`
-  }
-
-  function imagenPrompt(
-    propsAltered,
-    adjObjectText,
-    objectText,
-    descriptors,
-    visibleProps,
-    objOrProp,
-  ) {
-    if (objOrProp === 'object') {
-      return (
-        `${descriptors.join(' and ')}, in ` + visibleProps
-        //+ ' in the style of ' + adjObjectText
-      )
-    } else if (objOrProp === 'property') {
-      //return `Transform the ${objectText} in the masked area to be ${descriptors.join(' and ')} and focus on the ${adjObjectText}.`
-      return `Change to ${descriptors.join(' and ')} ${objectText} while keeping its ${visibleProps}.`
-    }
-
-    //return 'an apple illustration'
+    return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors} ${templates.middle2} ${adjObjectText}${templates.suffix}`
   }
 
   /**
@@ -572,20 +532,10 @@ export const useNode = defineStore('nodes', () => {
    * @param {string} propsAltered - Comma-separated property names being altered
    * @param {string} adjObjectText - Object adjectives from detection
    * @param {string} objectText - Object name from detection
-   * @param {string} visibleProps - Properties to preserve
-   * @param objOrProp
    * @param {string} altId - Alt ID for the generated image
    * @returns {Promise<string|null>} URL of generated image or null if failed
    */
-  async function generateImage(
-    properties,
-    propsAltered,
-    adjObjectText,
-    objectText,
-    visibleProps,
-    objOrProp,
-    altId,
-  ) {
+  async function generateImage(properties, propsAltered, adjObjectText, objectText, altId) {
     try {
       const descriptors = properties[0].tag
       const copiedPayload = { ...selectionPayload.value }
@@ -596,14 +546,7 @@ export const useNode = defineStore('nodes', () => {
       if (copiedPayload.type === 'full-img') {
         prompt = openAIPrompt(propsAltered, adjObjectText, objectText, descriptors)
       } else if (copiedPayload.type === 'lasso') {
-        prompt = openAIMaskPrompt(
-          propsAltered,
-          adjObjectText,
-          objectText,
-          descriptors,
-          visibleProps,
-          objOrProp,
-        )
+        prompt = openAIMaskPrompt(propsAltered, adjObjectText, objectText, descriptors)
       }
 
       console.log('Generated prompt:', prompt)
@@ -612,20 +555,11 @@ export const useNode = defineStore('nodes', () => {
         // Show review dialog and wait for user action
         generationStore.currentPrompt = prompt
         generationStore.showReviewDialog = true
-
-        // Create a promise that resolves when the user generates or cancels
-        // imgUrl = await new Promise((resolve) => {
-        //   generationStore.pendingGeneration = {
-        //     copiedPayload,
-        //     altId,
-        //     resolve,
-        //   }
-        // })
       } else {
         // Direct generation without review
         copiedPayload.prompt = prompt
         copiedPayload.altId = altId
-        //imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
+        imgUrl = await generationStore.generateOpenAIImg(copiedPayload)
       }
 
       if (imgUrl) {
@@ -653,8 +587,6 @@ export const useNode = defineStore('nodes', () => {
       return {
         adjObjectText: result.adjObjectText,
         objectText: result.objectText,
-        visibleProps: result.visibleProps,
-        objOrProp: result.objOrProp,
       }
     } catch (error) {
       console.error('Object detection failed:', error)
@@ -691,8 +623,6 @@ export const useNode = defineStore('nodes', () => {
     propsAltered = '',
     adjObjectText = '',
     objectText = '',
-    visibleProps = '',
-    objOrProp = '',
   ) {
     // Find relevant branch and nodes
     const branch = nodeBranchList.value.find((b) => b.id === nodeBranchId)
@@ -731,8 +661,6 @@ export const useNode = defineStore('nodes', () => {
           propsAltered,
           adjObjectText,
           objectText,
-          visibleProps,
-          objOrProp,
           newAlt.id,
         )
       }
@@ -926,30 +854,13 @@ export const useNode = defineStore('nodes', () => {
       .join(', ')
 
     // Step 4: Get object properties from image
-    const { adjObjectText, objectText, visibleProps, objOrProp } = await getObjectProperties(
+    const { adjObjectText, objectText } = await getObjectProperties(
       selectionPayload.value.lassoBoundUrl,
       propsAltered,
     )
 
-    // Validate that we got proper object properties before proceeding
-    const objectProps = { objOrProp, objectText, visibleProps, adjObjectText }
-    if (!validateObjectProperties(objectProps, ['objOrProp', 'objectText', 'visibleProps'])) {
-      console.warn(
-        'getObjectProperties returned empty values, aborting addOnExistingAlt:',
-        objectProps,
-      )
-      return
-    }
     // Step 5: Generate new image
-    await generateImage(
-      alt.properties,
-      propsAltered,
-      adjObjectText,
-      objectText,
-      visibleProps,
-      objOrProp,
-      currentAltId,
-    )
+    await generateImage(alt.properties, propsAltered, adjObjectText, objectText, currentAltId)
   }
 
   /**
@@ -1021,18 +932,12 @@ export const useNode = defineStore('nodes', () => {
       .filter((value, index, array) => array.indexOf(value) === index) // Remove duplicates
       .join(', ')
 
-    const { adjObjectText, objectText, visibleProps, objOrProp } = await getObjectProperties(
+    const { adjObjectText, objectText } = await getObjectProperties(
       selectionPayload.value.lassoBoundUrl,
       propsAltered,
     )
 
     // Validate that we got proper object properties before proceeding
-    const objectProps = { objOrProp, objectText, visibleProps, adjObjectText }
-    if (!validateObjectProperties(objectProps, ['objOrProp', 'objectText', 'visibleProps'])) {
-      console.warn('getObjectProperties returned empty values, aborting addMultAlt:', objectProps)
-      return []
-    }
-
     // Step 9: Calculate positions for new alts considering existing ones
     const newAltPositions = calculateNewAltPositions(
       newNode,
@@ -1043,31 +948,30 @@ export const useNode = defineStore('nodes', () => {
     )
 
     // Step 10: Generate alts sequentially
-    const urls = []
-    for (let i = 0; i < altObjs.length; i++) {
-      const position = newAltPositions[i]
-      altObjs[i].thumbnail = selectionPayload.value.lassoBoundUrl
-      altObjs[i].thumbnailSource = selectionPayload.value.type || 'lasso'
-      // Set initial historyStateIndex to 1 for new alts (they'll have their first meaningful state at index 1)
-      // This aligns with the undo button logic that requires undoStack.length > 1
-      altObjs[i].historyStateIndex = 1
-      const url = await addAlt(
-        altObjs[i],
-        nodeBranchId,
-        nodeId,
-        i,
-        prevNode.nextNodeId,
-        position.x,
-        position.y,
-        currentAltId,
-        propsAltered,
-        adjObjectText,
-        objectText,
-        visibleProps,
-        objOrProp,
-      )
-      urls.push(url)
-    }
+    const urls = await Promise.all(
+      altObjs.map((altObj, i) => {
+        const position = newAltPositions[i]
+        altObj.thumbnail = selectionPayload.value.lassoBoundUrl
+        altObj.thumbnailSource = selectionPayload.value.type || 'lasso'
+        altObj.historyStateIndex = 1
+
+        return addAlt(
+          altObj,
+          nodeBranchId,
+          nodeId,
+          i,
+          prevNode.nextNodeId,
+          position.x,
+          position.y,
+          currentAltId,
+          propsAltered,
+          adjObjectText,
+          objectText,
+        )
+      }),
+    )
+    generationStore.currentGenIds = []
+    generationStore.loadingStatus = 'finished'
 
     // Step 11: Update canvas boundaries based on final positions
     const allAlts = newNode.alts.filter((alt) => alt.expand !== false)

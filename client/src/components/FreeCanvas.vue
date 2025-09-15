@@ -21,81 +21,17 @@
   >
     <img :src="cutoutTooltip.imageData" alt="cutout" />
   </div>
-  <div class="drawing-mode-options border border-black rounded-1 p-1">
-    <div v-show="allUtilStore.isTxt2Img" class="input-group">
-      <textarea
-        v-model="generationStore.generalPrompt"
-        class="form-control"
-        aria-label="With textarea"
-      ></textarea>
-      <button class="btn-outline-dark input-group-text btn" @click="generateImage()">
-        Generate
-      </button>
-    </div>
-    <div class="collapse" id="collapseExample">
-      <ColorPicker></ColorPicker>
-    </div>
-    <button title="Add Node" class="btn btn-sm btn-light m-1" @click="addBranchNodeAlt">+</button>
-
-    <button class="btn btn-sm btn-light m-1" @click="triggerFileSelect">
-      <ImageUp color="black" :size="15" /> Upload
-    </button>
-    <input
-      type="file"
-      ref="fileInput"
-      multiple
-      accept="image/*"
-      @change="uploadFiles"
-      style="display: none"
-    />
+  <div
+    class="border border-black rounded-1 p-1 position-fixed bottom-0 start-50 translate-middle-x d-flex justify-content-center"
+    style="z-index: 1050"
+  >
     <VisualTool
       @removeBg="removeBg"
       @forwardLayer="forwardOneLayer"
       @backwardLayer="backwardOneLayer"
       @exportBranchTags="exportBranchTags"
+      @loadImg="(payload) => loadImgFromUrl(payload.filepath, payload.id)"
     ></VisualTool>
-
-    <!--      <button id="drawing-mode" class="btn btn-light">Enter drawing mode</button>-->
-    <!--      <button id="clear-canvas" class="btn btn-light">Clear</button>-->
-
-    <!--      <label for="drawing-mode-selector">-->
-    <!--        Mode:-->
-    <!--        <select id="drawing-mode-selector">-->
-    <!--          <option>Pencil</option>-->
-    <!--          <option>hline</option>-->
-    <!--          <option>vline</option>-->
-    <!--          <option>diamond</option>-->
-    <!--          <option>dotted</option>-->
-    <!--        </select>-->
-    <!--      </label>-->
-
-    <!--      <label for="drawing-line-width">-->
-    <!--        Line width:-->
-    <!--        <span class="info">30</span>-->
-    <!--        <input type="range" min="0" max="150" id="drawing-line-width" />-->
-    <!--      </label>-->
-
-    <!--      <label for="drawing-color">-->
-    <!--        Line color:-->
-    <!--        <input type="color" id="drawing-color" />-->
-    <!--      </label>-->
-
-    <!--      <label for="drawing-shadow-color">-->
-    <!--        Shadow color:-->
-    <!--        <input type="color" id="drawing-shadow-color" />-->
-    <!--      </label>-->
-
-    <!--      <label for="drawing-shadow-width">-->
-    <!--        Shadow width:-->
-    <!--        <span class="info">0</span>-->
-    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-width" />-->
-    <!--      </label>-->
-
-    <!--      <label for="drawing-shadow-offset">-->
-    <!--        Shadow offset:-->
-    <!--        <span class="info">0</span>-->
-    <!--        <input type="range" value="0" min="0" max="50" id="drawing-shadow-offset" />-->
-    <!--      </label>-->
   </div>
 </template>
 
@@ -108,10 +44,8 @@ import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
-import { ImageUp, Lasso, SprayCan, Check } from 'lucide-vue-next'
+
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import ColorPicker from '@/components/colorPicker.vue'
-import { BACKEND_URL } from '@/../public/endpoint.js'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
@@ -232,44 +166,10 @@ watch(
   },
 )
 
-const files = ref([])
-const triggerFileSelect = () => {
-  fileInput.value.click()
-}
-
-const fileInput = ref(null)
 const updateDrawingModeButtonText = async () => {
   $('drawing-mode').textContent = canvas.isDrawingMode
     ? 'Cancel drawing mode'
     : 'Enter drawing mode'
-}
-
-const uploadFiles = async (event) => {
-  files.value = Array.from(event.target.files)
-  if (!files.value.length) {
-    alert('Please select at least one file')
-    return
-  }
-
-  for (const file of files.value) {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      const response = await fetch(BACKEND_URL + '/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await response.json()
-      if (response.ok) {
-        loadImgFromUrl(BACKEND_URL + data.filepath, data.id)
-      } else {
-        console.error(`Failed to upload ${file.name}: ${data.error}`)
-      }
-    } catch (err) {
-      console.error('Upload error:', err)
-    }
-  }
 }
 
 const loadImgFromUrl = (url, id, x = 0, y = 0) => {
@@ -355,18 +255,6 @@ async function removeBg() {
       loadImgFromUrl(newBase64Url, obj.idInUpload, obj.left, obj.top)
     }
   }
-}
-const addBranchNodeAlt = () => {
-  // it opens a new node and add a new alt
-  nodeStore.addNodeBranch()
-  nodeStore.addNode(nodeStore.currentBranchId)
-  nodeStore.addAlt(
-    [],
-    nodeStore.currentBranchId,
-    nodeStore.currentNodeId,
-    0,
-    nodeStore.currentNodeId,
-  )
 }
 
 const forwardOneLayer = () => {
@@ -804,71 +692,6 @@ onMounted(() => {
     c.add(rect)
     return c.getElement()
   }
-  // Brush Update Function
-  // const updateBrush = () => {
-  //   const brush = canvas.freeDrawingBrush
-  //   if (!brush) return
-  //
-  //   brush.color = elements.color.value
-  //   brush.width = parseInt(elements.lineWidth.value) || 1
-  //
-  //   if ('shadow' in brush) {
-  //     brush.shadow = new fabric.Shadow({
-  //       blur: parseInt(elements.shadowWidth.value) || 0,
-  //       color: elements.shadowColor.value,
-  //       offsetX: parseInt(elements.shadowOffset.value) || 0,
-  //       offsetY: parseInt(elements.shadowOffset.value) || 0,
-  //       affectStroke: true,
-  //     })
-  //   }
-  // }
-  //
-  // // Event Handlers
-  // elements.brushSelector.onchange = function () {
-  //   const brushName = this.value
-  //
-  //   if (brushName === 'Pencil') {
-  //     // Always create a new PencilBrush instance when switching to pencil
-  //     canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
-  //   } else {
-  //     canvas.freeDrawingBrush = brushes[brushName]
-  //
-  //     if (['hline', 'vline', 'diamond', 'dotted'].includes(brushName)) {
-  //       const brush = canvas.freeDrawingBrush
-  //       if (brush.getPatternSrc) {
-  //         brush.source = brush.getPatternSrc.call(brush)
-  //       }
-  //     }
-  //   }
-  //
-  //   updateBrush()
-  // }
-  //
-  // elements.color.onchange = updateBrush
-  // elements.shadowColor.onchange = updateBrush
-  // elements.lineWidth.onchange = function () {
-  //   this.previousElementSibling.textContent = this.value
-  //   updateBrush()
-  // }
-  // elements.shadowWidth.onchange = function () {
-  //   this.previousElementSibling.textContent = this.value
-  //   updateBrush()
-  // }
-  // elements.shadowOffset.onchange = function () {
-  //   this.previousElementSibling.textContent = this.value
-  //   updateBrush()
-  // }
-  //
-  // // Other Controls
-  // elements.clear.onclick = () => canvas.clear()
-  //
-  // elements.drawingMode.onclick = () => {
-  //   canvas.isDrawingMode = !canvas.isDrawingMode
-  //   updateDrawingModeButtonText()
-  // }
-  //
-  // // Initial brush update
-  // updateBrush()
 })
 
 onBeforeUnmount(() => {
@@ -885,17 +708,6 @@ onBeforeUnmount(() => {
 defineExpose({
   deleteSelectedObjects,
 })
-async function generateImage() {
-  try {
-    const imgUrl = await generationStore.txt2Img({
-      prompt: generationStore.generalPrompt,
-    })
-    const uuid = crypto.randomUUID()
-    loadImgFromUrl(imgUrl, uuid)
-  } catch (error) {
-    console.error('Error generating image:', error)
-  }
-}
 </script>
 
 <style>

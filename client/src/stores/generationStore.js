@@ -9,7 +9,7 @@ export const useGeneration = defineStore('generation', () => {
   const loadingStatus = ref('')
   const promiseLoadImageLabel = ref('')
   const shouldTriggerT2I = ref(false)
-  const currentGenId = ref('')
+  const currentGenIds = ref([])
   const generalPrompt = ref('')
   const textGenStatus = ref('finished') // Track text generation status
   const ghostTagsPerRow = ref({}) // Store ghost tags for each row by rowIndex
@@ -143,23 +143,11 @@ Your task is to return exactly four outputs, separated by colons **with no extra
 
 1. Return a comma-separated list of clearly visible visual properties of the primary object, excluding the specified attribute and excluding any reference to the object itself. Do not include any nouns that name objects, parts, or categories (e.g., “berries,” “stem,” “petals”). Only include directly observable visual traits such as color, texture, material, surface detail, shape, or pattern. Do not invent or infer any traits — describe only what is clearly and unambiguously visible in the image. Avoid all subjective, abstract, or interpretive terms (e.g., “elegant,” “strange”). Return only grounded visual properties in short phrases, no full sentences, and no punctuation at the end.
 
-This should prevent things like:
+This should prevent things like: “green” (when there’s no green) “two berries”
 
-❌ “green” (when there’s no green)
-
-❌ “two berries”
-
-✅ “matte surface, dark red, bumpy texture, spherical shape”
-
-Let me know if you want a variant with a limit (e.g., max 4 traits) or ordered by perceptual salience.
-
+It should return something like “matte surface, dark red, bumpy texture, spherical shape”
 
 2. The name of the primary object only (e.g., "chair", "backpack").
-
-3. Provide a visual styling phrase based only on visible characteristics. Start with “in [visual style] style,” followed by the most prominent material, texture, or graphic feature. Do not mention or imply any object. Use only concrete, observable traits. Exclude the user specified visual attribute in text input. No full sentences, no punctuation, no vague or subjective words.
-
-4. Depending on the user's input text prompt, return either 'object' or 'property'. Return 'property' if the input is visual characteristic or attribute, including but not limited to Color Palette, pattern, color, material, texture, shape, visual style, form, layout, lighting, or spatial structure. Return 'object' only if the input refers to a recognizable physical entity such as a specific item, — e.g., “apple,” “Eiffel Tower,” “cat,” or “table.” Do not explain your reasoning — only return 'object' or 'property'.
-Limit the first description to 20 words or fewer. Make sure to return exactly four parts, where each part is separated by **a colon**. Do not include any explanation or additional punctuation.
 `
 
   // 3. A comma-separated list of all applicable visual property categories that were used in the first output (e.g., color, texture, material, pattern, shape, structure, surface detail).
@@ -226,23 +214,18 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function excludePropObject(lassoBoundUrl, propsString) {
     try {
       const raw = await describeImage(lassoBoundUrl, propsString, nonPropsSysPrompt)
-
+      console.log(raw)
       if (!raw || typeof raw !== 'string' || !raw.includes(':')) {
         throw new Error('describeImage returned invalid format: ' + raw)
       }
 
       const parts = raw.split(':').map((s) => s.trim())
-      if (parts.length < 4) {
-        throw new Error('describeImage returned too few parts: ' + JSON.stringify(parts))
-      }
 
-      const [adjObjectText, objectText, visibleProps, objOrProp] = parts
+      const [adjObjectText, objectText] = parts
 
       return {
         adjObjectText,
         objectText,
-        visibleProps,
-        objOrProp,
       }
     } catch (err) {
       console.error('excludePropObject failed:', err)
@@ -338,7 +321,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
   async function generateOpenAIImg({ original_image, total_mask, prompt, altId }) {
     loadingStatus.value = 'loading'
     try {
-      currentGenId.value = altId
+      currentGenIds.value.push(altId)
       promiseLoadImageLabel.value = 'loading'
       const response = await fetch(BACKEND_URL + '/edit-image', {
         method: 'POST',
@@ -363,16 +346,13 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     } catch (err) {
       console.log(err.message)
       return null // Optional: consistently return on error
-    } finally {
-      promiseLoadImageLabel.value = 'finished' // Ensures it always updates
-      loadingStatus.value = 'finished'
     }
   }
 
   async function generateGoogleImg({ original_image, total_mask, prompt, altId }) {
     try {
       loadingStatus.value = 'loading'
-      currentGenId.value = altId
+      currentGenIds.value.push(altId)
       const response = await fetch(BACKEND_URL + '/gen-img-imagen', {
         method: 'POST',
         headers: {
@@ -393,8 +373,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     } catch (err) {
       console.log(err.message)
       return null // Optional: consistently return on error
-    } finally {
-      loadingStatus.value = 'finished'
     }
   }
 
@@ -408,7 +386,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     altId,
   }) {
     loadingStatus.value = 'loading'
-    currentGenId.value = altId
+    currentGenIds.value.push(altId)
     //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
 
     try {
@@ -437,8 +415,6 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     } catch (error) {
       console.error('Error generating image:', error)
       alert('Image generation failed. Please try again.')
-    } finally {
-      loadingStatus.value = 'finished'
     }
   }
   //when mousedown, detect if the pressed area belong to any of the boxes, if so, highlight the boxes
@@ -461,7 +437,7 @@ Limit the first description to 20 words or fewer. Make sure to return exactly fo
     guessPrompt,
     generateOpenAIImg,
     generateGoogleImg,
-    currentGenId,
+    currentGenIds,
     excludePropObject,
     onPropertyNameFinalized,
     getGhostTagsForRow,

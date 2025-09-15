@@ -14,7 +14,7 @@
       v-show="nodesSelected"
       @click="confirmNodes"
       class="btn btn-sm btn-outline-success m-1 mx-auto"
-      style="z-index: 5000; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
+      style="z-index: 9999; position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%)"
     >
       <Check color="green" :size="15" />&nbsp;Save Step
     </button>
@@ -197,7 +197,7 @@
         <InfoPalette />
       </div>
     </VueDraggableResizable>
-    
+
     <!-- Review Prompt Components -->
     <ReviewPromptTab />
     <ReviewPrompt />
