@@ -135,11 +135,6 @@ const EditableText = defineComponent({
 
 const generationStore = useGeneration()
 
-// Register components
-const components = {
-  EditableText,
-}
-
 const closeDialog = () => {
   generationStore.showReviewDialog = false
   generationStore.currentPrompt = ''

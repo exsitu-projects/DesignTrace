@@ -15,7 +15,6 @@ export const useNode = defineStore('nodes', () => {
   // ===== DEFAULT SIZING CONSTANTS =====
   const DEFAULT_CANVAS_WIDTH = 300
   const DEFAULT_NODE_WIDTH = DEFAULT_CANVAS_WIDTH + 20
-  const DEFAULT_NODE_HEIGHT = DEFAULT_CANVAS_WIDTH + 100
   const INITIAL_NODE_X = 150
   const INITIAL_NODE_Y = 150
   const NODE_ADJACENCY_SPACING = 100
@@ -54,7 +53,6 @@ export const useNode = defineStore('nodes', () => {
 
   // Payloads and temporary data
   const selectionPayload = ref({})
-  const currentColorPenInfo = ref({})
   const addAltImgPayload = ref({})
   const requestCanvasData = ref({ status: false })
 
@@ -65,25 +63,6 @@ export const useNode = defineStore('nodes', () => {
   const generationStore = useGeneration()
 
   // ===== HELPER FUNCTIONS =====
-
-  /**
-   * Check if a value is empty (null, undefined, empty string, or whitespace-only)
-   * @param {any} value - The value to check
-   * @returns {boolean} - True if the value is considered empty
-   */
-  function isEmpty(value) {
-    return !value || (typeof value === 'string' && value.trim() === '')
-  }
-
-  /**
-   * Validate that object properties are not empty
-   * @param {Object} properties - Object with properties to validate
-   * @param {string[]} requiredFields - Array of field names that must not be empty
-   * @returns {boolean} - True if all required fields are valid
-   */
-  function validateObjectProperties(properties, requiredFields) {
-    return requiredFields.every((field) => !isEmpty(properties[field]))
-  }
 
   /**
    * Find an alt by its ID across all branches and nodes
@@ -105,24 +84,6 @@ export const useNode = defineStore('nodes', () => {
    */
   function generateId(prefix, suffix = '') {
     return `${prefix}_${Date.now()}${suffix}`
-  }
-
-  /**
-   * Calculate layout boundaries and update positioning refs
-   * @param {number} x - The x coordinate
-   * @param {number} y - The y coordinate
-   * @param {number} nodeWidth - The width of the node
-   * @param {number} nodeHeight - The height of the node
-   */
-  function updateLayoutBoundaries(
-    x,
-    y,
-    nodeWidth = defaultNodeWidth.value,
-    nodeHeight = defaultNodeHeight.value,
-  ) {
-    nodeXR.value = Math.max(nodeXR.value, x + nodeWidth)
-    nodeYB.value = Math.max(nodeYB.value, y + nodeHeight)
-    nodeYT.value = Math.min(nodeYT.value, y)
   }
 
   // ===== UNDO/REDO HISTORY =====
@@ -302,54 +263,6 @@ export const useNode = defineStore('nodes', () => {
     return newNode
   }
 
-  // ===== LASSO AND COLOR PEN MANAGEMENT =====
-
-  /**
-   * Set lasso information for a specific alt
-   * @param {Object} lassoPayload - Payload containing lasso information
-   */
-  function setCurrentLassoInfo(lassoPayload) {
-    const alt = findAlt(lassoPayload.altId)
-    if (alt) {
-      alt.lassoPayload = lassoPayload
-    } else {
-      console.warn(`Alt with ID ${lassoPayload.altId} not found`)
-    }
-  }
-
-  /**
-   * Apply color pen effect and generate new image
-   * @param {Object} colorPenPayload - Payload containing color pen information
-   * @returns {string|null} - URL of the generated image or null if generation failed
-   */
-  async function applyColorPen(colorPenPayload) {
-    currentColorPenInfo.value = colorPenPayload
-    let imgUrl = null
-
-    try {
-      // Get prompt suggestion based on images
-      const output = await generationStore.guessPrompt({
-        original_image: colorPenPayload.original_image,
-        add_color_image: colorPenPayload.add_color_image,
-        add_edge_image: colorPenPayload.add_edge_image,
-      })
-
-      // Generate the image with the prompt
-      currentColorPenInfo.value.prompt = output
-      imgUrl = await generationStore.generateMaskedImg(currentColorPenInfo.value)
-
-      // Update payload for rendering
-      addAltImgPayload.value = {
-        url: imgUrl,
-        altId: colorPenPayload.altId,
-      }
-    } catch (error) {
-      console.error('Image generation failed:', error)
-    }
-
-    return imgUrl
-  }
-
   // ===== PARENT MANAGEMENT =====
 
   /**
@@ -376,7 +289,6 @@ export const useNode = defineStore('nodes', () => {
       if (alt.expand === true) {
         if (!allAltsInSteps.includes(alt.id)) {
           let childAlt = alt
-          let currentChildId = alt.id
           let currentParentId = childAlt.prevAltId
 
           while (currentParentId && !allAltsInSteps.includes(currentParentId)) {
@@ -385,7 +297,6 @@ export const useNode = defineStore('nodes', () => {
 
             childAlt.expand = true
 
-            currentChildId = currentParentId
             currentParentId = childAlt?.prevAltId || null
           }
 
@@ -510,16 +421,13 @@ export const useNode = defineStore('nodes', () => {
   }
 
   /**
-   * Generate a prompt for Imagen image generation
+   * Generate a prompt for OpenAI masked (lasso) image editing
    * @param {string} propsAltered - Comma-separated property names being altered
    * @param {string} adjObjectText - Object adjectives from detection
    * @param {string} objectText - Object name from detection
    * @param {string[]} descriptors - Array of property descriptions
-   * @param {string} visibleProps - Properties to preserve
-   * @param objOrProp
    * @returns {string} Formatted prompt
    */
-
   function openAIMaskPrompt(propsAltered, adjObjectText, objectText, descriptors) {
     const templates = generationStore.promptTemplates.openAIMask
     return `${templates.prefix} ${objectText} ${templates.middle1} ${descriptors} ${templates.middle2} ${adjObjectText}${templates.suffix}`
@@ -769,9 +677,6 @@ export const useNode = defineStore('nodes', () => {
     // Ensure minimum Y position is at least 50px from top
     const minY = 50
     const adjustedTopY = Math.max(minY, topY)
-
-    // If we had to adjust upward, recalculate centerY
-    const actualCenterY = totalAlts > 1 ? adjustedTopY + totalSpacing / 2 : centerY
 
     // Create array of all positions (existing + new)
     const allPositions = []
@@ -1223,9 +1128,6 @@ export const useNode = defineStore('nodes', () => {
     redo,
     navigateToHistoryState,
 
-    // Lasso and Color Pen
-    setCurrentLassoInfo,
-    applyColorPen,
     switchStepLock,
 
     // Edge Management

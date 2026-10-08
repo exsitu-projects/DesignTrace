@@ -1,2 +1,3 @@
 /static/*.png
 /static/**/*.png
+.env

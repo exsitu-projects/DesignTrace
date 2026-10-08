@@ -7,7 +7,6 @@ function uid() {
 }
 
 export const useInfoStore = defineStore('infoStore', () => {
-  const promiseThumbnailUpdate = ref('')
   const currentUID = ref('')
   const propertyTags = ref([])
   const lassoPropsContent = ref('')
@@ -75,34 +74,6 @@ export const useInfoStore = defineStore('infoStore', () => {
     }
   }
 
-  const generateLayer = async (currentPrompt) => {
-    const response = await fetch('http://localhost:53577/api/generatelayer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: currentPrompt,
-      }),
-    })
-    return await response.json()
-  }
-
-  const generateThumbnail = async (prop, propVal) => {
-    //how to deal with prompts, now just connecting them with ,
-
-    const oneLinePrompt = 'A clean thumbnail that visually represents the ' + prop + 'of ' + propVal
-
-    try {
-      promiseThumbnailUpdate.value = 'loading'
-      const result = await generateLayer(oneLinePrompt)
-      return result.images_base64
-    } catch (error) {
-      console.error('Error generating image:', error)
-      alert('Image generation failed. Please try again.')
-    } finally {
-      promiseThumbnailUpdate.value = 'finished' // Ensures it always updates
-    }
-  }
-
   return {
     rows,
     propertyTags,
@@ -114,7 +85,6 @@ export const useInfoStore = defineStore('infoStore', () => {
     addTag,
     removeTag,
     removeRow,
-    generateThumbnail,
     addThumbnailToTag,
   }
 })

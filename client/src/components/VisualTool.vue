@@ -9,10 +9,8 @@ import {
   Download,
 } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import { Collapse } from 'bootstrap'
 import { useNode } from '@/stores/nodeStore.js'
 import { useGeneration } from '@/stores/generationStore.js'
-import ColorPicker from '@/components/colorPicker.vue'
 import { BACKEND_URL } from '../../public/endpoint.js'
 const emit = defineEmits([
   'forwardLayer',
@@ -30,15 +28,8 @@ const triggerFileSelect = () => {
 const generationStore = useGeneration()
 const allUtilStore = useAllUtil()
 const nodeStore = useNode()
-function propagateChange() {
-  allUtilStore.switchPropagateMode()
-  if (allUtilStore.isPropagate) closeColorPicker()
-}
 function switchLasso() {
   allUtilStore.switchLassoMode()
-
-  // Hide color picker when lasso is activated (after the toggle)
-  if (allUtilStore.isLassoMode) closeColorPicker()
 }
 
 const addBranchNodeAlt = () => {
@@ -101,40 +92,7 @@ async function generateImage() {
 
 function switchTxt2Img() {
   allUtilStore.switchTxt2Img()
-  // Hide color picker when text to image is activated
-  closeColorPicker()
 }
-function closeColorPicker() {
-  setTimeout(() => {
-    const collapseEl = document.getElementById('collapseExample')
-    if (collapseEl && collapseEl.classList.contains('show')) {
-      const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
-      bsCollapse.hide()
-    }
-  }, 10) // Small delay to ensure toggle has completed
-}
-
-// function switchColorPen() {
-//   allUtilStore.switchColorPen()
-//
-//   // Show color picker when color pen is activated
-//   if (allUtilStore.isColorPen) {
-//     const collapseEl = document.getElementById('collapseExample')
-//     const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
-//     const isExpanded = collapseEl.classList.contains('show')
-//     if (!isExpanded) {
-//       bsCollapse.show()
-//     }
-//   } else {
-//     // Hide color picker when color pen is deactivated
-//     const collapseEl = document.getElementById('collapseExample')
-//     const bsCollapse = Collapse.getOrCreateInstance(collapseEl)
-//     const isExpanded = collapseEl.classList.contains('show')
-//     if (isExpanded) {
-//       bsCollapse.hide()
-//     }
-//   }
-// }
 </script>
 
 <template>
@@ -167,10 +125,6 @@ function closeColorPicker() {
       <img src="/assets/ai-file.png" alt="description" width="20" height="20" /> Generate
     </button>
 
-    <div class="collapse" id="collapseExample">
-      <ColorPicker></ColorPicker>
-    </div>
-
     <button title="Remove background" @click="emit('removeBg')" class="btn btn-sm btn-light">
       <ImageOff color="black" :size="15"></ImageOff> Remove Bg
     </button>
@@ -184,29 +138,6 @@ function closeColorPicker() {
         <Lasso color="black" :size="15" /> Select
       </button>
 
-      <!--    <button-->
-      <!--      title="Propagate Change"-->
-      <!--      @click="propagateChange()"-->
-      <!--      :class="['btn btn-sm btn-light', { active: allUtilStore.isPropagate }]"-->
-      <!--    >-->
-      <!--      <ArrowUpWideNarrow-->
-      <!--        style="transform: rotate(90deg)"-->
-      <!--        color="black"-->
-      <!--        :size="15"-->
-      <!--      ></ArrowUpWideNarrow-->
-      <!--      >Propagate-->
-      <!--    </button>-->
-
-      <!--    <button-->
-      <!--      :class="['btn btn-sm btn-light', { active: allUtilStore.isColorPen }]"-->
-      <!--      @click="switchColorPen"-->
-      <!--    >-->
-      <!--      <SprayCan color="black" :size="15"></SprayCan>-->
-      <!--    </button>-->
-
-      <!--    <button type="button" class="btn btn-light">Left</button>-->
-      <!--    <button type="button" class="btn btn-light">Middle</button>-->
-      <!--    <button type="button" class="btn btn-light">Right</button>-->
     </div>
 
     <div class="btn-group m-1" role="group" aria-label="Basic example">

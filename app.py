@@ -1,19 +1,15 @@
 import os
-import io
-from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 import uuid
-from backgroundremover.bg import remove
-from openai import OpenAI
-import base64, mimetypes
-from datetime import datetime
-from io import BytesIO
-import traceback
-from PIL import Image
-from io import BytesIO
 import base64
-import glob
+import mimetypes
+import traceback
+from flask import Flask, request, jsonify, send_from_directory, abort
+from flask_cors import CORS
+from backgroundremover.bg import remove
+from dotenv import load_dotenv
+from openai import OpenAI
+
+load_dotenv()
 
 app = Flask(__name__, static_folder='client/dist', static_url_path='')
 # CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175", "http://127.0.0.1:10000"]}})
@@ -247,61 +243,6 @@ def edit_image():
         traceback_str = traceback.format_exc()
         print(traceback_str)
         return jsonify({"error": str(e), "traceback": traceback_str}), 500
-
-@app.route('/edit-with-ref', methods=['POST', 'OPTIONS'])
-def edit_with_ref():
-    if request.method == 'OPTIONS':
-        # Respond to preflight with OK status
-        return '', 200
-    json_data = request.get_json()
-
-    prompt = json_data.get('prompt', '')
-    # original_image = json_data.get('original_image')  #  base64
-    ref_images = json_data.get('ref_images')  #  [base64, base64, ...]
-    try:
-        # Create a unique temporary folder for this request
-        request_id = datetime.now().strftime('%Y%m%d%H%M%S') + '_' + str(uuid.uuid4())
-        temp_dir = Path(f"static/temp/{request_id}")
-        temp_dir.mkdir(parents=True, exist_ok=True)
-
-        ref_image_paths = []
-        for i, ref_img in enumerate(ref_images):
-            try:
-                if ref_img.startswith("data:image"):
-                    ref_img = ref_img.split(",", 1)[1]
-
-                ref_path = temp_dir / f"ref_image_{i}.png"
-                with open(ref_path, "wb") as f:
-                    f.write(base64.b64decode(ref_img))
-                ref_image_paths.append(str(ref_path))
-            except Exception as e:
-                print(f"Error saving ref_image_{i}: {e}")
-
-        # Open all as binary file objects
-        ref_image_files = [open(path, "rb") for path in ref_image_paths]
-
-        result = client.images.edit(
-            model="gpt-image-1",
-            # image=[open(original_image_path, "rb")] + ref_image_files,
-            image=ref_image_files,
-            prompt=prompt,
-            size="1024x1024",
-
-        )
-
-        result_base64 = result.data[0].b64_json
-        result_base64 = f"data:image/png;base64,{result_base64}"
-
-        return jsonify({
-            "status": "success",
-            "output": result_base64,
-        })
-
-    except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
-
 
 @app.route('/image-to-labels', methods=['POST'])
 def image_to_labels():

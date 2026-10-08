@@ -28,6 +28,7 @@
           @mouseup="handleMouseUp(rowIdx, row.name)"
           @editing-changed="(editing) => onEditingChanged(rowIdx, 'propertyName', editing)"
           @click.stop="onPropertyNameClick($event, rowIdx, row)"
+          @dblclick="cancelSingleClick"
           :isPropertyName="true"
           @property-name-finalized="
             (propertyName) => generationStore.onPropertyNameFinalized(propertyName, rowIdx)
@@ -63,6 +64,7 @@
               userSelect: 'none',
             }"
             @click.stop="onTagNameClick($event, rowIdx, tagIdx)"
+            @dblclick="cancelSingleClick"
             class="badge m-1"
             :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
           >
@@ -188,9 +190,9 @@ import { useObject } from '@/stores/objectStore.js'
 import EditableLabel from '@/components/EditableLabel.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import { onMounted, onUnmounted, ref, watch, Teleport, reactive } from 'vue'
+import { onMounted, onUnmounted, ref, watch, reactive } from 'vue'
 import { Tooltip, Popover } from 'bootstrap'
-import { Lasso, SquareStack, Split } from 'lucide-vue-next'
+import { SquareStack, Split } from 'lucide-vue-next'
 
 const infoStore = useInfoStore()
 const objectStore = useObject()
@@ -228,19 +230,37 @@ function onEditingChanged(rowIdx, tagIdx, editing) {
   editingStates[rowIdx][tagIdx] = editing
 }
 
+// Single click selects for smart lasso, double click edits the text.
+// Delay the single-click action so a double click can cancel it.
+let clickTimer = null
+const DBLCLICK_DELAY = 250
+
+function delaySingleClick(action) {
+  clearTimeout(clickTimer)
+  clickTimer = setTimeout(() => {
+    clickTimer = null
+    action()
+  }, DBLCLICK_DELAY)
+}
+
+function cancelSingleClick() {
+  clearTimeout(clickTimer)
+  clickTimer = null
+}
+
 function onPropertyNameClick(event, rowIdx, row) {
-  if (!event.ctrlKey) return
+  if (event.detail > 1) return // second click of a double click
 
   if (!editingStates[rowIdx]?.propertyName) {
-    handlePropertyNameClick(rowIdx, row)
+    delaySingleClick(() => handlePropertyNameClick(rowIdx, row))
   }
 }
 
 function onTagNameClick(event, rowIdx, tagIdx) {
-  if (!event.ctrlKey) return
+  if (event.detail > 1) return // second click of a double click
 
   if (!editingStates[rowIdx]?.[tagIdx]) {
-    toggleTagSelection(rowIdx, tagIdx)
+    delaySingleClick(() => toggleTagSelection(rowIdx, tagIdx))
   }
 }
 
@@ -615,10 +635,8 @@ const handleMouseUp = async (rowIdx, propName) => {
       propName,
       generationStore.propValSysPrompt,
     )
-    //const propVal = ''
     infoStore.addTag(rowIdx, propVal)
     const thumbnailUrl = droppedObj.src
-    // const thumbnailUrl = await infoStore.generateThumbnail(propName, propVal)
     infoStore.addThumbnailToTag(rowIdx, thumbnailUrl)
     objectStore.dragState = 'finishedDragging'
     objectStore.obj = {}

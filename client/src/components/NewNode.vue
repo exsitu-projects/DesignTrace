@@ -150,26 +150,19 @@ import {
   watch,
   defineEmits,
   nextTick,
-  toRaw,
-  toRef,
 } from 'vue'
 import {
   ArrowLeft,
   ArrowRight,
   Split,
   UndoDot,
-  GitPullRequestCreate,
-  Lock,
-  LockOpen,
   SquareArrowUpLeft,
   Eraser,
 } from 'lucide-vue-next'
 import * as fabric from 'fabric'
-import EditableLabel from './EditableLabel.vue'
 import { useObject } from '@/stores/objectStore.js'
 import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
-import { CannyJS } from '@/js/canny'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useInfoStore } from '@/stores/infoStore.js'
 
@@ -193,16 +186,10 @@ let fabricCanvas = null
 const { alt } = props
 const infoStore = useInfoStore() // Import infoStore to access property tags
 const canvasContainer = ref(null)
-const posEdgeUrl = ref('')
-const negEdgeUrl = ref('')
 const totalEdgeUrl = ref('')
-const brushMask = ref('')
-const emptyMask = ref('')
 const changeDetected = ref(false)
 const objectStore = useObject()
 const nodeStore = useNode()
-const cannyHt = 150 //canny edge high threshold
-const cannyLt = 40 //canny edge low threshold
 const allUtilStore = useAllUtil()
 const generationStore = useGeneration()
 const canvasUrlWithoutPath = ref('')
@@ -210,7 +197,6 @@ const pathStr = ref('')
 let isLasso = false
 let points = []
 const lassoBoundUrl = ref('')
-const strokesBoundUrl = ref('')
 let currentPath = null // Current path being drawn
 let lassoPaths = [] // store all completed lasso paths
 let allPathStrs = []
@@ -249,7 +235,6 @@ watch(
   },
   { deep: true, immediate: true },
 )
-const canvasUrlWithoutBrush = ref('')
 // Undo/Redo functionality
 const isLoadingState = ref(false) // Prevent saving state during undo/redo
 const undoStack = computed(() => alt.history?.undoStack || [])
@@ -272,24 +257,6 @@ const isPropertyActive = (property) => {
   const currentIndex =
     alt.history.currentIndex >= 0 ? alt.history.currentIndex : alt.history.undoStack.length - 1
   return currentIndex === property.historyStateIndex
-}
-
-const cursor = new fabric.Circle({
-  //brush cursor
-  radius: allUtilStore.brush.width / 2,
-  fill: allUtilStore.brush.color,
-  originX: 'center',
-  originY: 'center',
-  selectable: false,
-  evented: false,
-  absolutePositioned: true, // ← stays in screen coords
-})
-function updateCursor() {
-  cursor.set({
-    radius: allUtilStore.brush.width / 2,
-    fill: allUtilStore.brush.color,
-  })
-  cursor.dirty = true // force re‑render
 }
 
 // Helper function to check if point is inside any prev lasso path
@@ -396,20 +363,9 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
-  fabricCanvas.upperCanvasEl.style.cursor = 'none'
 
   fabricCanvasW.value = fabricCanvas.width
   fabricCanvasH.value = fabricCanvas.height
-  fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas)
-  const brush = fabricCanvas.freeDrawingBrush
-  brush.width = allUtilStore.brush.width
-  brush.color = allUtilStore.brush.color
-
-  fabricCanvas.add(cursor) // top of stack
-  cursor.visible = false // hidden until drawing starts
-
-  updateCursor()
-
   // Save initial canvas state for undo functionality
   setTimeout(() => {
     saveState()
@@ -440,9 +396,6 @@ onMounted(() => {
       isLasso = true
       startPointer = opt.pointer
       points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
-    } else if (allUtilStore.isColorPen) {
-      cursor.visible = true
-      fabricCanvas.requestRenderAll()
     }
   })
 
@@ -465,13 +418,6 @@ onMounted(() => {
 
       fabricCanvas.add(currentPath)
       fabricCanvas.requestRenderAll()
-    } else if (allUtilStore.isColorPen) {
-      cursor.visible = true
-      const p = fabricCanvas.getPointer(opt.e)
-      cursor.set({ left: p.x, top: p.y })
-      cursor.setCoords()
-      fabricCanvas.bringObjectToFront(cursor)
-      fabricCanvas.requestRenderAll()
     } else if (lassoStart && prevLassoPaths.length !== 0 && !isLasso) {
       // Handle hover detection for existing lasso when in lasso mode but not actively drawing
       const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
@@ -486,24 +432,6 @@ onMounted(() => {
         removeHoverOverlay()
       }
     }
-  })
-
-  fabricCanvas.on('path:created', ({ path, e }) => {
-    changeDetected.value = true
-    path.objectCaching = false // render directly, no off‑screen crop
-
-    fabricCanvas.bringObjectToFront(cursor)
-
-    // Save state after drawing (with slight delay to ensure path is fully added)
-    setTimeout(() => {
-      console.log('Saving state after path creation')
-      saveState()
-    }, 50)
-  })
-
-  fabricCanvas.upperCanvasEl.addEventListener('mouseout', () => {
-    cursor.visible = false
-    fabricCanvas.requestRenderAll()
   })
 
   fabricCanvas.on('mouse:up', async function (opt) {
@@ -592,30 +520,6 @@ onMounted(() => {
         lassoPaths.forEach((path) => fabricCanvas.add(path))
 
         if (pathStr.value) {
-          // uncomment to use google imagen api for inpainting
-          // Create canvas same size as original
-          // const alphaMaskCanvas = document.createElement('canvas')
-          // alphaMaskCanvas.width = fabricCanvas.width
-          // alphaMaskCanvas.height = fabricCanvas.height
-          // const alphaCtx = alphaMaskCanvas.getContext('2d')
-          //
-          // // Fill the whole canvas black (opaque)
-          // alphaCtx.fillStyle = 'black'
-          // alphaCtx.fillRect(0, 0, alphaMaskCanvas.width, alphaMaskCanvas.height)
-          //
-          // // Cut out the lasso region (make transparent)
-          // alphaCtx.globalCompositeOperation = 'destination-out'
-          // const lasPath = new Path2D(pathStr.value)
-          // alphaCtx.fillStyle = 'white' // Any color, since it's being cut out
-          // alphaCtx.fill(lasPath)
-          //
-          // // Set back to default blending mode
-          // alphaCtx.globalCompositeOperation = 'source-over'
-          //
-          // // Final result: lasso = transparent, rest = black (opaque)
-          // totalEdgeUrl.value = alphaMaskCanvas.toDataURL('image/png')
-          // console.log(totalEdgeUrl.value)
-          // uncomment to use openai api for inpainting (masks not working well with 4.1 api)
           const erasePath = new fabric.Path(allPathStrs.join(' '), {
             absolutePositioned: true,
             globalCompositeOperation: 'destination-out', // <-- eraser mode
@@ -634,93 +538,6 @@ onMounted(() => {
           lassoPaths.forEach((path) => fabricCanvas.add(path))
           fabricCanvas.remove(erasePath) // gone from the display list
 
-          // uncomment to use magic quill for inpainting
-          // const lassoMaskCan = document.createElement('canvas')
-          // lassoMaskCan.width = fabricCanvas.width // same pixel size as the source
-          // lassoMaskCan.height = fabricCanvas.height
-          // const lassoMaskCtx = lassoMaskCan.getContext('2d')
-          //
-          // lassoMaskCtx.fillStyle = 'black'
-          // lassoMaskCtx.fillRect(0, 0, lassoMaskCan.width, lassoMaskCan.height)
-          //
-          // const lasPath = new Path2D(pathStr.value)
-          // lassoMaskCtx.fillStyle = 'white'
-          // lassoMaskCtx.fill(lasPath)
-          //
-          // // totalEdgeUrl.value = lassoMaskCan.toDataURL('image/png')
-          // totalEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-          // console.log(totalEdgeUrl.value) // lasso selection mask, lasso area white, other black -> total mask
-          //
-          // const srcCanv = fabricCanvas.lowerCanvasEl
-          // const canny = CannyJS.canny(
-          //   srcCanv,
-          //   cannyHt, // ht: canny high threshold
-          //   cannyLt, // lt: canny low threshold
-          //   1.4, // gaussian blur sigma
-          //   3, // kernel size, default 3 usually
-          //   2,
-          // )
-          //
-          // let cannyCan = document.createElement('canvas')
-          // cannyCan.width = fabricCanvas.getWidth()
-          // cannyCan.height = fabricCanvas.getHeight()
-          //
-          // const cannyCtx = cannyCan.getContext('2d')
-          // cannyCtx.imageSmoothingEnabled = false // keep edges crisp
-          // const hiRes = document.createElement('canvas')
-          // hiRes.width = srcCanv.width // 1024
-          // hiRes.height = srcCanv.height
-          // canny.drawOn(hiRes) // fills hiRes
-          //
-          // cannyCtx.drawImage(
-          //   hiRes,
-          //   0,
-          //   0,
-          //   hiRes.width,
-          //   hiRes.height, // src rect
-          //   0,
-          //   0,
-          //   cannyCan.width,
-          //   cannyCan.height, // dest rect (scaled)
-          // )
-          //
-          // const cannyURL = cannyCan.toDataURL('image/png')
-          // // console.log(cannyURL) // canny edge mask, canny edge white, other black
-          //
-          // let cannyInLassoCan = document.createElement('canvas')
-          // cannyInLassoCan.width = cannyCan.width
-          // cannyInLassoCan.height = cannyCan.height
-          // const cannyInLassoCtx = cannyInLassoCan.getContext('2d')
-          //
-          // cannyInLassoCtx.fillStyle = 'white'
-          // const lassoPath = new Path2D(pathStr.value)
-          // cannyInLassoCtx.fill(lassoPath)
-          //
-          // cannyInLassoCtx.globalCompositeOperation = 'source-in'
-          // cannyInLassoCtx.drawImage(cannyCan, 0, 0)
-          //
-          // cannyInLassoCtx.globalCompositeOperation = 'destination-over'
-          // cannyInLassoCtx.fillStyle = 'black'
-          // cannyInLassoCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          //
-          // // Reset composite mode for safety
-          // cannyInLassoCtx.globalCompositeOperation = 'source-over'
-          // // posEdgeUrl.value = cannyInLassoCan.toDataURL('image/png')
-          // posEdgeUrl.value = whiteToTransparent(cannyInLassoCan)
-          // // console.log(posEdgeUrl.value) // canny edge inside lasso mask, canny edge white, other black -> pos edge mask
-          //
-          // lassoMaskCtx.globalCompositeOperation = 'difference'
-          // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-          // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          // lassoMaskCtx.globalCompositeOperation = 'lighter'
-          // lassoMaskCtx.drawImage(cannyInLassoCan, 0, 0)
-          // lassoMaskCtx.globalCompositeOperation = 'difference'
-          // lassoMaskCtx.fillStyle = '#fff' // white rectangle
-          // lassoMaskCtx.fillRect(0, 0, cannyInLassoCan.width, cannyInLassoCan.height)
-          // negEdgeUrl.value = whiteToTransparent(lassoMaskCan)
-          // // console.log(negEdgeUrl.value) // non-canny edge inside lasso mask, non-canny edge inside lasso white, other black -> neg edge mask
-          // cannyCan = null
-          // cannyInLassoCan = null
           storeLassoInfo()
 
           // Save state after lasso operation
@@ -731,9 +548,6 @@ onMounted(() => {
           console.log('Added lasso to existing selections, total:', prevLassoPaths.length)
         }
       }
-    } else if (allUtilStore.isColorPen) {
-      cursor.visible = false
-      fabricCanvas.requestRenderAll()
     }
   })
 
@@ -759,7 +573,6 @@ const activeObject = ref(null)
 watch(activeObject, (val) => {
   emit('selection-changed', val !== null) // send true/false to parent
 })
-const objectActive = computed(() => activeObject.value !== null)
 async function removeBg() {
   const activeObj = fabricCanvas.getActiveObject()
   if (!activeObj) {
@@ -871,125 +684,14 @@ function handleClick(altId, branchId) {
   nodeStore.lastSelectedIndex = altId
 }
 
-function whiteToTransparent(canvas) {
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = imgData.data
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i]
-    const g = data[i + 1]
-    const b = data[i + 2]
-    // If pixel is white (or near white, threshold optional)
-    if (r === 255 && g === 255 && b === 255) {
-      data[i + 3] = 0 // make transparent
-    }
-  }
-
-  ctx.putImageData(imgData, 0, 0)
-  return canvas.toDataURL('image/png')
-} // the magicquill input requires mask area to be transparent, and non-mask area to be opaque
-
 async function transform() {
-  if (allUtilStore.isColorPen) {
-    let left = Infinity,
-      top = Infinity,
-      right = -Infinity,
-      bottom = -Infinity
-
-    const paths = fabricCanvas.getObjects('path')
-
-    // 1. snapshot with strokes
-    canvasUrlWithoutPath.value = fabricCanvas.toDataURL()
-
-    // 3. build the mask
-    const mask = document.createElement('canvas')
-    mask.width = fabricCanvasW.value
-    mask.height = fabricCanvasH.value
-    const ctx = mask.getContext('2d')
-
-    ctx.fillStyle = 'black'
-    ctx.fillRect(0, 0, mask.width, mask.height)
-    emptyMask.value = mask.toDataURL('image/png')
-
-    ctx.save()
-    paths.forEach((p) => {
-      // Update path's coordinate cache
-      p.setCoords()
-      const rect = p.getBoundingRect()
-
-      left = Math.min(left, rect.left)
-      top = Math.min(top, rect.top)
-      right = Math.max(right, rect.left + rect.width)
-      bottom = Math.max(bottom, rect.top + rect.height)
-      // Get transformed coordinates (accounts for rotation, scale, skew)
-      // remember original settings
-      const prevComp = p.globalCompositeOperation
-      const prevOpacity = p.opacity
-
-      p.globalCompositeOperation = 'destination-out'
-      p.opacity = 1 // full erase, no half‑alpha edges
-
-      p.render(ctx) // now it really punches the hole
-
-      // restore original settings in case you need the object later
-      p.globalCompositeOperation = prevComp
-      p.opacity = prevOpacity
-    })
-    strokesBoundUrl.value = fabricCanvas.toDataURL({
-      left: isFinite(left) ? left : 0,
-      top: isFinite(top) ? top : 0,
-      width: isFinite(left) ? right - left : 0,
-      height: isFinite(top) ? bottom - top : 0,
-      format: 'png',
-      multiplier: 1,
-    })
-
-    ctx.restore()
-
-    brushMask.value = mask.toDataURL('image/png') // pure black + transparent holes
-
-    // 4. now strip the strokes from the main canvas
-    paths.forEach((p) => fabricCanvas.remove(p))
-    fabricCanvas.renderAll()
-
-    // 5. snapshot without strokes
-    canvasUrlWithoutBrush.value = fabricCanvas.toDataURL()
-
-    const colorPenPayload = {
-      original_image: canvasUrlWithoutBrush.value,
-      add_color_image: canvasUrlWithoutPath.value,
-      add_edge_image: emptyMask.value,
-      remove_edge_image: emptyMask.value,
-      total_mask: brushMask.value,
-      strokesBoundUrl: strokesBoundUrl.value,
-      altId: alt.id,
-    }
-    nodeStore.applyColorPen(colorPenPayload)
-    changeDetected.value = false
-
-    // Save state after transform
-    saveState()
-  } else {
-    fabricCanvas.discardActiveObject()
-    fabricCanvas.requestRenderAll()
-    saveState()
-    const dataUrl = fabricCanvas.toDataURL({ format: 'png' })
-    await nodeStore.mergeWholeCanvas(dataUrl, alt.id)
-    changeDetected.value = false
-    saveState()
-  }
-  // else if (allUtilStore.isLassoMode) {
-  //   saveState()
-  //   changeDetected.value = false
-  //   lassoPayload.value.type = 'lasso'
-  //   transformImage()
-  //   prevLassoPaths = lassoPathInfo
-  //   //prevLassoPaths = lassoPaths
-  //   lassoPaths = []
-  //   allPathStrs = []
-  //   allUtilStore.isLassoMode = false
-  // }
+  fabricCanvas.discardActiveObject()
+  fabricCanvas.requestRenderAll()
+  saveState()
+  const dataUrl = fabricCanvas.toDataURL({ format: 'png' })
+  await nodeStore.mergeWholeCanvas(dataUrl, alt.id)
+  changeDetected.value = false
+  saveState()
 }
 function transformLasso(lassoPathInfo) {
   if (allUtilStore.isLassoMode) {
@@ -1127,28 +829,7 @@ function storeLassoInfo() {
     altId: alt.id,
     lassoBoundUrl: lassoBoundUrl.value,
   }
-  // lassoPayload.value = {
-  //   original_image: canvasUrlWithoutPath.value,
-  //   add_color_image: canvasUrlWithoutPath.value,
-  //   add_edge_image: posEdgeUrl.value,
-  //   remove_edge_image: negEdgeUrl.value,
-  //   total_mask: totalEdgeUrl.value,
-  //   altId: alt.id,
-  //   lassoBoundUrl: lassoBoundUrl.value,
-  // }
 }
-
-watch(
-  () => allUtilStore.brush,
-  (brush) => {
-    if (fabricCanvas) {
-      fabricCanvas.freeDrawingBrush.color = brush.color
-      fabricCanvas.freeDrawingBrush.width = brush.width
-      updateCursor()
-    }
-  },
-  { deep: true },
-)
 
 watch(
   () => nodeStore.requestCanvasData.status,
@@ -1248,17 +929,6 @@ watch(
   },
 )
 watch(
-  () => allUtilStore.isColorPen,
-  (newVal) => {
-    fabricCanvas.isDrawingMode = newVal
-    fabricCanvas.forEachObject((obj) => {
-      obj.selectable = !newVal
-    })
-    fabricCanvas.discardActiveObject()
-    fabricCanvas.selection = !newVal
-  },
-)
-watch(
   () => allUtilStore.isLassoMode,
   (newVal) => {
     lassoStart = newVal
@@ -1278,8 +948,7 @@ watch(
 
 watch(
   () => alt.expand,
-  (newExpand) => {
-    // This runs whenever either changes
+  () => {
     nodeStore.updateVisibleEdges()
   },
 )
@@ -1338,7 +1007,6 @@ watch(
 
         fabricImage.scaleToWidth(fabricCanvas.width)
         fabricCanvas.add(fabricImage)
-        fabricCanvas.isDrawingMode = false
         fabricCanvas.renderAll()
 
         // Save state after adding new alt image
@@ -1347,8 +1015,7 @@ watch(
       } catch (error) {
         console.error('Failed to add image to canvas:', error)
       } finally {
-        allUtilStore.isColorPen = false
-        allUtilStore.isLassoMode = false // reset both modes
+        allUtilStore.isLassoMode = false
       }
     }
 
@@ -1372,11 +1039,6 @@ async function loadCanvasState(state) {
         fabricCanvas.renderAll()
         fabricCanvas.calcOffset()
 
-        // Re-add cursor
-        fabricCanvas.add(cursor)
-        cursor.visible = false
-        fabricCanvas.bringObjectToFront(cursor)
-
         const objects = fabricCanvas.getObjects()
         if (objects.length > 0) {
           fabricCanvas.setActiveObject(objects[0])
@@ -1393,19 +1055,8 @@ async function loadCanvasState(state) {
 async function saveState() {
   if (isLoadingState.value) return
 
-  const cursorExists = fabricCanvas.getObjects().includes(cursor)
-  if (cursorExists) {
-    fabricCanvas.remove(cursor)
-  }
-
   const canvasState = JSON.stringify(fabricCanvas.toJSON(['idInLayers']))
   nodeStore.saveState(alt.id, canvasState)
-
-  if (cursorExists) {
-    fabricCanvas.add(cursor)
-    cursor.visible = false
-    fabricCanvas.bringObjectToFront(cursor)
-  }
 }
 
 async function undo(event) {
@@ -1491,7 +1142,7 @@ async function navigateToPropertyState(property) {
 function storeOriginalObjectStates() {
   if (!fabricCanvas) return
 
-  const objects = fabricCanvas.getObjects().filter((obj) => obj !== cursor)
+  const objects = fabricCanvas.getObjects()
   originalObjectStates.value = objects.map((obj) => ({
     object: obj,
     left: obj.left,
@@ -1529,15 +1180,6 @@ function scaleCanvasObjectsFromOriginal(newWidth) {
     // Update object coordinates for hit detection
     obj.setCoords()
   })
-
-  // Ensure cursor is properly positioned
-  if (cursor) {
-    cursor.visible = false
-    if (!fabricCanvas.getObjects().includes(cursor)) {
-      fabricCanvas.add(cursor)
-    }
-    fabricCanvas.bringObjectToFront(cursor)
-  }
 
   fabricCanvas.renderAll()
 }

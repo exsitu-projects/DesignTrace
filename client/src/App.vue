@@ -187,7 +187,7 @@
       @dragging="(x, y) => onDrag(x, y)"
     >
       <div class="header handle small fw-bolder">
-        Make Smart Lasso Tool
+        Palette
         <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
           <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
         </button>
@@ -206,7 +206,7 @@
 
 <script setup>
 /* external libs / helpers */
-import { ref, reactive, onMounted, nextTick, computed, toRaw } from 'vue'
+import { ref, reactive, onMounted, nextTick, computed } from 'vue'
 import VueDraggableResizable from 'vue-draggable-resizable'
 
 /* components */
@@ -230,7 +230,6 @@ const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const childActiveSelected = ref(false)
 /* --- plain state --- */
-const availableModels = ref([])
 const allAlts = computed(() =>
   nodeStore.nodeBranchList.flatMap((b) => b.nodes.flatMap((n) => n.alts)),
 )
@@ -250,7 +249,6 @@ const position = reactive({ x: 20, y: 20 })
 const isConnecting = ref(false)
 const sourceAltId = ref(null)
 const hoveredConnectionDot = ref(null)
-const tempEdge = ref(null)
 
 // Copy/Paste state
 const copiedNodes = ref([])
@@ -378,12 +376,11 @@ function handleDelete() {
 }
 
 function confirmPropagationRange() {
-  const selectedAlts = allUtilStore.confirmPropagationRange()
+  allUtilStore.confirmPropagationRange()
   // Reset propagation mode after confirmation
   // allUtilStore.switchPropagateMode()
 }
 
-/* example async — not used right now */
 function confirmNodes() {
   nodeStore.updateParents(nodeStore.selectedIndices, nodeStore.selectedBranchId)
   nodeStore.selectedIndices = []
@@ -451,7 +448,7 @@ function applyToFullImg(altId) {
 
 function handleForwardLayerFromNodes() {
   // Iterate through all node canvas refs to find one with active objects
-  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+  for (const canvasRef of Object.values(nodeCanvasRefs)) {
     if (canvasRef?.forwardOneLayer?.()) {
       // If forwardOneLayer returns true, an object was moved
       break
@@ -461,7 +458,7 @@ function handleForwardLayerFromNodes() {
 
 function handleBackwardLayerFromNodes() {
   // Iterate through all node canvas refs to find one with active objects
-  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+  for (const canvasRef of Object.values(nodeCanvasRefs)) {
     if (canvasRef?.backwardOneLayer?.()) {
       // If backwardOneLayer returns true, an object was moved
       break
@@ -471,7 +468,7 @@ function handleBackwardLayerFromNodes() {
 
 async function handleRemoveBgFromNodes() {
   // Iterate through all node canvas refs to find one with active objects
-  for (const [altId, canvasRef] of Object.entries(nodeCanvasRefs)) {
+  for (const canvasRef of Object.values(nodeCanvasRefs)) {
     if (canvasRef?.removeBg) {
       const result = await canvasRef.removeBg()
       if (result) {

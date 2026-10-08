@@ -2,12 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const useAllUtil = defineStore('allUtil', () => {
-  // 'notDragging', 'startDragging', 'finishedDragging'
-  const obj = ref(null)
   const isLassoMode = ref(false)
-  const isColorPen = ref(false)
   const nodeOnDrag = ref(false)
-  const brush = { color: ref('#000000'), width: ref(10) }
   const isStepLock = ref(false)
   const isToolTip = ref(false)
   const isPropagate = ref(false)
@@ -19,19 +15,16 @@ export const useAllUtil = defineStore('allUtil', () => {
   const isSelectingStartAlt = ref(false)
   const isSelectingRange = ref(false)
   function switchLassoMode() {
-    if (isColorPen.value) isColorPen.value = false
     if (isPropagate.value) isPropagate.value = false
     isLassoMode.value = !isLassoMode.value
   }
 
   function switchTxt2Img() {
-    if (isColorPen.value) isColorPen.value = false
     if (isPropagate.value) isPropagate.value = false
     isTxt2Img.value = !isTxt2Img.value
   }
   function switchPropagateMode() {
     if (isLassoMode.value) isLassoMode.value = false
-    if (isColorPen.value) isColorPen.value = false
     isPropagate.value = !isPropagate.value
 
     if (isPropagate.value) {
@@ -49,11 +42,6 @@ export const useAllUtil = defineStore('allUtil', () => {
       isSelectingStartAlt.value = false
       isSelectingRange.value = false
     }
-  }
-  function switchColorPen() {
-    if (isLassoMode.value) isLassoMode.value = false
-    if (isPropagate.value) isPropagate.value = false
-    isColorPen.value = !isColorPen.value
   }
   function switchStepLock() {
     isStepLock.value = !isStepLock.value
@@ -86,9 +74,7 @@ export const useAllUtil = defineStore('allUtil', () => {
 
   return {
     nodeOnDrag,
-    isColorPen,
     isLassoMode,
-    brush,
     isStepLock,
     isToolTip,
     isPropagate,
@@ -99,7 +85,6 @@ export const useAllUtil = defineStore('allUtil', () => {
     isSelectingRange,
     switchPropagateMode,
     switchLassoMode,
-    switchColorPen,
     switchStepLock,
     setStartAlt,
     addToRange,

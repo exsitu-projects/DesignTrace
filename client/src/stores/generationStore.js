@@ -34,23 +34,6 @@ export const useGeneration = defineStore('generation', () => {
       suffix: ref('. Keep other unmasked parts of the image intact.'),
     },
   })
-  const generationParams = {
-    ckpt_name: 'SD1.5/realisticVisionV60B1_v51VAE.safetensors',
-    auto_save: false,
-    resolution: 512,
-    negative_prompt: '',
-    fine_edge: 'disable',
-    grow_size: 15,
-    edge_strength: 0.55,
-    color_strength: 0.55,
-    inpaint_strength: 1.0,
-    seed: -1,
-    steps: 20,
-    cfg: 5,
-    sampler_name: 'euler_ancestral',
-    scheduler: 'karras',
-  }
-
   // Function to generate and store ghost tags when property name is finalized
   const onPropertyNameFinalized = async (propertyName, rowIndex) => {
     // Set loading state for this row
@@ -196,18 +179,15 @@ It should return something like “matte surface, dark red, bumpy texture, spher
   }
 
   async function whatIsObject(lassoBoundUrl, propsString) {
-    try {
-      const raw = await describeImage(lassoBoundUrl, propsString, objSysPrompt)
-      console.log(raw)
-      const [adjPart = '', objPart = ''] = raw.split(':').map((s) => s.trim())
-      if (!raw || typeof raw !== 'string') {
-        throw new Error('describeImage returned empty or non‑string')
-      }
-      return {
-        adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
-        objectText: objPart, // e.g. "sofa"
-      }
-    } finally {
+    const raw = await describeImage(lassoBoundUrl, propsString, objSysPrompt)
+    console.log(raw)
+    const [adjPart = '', objPart = ''] = raw.split(':').map((s) => s.trim())
+    if (!raw || typeof raw !== 'string') {
+      throw new Error('describeImage returned empty or non‑string')
+    }
+    return {
+      adjObjectText: adjPart, // e.g. "elegant wooden leather sofa"
+      objectText: objPart, // e.g. "sofa"
     }
   }
 
@@ -230,34 +210,6 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     } catch (err) {
       console.error('excludePropObject failed:', err)
       throw err
-    }
-  }
-
-  async function guessPrompt({ original_image, add_color_image, add_edge_image }) {
-    //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
-
-    try {
-      const response = await fetch('http://localhost:5000/api/magic_quill/guess_prompt', {
-        // const response = await fetch('/api/magic_quill/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ms_data: {
-            original_image: original_image,
-            add_color_image: add_color_image,
-            add_edge_image: add_edge_image,
-          },
-        }),
-      })
-
-      const result = await response.json()
-
-      return result.result
-    } catch (error) {
-      console.error('Error generating image:', error)
-      alert('Image generation failed. Please try again.')
     }
   }
 
@@ -349,83 +301,12 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     }
   }
 
-  async function generateGoogleImg({ original_image, total_mask, prompt, altId }) {
-    try {
-      loadingStatus.value = 'loading'
-      currentGenIds.value.push(altId)
-      const response = await fetch(BACKEND_URL + '/gen-img-imagen', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ original_image, total_mask, prompt }),
-      })
-      const result = await response.json()
-
-      if (response.ok) {
-        // return result.result
-        console.log(result)
-        return result.filepath
-      } else {
-        console.log(result.error)
-        return null // Optional: explicitly return null on error
-      }
-    } catch (err) {
-      console.log(err.message)
-      return null // Optional: consistently return on error
-    }
-  }
-
-  async function generateMaskedImg({
-    original_image,
-    add_color_image,
-    add_edge_image,
-    remove_edge_image,
-    total_mask,
-    prompt,
-    altId,
-  }) {
-    loadingStatus.value = 'loading'
-    currentGenIds.value.push(altId)
-    //props [{tag: 'red', propName: 'color'}, {tag: 'red', propName: 'color' }, ....]
-
-    try {
-      const response = await fetch('http://localhost:5000/api/magic_quill/generate', {
-        // const response = await fetch('/api/magic_quill/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ms_data: {
-            original_image: original_image,
-            add_color_image: add_color_image,
-            add_edge_image: add_edge_image,
-            remove_edge_image: remove_edge_image,
-            total_mask: total_mask,
-          },
-          prompt: prompt,
-          ...generationParams,
-        }),
-      })
-
-      const result = await response.json()
-
-      return result.generated_image //base 64 url
-    } catch (error) {
-      console.error('Error generating image:', error)
-      alert('Image generation failed. Please try again.')
-    }
-  }
-  //when mousedown, detect if the pressed area belong to any of the boxes, if so, highlight the boxes
   return {
-    generationParams,
     shouldTriggerT2I,
     triggerT2I,
     resetT2I,
     describeImage,
     promiseLoadImageLabel,
-    generateMaskedImg,
     loadingStatus,
     detectedObjects,
     storeDetection,
@@ -434,9 +315,7 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     propValSysPrompt,
     whatIsObject,
     objSysPrompt,
-    guessPrompt,
     generateOpenAIImg,
-    generateGoogleImg,
     currentGenIds,
     excludePropObject,
     onPropertyNameFinalized,

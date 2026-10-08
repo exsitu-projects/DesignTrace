@@ -40,7 +40,6 @@ import { onMounted, markRaw, ref, watch, onBeforeUnmount } from 'vue'
 import * as fabric from 'fabric'
 import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
-import { useLayout } from '@/stores/layoutStore'
 
 import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
@@ -60,7 +59,6 @@ const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const generationStore = useGeneration()
 const nodeStore = useNode()
-const layoutStore = useLayout()
 const $ = (id) => document.getElementById(id)
 let isLasso = false
 let points = []
@@ -79,13 +77,6 @@ const cutoutTooltip = ref({
   y: 0,
   imageData: null,
 })
-function syncCanvasToLayout() {
-  if (!canvas) return
-  canvas.setWidth(layoutStore.width)
-  canvas.setHeight(layoutStore.height)
-  canvas.renderAll()
-}
-
 watch(
   () => objectStore.dragState,
   (newVal) => {
@@ -103,17 +94,6 @@ watch(
       }
     }
   },
-)
-
-watch(
-  () => allUtilStore.brush,
-  (brush) => {
-    if (canvas) {
-      canvas.freeDrawingBrush.color = brush.color
-      canvas.freeDrawingBrush.width = brush.width
-    }
-  },
-  { deep: true },
 )
 
 watch(
@@ -143,18 +123,6 @@ watch(
   },
 )
 watch(
-  () => allUtilStore.isColorPen,
-  (newVal) => {
-    canvas.isDrawingMode = newVal
-    canvas.forEachObject((obj) => {
-      obj.selectable = !newVal
-    })
-    canvas.discardActiveObject()
-    canvas.selection = !newVal
-  },
-)
-
-watch(
   () => [nodeStore.nodeXR, nodeStore.nodeYB],
   ([nodeXR, nodeYB]) => {
     if (nodeXR > canvas.width || nodeYB > canvas.height) {
@@ -165,12 +133,6 @@ watch(
     }
   },
 )
-
-const updateDrawingModeButtonText = async () => {
-  $('drawing-mode').textContent = canvas.isDrawingMode
-    ? 'Cancel drawing mode'
-    : 'Enter drawing mode'
-}
 
 const loadImgFromUrl = (url, id, x = 0, y = 0) => {
   const img = new Image()
@@ -399,22 +361,6 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
-  // measureWrapper()
-  // syncCanvasToLayout()
-  //
-  // /* watch: when store width/height change (ensureFits) -> grow bitmap */
-  // watch(() => [layoutStore.width, layoutStore.height], syncCanvasToLayout)
-
-  /* ResizeObserver: when wrapper grows (window resize, flex, etc.)  */
-  // const ro = new ResizeObserver(measureWrapper)
-  // ro.observe(wrapper.value)
-  //
-  // window.addEventListener('resize', measureWrapper)
-  //
-  // onBeforeUnmount(() => {
-  //   ro.disconnect()
-  //   window.removeEventListener('resize', measureWrapper)
-  // })
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       // Check if clicking on existing lasso area
@@ -587,48 +533,7 @@ onMounted(() => {
     }
   })
 
-  canvas.freeDrawingBrush = new fabric.PencilBrush(canvas)
-  canvas.freeDrawingBrush.width = allUtilStore.brush.width
-  canvas.freeDrawingBrush.color = allUtilStore.brush.color
   fabric.Object.prototype.transparentCorners = false
-
-  const elements = {
-    drawingMode: $('drawing-mode'),
-    clear: $('clear-canvas'),
-    color: $('drawing-color'),
-    shadowColor: $('drawing-shadow-color'),
-    lineWidth: $('drawing-line-width'),
-    shadowWidth: $('drawing-shadow-width'),
-    shadowOffset: $('drawing-shadow-offset'),
-    brushSelector: $('drawing-mode-selector'),
-  }
-
-  // Initialize Brushes
-  const brushes = {
-    pencil: new fabric.PencilBrush(canvas),
-    // Pattern Brushes
-    hline: new fabric.PatternBrush(canvas),
-    vline: new fabric.PatternBrush(canvas),
-    diamond: new fabric.PatternBrush(canvas),
-    dotted: new fabric.PatternBrush(canvas),
-  }
-
-  // Configure Pattern Brushes (same as before)
-  brushes.hline.getPatternSrc = function () {
-    const patternCanvas = document.createElement('canvas')
-    patternCanvas.width = 10
-    patternCanvas.height = 10
-    const ctx = patternCanvas.getContext('2d')
-
-    ctx.strokeStyle = this.color
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(0, 5)
-    ctx.lineTo(10, 5)
-    ctx.stroke()
-
-    return patternCanvas
-  }
 
   canvas.on({
     'object:moving': function (e) {
@@ -638,7 +543,7 @@ onMounted(() => {
     'object:modified': function (e) {
       e.target.opacity = 1
     },
-    'mouse:up': function (e) {
+    'mouse:up': function () {
       // Hide cutout tooltip when drag ends
       if (isDraggingCutout.value) {
         cutoutTooltip.value.visible = false
@@ -660,38 +565,6 @@ onMounted(() => {
       }
     },
   })
-  brushes.vline.getPatternSrc = function () {
-    const patternCanvas = document.createElement('canvas')
-    patternCanvas.width = 10
-    patternCanvas.height = 10
-    const ctx = patternCanvas.getContext('2d')
-
-    ctx.strokeStyle = this.color
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.moveTo(5, 0)
-    ctx.lineTo(5, 10)
-    ctx.stroke()
-
-    return patternCanvas
-  }
-
-  brushes.diamond.getPatternSrc = function () {
-    const c = new fabric.StaticCanvas()
-    c.setDimensions({ width: 15, height: 15 })
-    const rect = new fabric.Rect({
-      width: 10,
-      height: 10,
-      angle: 45,
-      fill: this.color,
-      originX: 'center',
-      originY: 'center',
-      left: 7.5,
-      top: 7.5,
-    })
-    c.add(rect)
-    return c.getElement()
-  }
 })
 
 onBeforeUnmount(() => {
