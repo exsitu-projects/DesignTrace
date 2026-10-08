@@ -28,19 +28,6 @@
       {{ notification.message }}
     </div>
 
-    <!-- Propagation confirm button -->
-    <button
-      v-show="
-        allUtilStore.isPropagate &&
-        allUtilStore.isSelectingRange &&
-        allUtilStore.propagationRange.length > 1
-      "
-      @click="confirmPropagationRange"
-      class="btn btn-sm btn-outline-primary m-1 mx-auto"
-      style="z-index: 5000; position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%)"
-    >
-      <Check color="blue" :size="15" />&nbsp;Confirm Propagating Range
-    </button>
     <!-- nodes & alts overlay -->
     <div @keydown.delete="handleDelete" tabindex="0" ref="svgWrapper" style="outline: none">
       <svg
@@ -94,9 +81,6 @@
           'design-space-container alt-item',
           { 'card-hover': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
           isSelected(alt.id) ? 'selected' : '',
-          { 'propagate-blink': allUtilStore.isPropagate && allUtilStore.isSelectingStartAlt },
-          { 'propagate-start': allUtilStore.propagationStartAlt === alt.id },
-          { 'propagate-range': allUtilStore.propagationRange.includes(alt.id) },
           { 'branch-highlighted': highlightedBranchId === alt.branchId },
           { 'export-mode': isExportingBranch },
         ]"
@@ -183,7 +167,7 @@
       :h="'auto'"
       :draggable="true"
       :drag-handle="'.handle'"
-      class="design-space-container"
+      class="design-space-container palette-panel"
       @dragging="(x, y) => onDrag(x, y)"
     >
       <div class="header handle small fw-bolder">
@@ -193,7 +177,7 @@
         </button>
       </div>
 
-      <div class="row p-2" style="width: 35vw" v-show="isDesignSpaceVisible">
+      <div class="row p-2 palette-body" v-show="isDesignSpaceVisible">
         <InfoPalette />
       </div>
     </VueDraggableResizable>
@@ -261,8 +245,6 @@ const notification = reactive({
 // Branch export state
 const isExportingBranch = ref(false)
 const highlightedBranchId = ref(null)
-
-// Propagation state
 
 // Copy/Paste functions
 function showNotification(message) {
@@ -373,12 +355,6 @@ function handleDelete() {
     removeEdgeConnection(selectedEdge.value)
     selectedEdge.value = null
   }
-}
-
-function confirmPropagationRange() {
-  allUtilStore.confirmPropagationRange()
-  // Reset propagation mode after confirmation
-  // allUtilStore.switchPropagateMode()
 }
 
 function confirmNodes() {
@@ -574,23 +550,6 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
     return
   }
 
-  // Handle propagation mode
-  if (allUtilStore.isPropagate) {
-    if (allUtilStore.isSelectingStartAlt) {
-      // Set the starting alt
-      allUtilStore.setStartAlt(altId)
-      return
-    } else if (allUtilStore.isSelectingRange) {
-      // Add or remove alt from range
-      if (allUtilStore.propagationRange.includes(altId)) {
-        allUtilStore.removeFromRange(altId)
-      } else {
-        allUtilStore.addToRange(altId)
-      }
-      return
-    }
-  }
-
   if (objectStore.dragState === 'startDragging' && objectStore.obj !== null) {
     if (objectStore.obj.type === 'tag' || objectStore.obj.type === 'property') {
       // objectStore.obj in form of { type: 'tag', content: [{ tag: tagObj.tag, propName: propName }] }
@@ -638,7 +597,6 @@ function onDrag(x, y, alt) {
     //dragging an alt
     alt.position.x = clampedX
     alt.position.y = clampedY
-    ensureNodeInView(x, y)
   } else {
     //dragging the palette
     position.x = clampedX
@@ -647,64 +605,16 @@ function onDrag(x, y, alt) {
   nodeStore.selectedIndices = []
 }
 
-function ensureNodeInView(nodeXL, nodeYT) {
-  const draggingXR = nodeXL + nodeStore.nodeW
-  const draggingYB = nodeYT + nodeStore.nodeH
-  // Handle positive boundaries (right and bottom)
-  if (nodeStore.nodeXR < draggingXR) nodeStore.setNodeXR(draggingXR)
-  if (nodeStore.nodeYB < draggingYB) nodeStore.setNodeYB(draggingYB)
-
-  // Handle negative boundaries (left and top)
-  if (nodeXL < 0) {
-    // Shift all existing nodes to the right by the absolute value of the negative X
-    const offsetX = Math.abs(nodeXL)
-
-    // Update all alt positions
-    nodeStore.nodeBranchList.forEach((branch) => {
-      branch.nodes.forEach((node) => {
-        node.alts.forEach((alt) => {
-          alt.position.x += offsetX
-        })
-      })
-    })
-
-    // Extend the right boundary to accommodate the shift
-    nodeStore.setNodeXR(nodeStore.nodeXR + offsetX)
-  }
-
-  if (nodeYT < 0) {
-    // Shift all existing nodes down by the absolute value of the negative Y
-    const offsetY = Math.abs(nodeYT)
-
-    // Update all alt positions
-    nodeStore.nodeBranchList.forEach((branch) => {
-      branch.nodes.forEach((node) => {
-        node.alts.forEach((alt) => {
-          alt.position.y += offsetY
-        })
-      })
-    })
-
-    // Extend the bottom boundary to accommodate the shift
-    nodeStore.setNodeYB(nodeStore.nodeYB + offsetY)
-
-    // Update the top boundary reference if it exists
-    if (nodeStore.nodeYT !== undefined) {
-      nodeStore.nodeYT = Math.max(0, nodeStore.nodeYT + offsetY)
-    }
-  }
-}
-
 function getBezierPath(edge) {
   const fromAlt = allAlts.value.find((a) => a.id === edge.fromAltId)
   const toAlt = allAlts.value.find((a) => a.id === edge.toAltId)
   if (!fromAlt || !toAlt) return ''
 
   // Calculate start and end positions (center of nodes)
-  const startX = fromAlt.position.x + nodeStore.nodeW
-  const startY = fromAlt.position.y + nodeStore.nodeH / 2
+  const startX = fromAlt.position.x + (fromAlt.sizing?.nodeWidth ?? nodeStore.nodeW)
+  const startY = fromAlt.position.y + (fromAlt.sizing?.nodeHeight ?? nodeStore.nodeH) / 2
   const endX = toAlt.position.x
-  const endY = toAlt.position.y + nodeStore.nodeH / 2
+  const endY = toAlt.position.y + (toAlt.sizing?.nodeHeight ?? nodeStore.nodeH) / 2
 
   // Control points for cubic bezier — adjust for curvature
   const controlX1 = startX + (endX - startX) / 2
@@ -791,6 +701,17 @@ onMounted(() => {
   user-select: none;
 }
 
+/* palette stays on screen while the canvas scrolls */
+.palette-panel {
+  position: fixed !important;
+  z-index: 1040 !important;
+}
+.palette-body {
+  width: clamp(440px, 36vw, 640px);
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 140px); /* leave room for the bottom toolbar */
+  overflow-y: auto;
+}
 .design-space-container {
   position: absolute;
   top: 0;
@@ -820,33 +741,6 @@ onMounted(() => {
 }
 .alt-item.selected {
   outline: 3px solid #42b983; /* Green border */
-}
-
-/* Propagation animations */
-@keyframes propagate-blink {
-  0%,
-  50% {
-    outline: 3px solid #ffcc25;
-    box-shadow: 0 0 10px rgb(255, 218, 149);
-  }
-  100% {
-    outline: 3px solid transparent;
-    box-shadow: none;
-  }
-}
-
-.propagate-blink {
-  animation: propagate-blink 1s infinite;
-}
-
-.propagate-start {
-  outline: 3px solid #4ecdc4 !important;
-  box-shadow: 0 0 15px rgba(78, 205, 196, 0.7) !important;
-}
-
-.propagate-range {
-  outline: 3px solid #45b7d1 !important;
-  box-shadow: 0 0 10px rgba(69, 183, 209, 0.5) !important;
 }
 
 /* Branch export highlighting */

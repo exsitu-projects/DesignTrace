@@ -22,8 +22,10 @@ export const useNode = defineStore('nodes', () => {
 
   const exportAlt = ref({})
   // ===== REACTIVE SIZING =====
-  // Global default sizes (can be modified)
-  const defaultCanvasWidth = ref(DEFAULT_CANVAS_WIDTH)
+  // Global default sizes, scaled to the window: ~1/6 of its width, between 200 and 280px
+  const defaultCanvasWidth = ref(
+    Math.round(Math.min(280, Math.max(200, window.innerWidth / 6))) || DEFAULT_CANVAS_WIDTH,
+  )
   const defaultNodeWidth = computed(() => defaultCanvasWidth.value + 20)
   const defaultNodeHeight = computed(() => defaultCanvasWidth.value + 100)
 
@@ -31,15 +33,32 @@ export const useNode = defineStore('nodes', () => {
   // Core data structure
   const nodeBranchList = ref([])
 
+  // Right/bottom edge of all visible nodes, used to grow the canvas to fit
+  const contentBounds = computed(() => {
+    let right = 0
+    let bottom = 0
+    nodeBranchList.value.forEach((branch) =>
+      branch.nodes.forEach((node) =>
+        node.alts.forEach((alt) => {
+          if (alt.visible === false) return
+          const w = alt.sizing?.nodeWidth || defaultNodeWidth.value
+          const h = alt.sizing?.nodeHeight || defaultNodeHeight.value
+          right = Math.max(right, alt.position.x + w)
+          bottom = Math.max(bottom, alt.position.y + h)
+        }),
+      ),
+    )
+    return { right, bottom }
+  })
+
   // Current selections and positions
   const currentBranchId = ref(null)
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
 
-  // Layout boundaries
-  const nodeXR = ref(1920) // Right boundary
-  const nodeYB = ref(1080) // Bottom boundary
-  const nodeYT = ref(0) // Top boundary
+  // Layout boundaries (start at the window size; FreeCanvas grows them to fit content)
+  const nodeXR = ref(window.innerWidth) // Right boundary
+  const nodeYB = ref(window.innerHeight) // Bottom boundary
   const offsetY = ref(0) // Vertical offset for positioning
 
   // Selection state
@@ -218,22 +237,6 @@ export const useNode = defineStore('nodes', () => {
   }
 
   // ===== LAYOUT AND POSITIONING =====
-
-  /**
-   * Set the right boundary position
-   * @param {number} newVal - New right boundary value
-   */
-  function setNodeXR(newVal) {
-    nodeXR.value = newVal
-  }
-
-  /**
-   * Set the bottom boundary position
-   * @param {number} newVal - New bottom boundary value
-   */
-  function setNodeYB(newVal) {
-    nodeYB.value = newVal
-  }
 
   // ===== NODE MANAGEMENT =====
 
@@ -828,9 +831,6 @@ export const useNode = defineStore('nodes', () => {
       prevNode.nextNodeId = currentNodeId.value
     }
 
-    // Step 6: Update canvas boundaries (will be recalculated after positioning)
-    nodeXR.value = Math.max(nodeXR.value, x + currentNodeWidth)
-
     // Step 7: Prepare properties for object detection
     const propsAltered = altObjs
       .map((obj) => obj.propName)
@@ -877,16 +877,6 @@ export const useNode = defineStore('nodes', () => {
     )
     generationStore.currentGenIds = []
     generationStore.loadingStatus = 'finished'
-
-    // Step 11: Update canvas boundaries based on final positions
-    const allAlts = newNode.alts.filter((alt) => alt.expand !== false)
-    if (allAlts.length > 0) {
-      const topY = Math.min(...allAlts.map((alt) => alt.position.y))
-      const bottomY = Math.max(...allAlts.map((alt) => alt.position.y + currentNodeHeight))
-
-      nodeYT.value = Math.min(nodeYT.value, topY)
-      nodeYB.value = Math.max(nodeYB.value, bottomY)
-    }
 
     return urls
   }
@@ -1079,7 +1069,7 @@ export const useNode = defineStore('nodes', () => {
     // Constants and Reactive Sizing
     nodeXR,
     nodeYB,
-    nodeYT,
+    contentBounds,
     nodeW: defaultNodeWidth,
     nodeH: defaultNodeHeight,
     canvasW: defaultCanvasWidth,
@@ -1101,8 +1091,6 @@ export const useNode = defineStore('nodes', () => {
     hoveredParentAltId,
 
     // Layout Functions
-    setNodeXR,
-    setNodeYB,
 
     // Branch Management
     addNodeBranch,

@@ -662,7 +662,6 @@ function handleClick(altId, branchId) {
     allUtilStore.nodeOnDrag = false // always reset
     return
   }
-  if (allUtilStore.isPropagate) return
   if (nodeStore.ctrlPressed) {
     // Toggle selection
     const idx = nodeStore.selectedIndices.indexOf(altId)
@@ -1244,7 +1243,7 @@ function handleResize(event) {
   }
 
   // Enforce minimum and maximum sizes
-  const minSize = 300
+  const minSize = 160
   const maxSize = 600
   newCanvasWidth = Math.max(minSize, Math.min(maxSize, newCanvasWidth))
 

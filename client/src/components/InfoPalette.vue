@@ -8,13 +8,13 @@
     <div
       v-for="(row, rowIdx) in rows"
       :key="rowIdx"
-      class="d-flex flex-column flex-md-row align-items-start mb-2"
+      class="palette-row d-flex align-items-center mb-2"
       @mouseenter="hoveredRowIndex = rowIdx"
       @mouseleave="((hoveredRowIndex = null), hideGhostTagsWithDelay())"
     >
       <!-- Editable property name tag (not draggable) -->
       <div
-        class="badge m-1 d-flex bg-light border border-2 border-dark fw-bold"
+        class="badge m-1 d-flex flex-shrink-0 bg-light border border-2 border-dark fw-bold"
         :class="[
           'my-auto ',
           clickedStates[rowIdx]?.propertyName ? 'bg-dark text-light' : 'bg-light text-dark',
@@ -48,91 +48,95 @@
           >+</span
         >
       </div>
-      <!-- Draggable area for tags -->
-      <draggable
-        v-model="row.tags"
-        item-key="uid"
-        :animation="200"
-        class="d-flex flex-wrap align-items-center"
-      >
-        <!-- each tag -->
-        <template #item="{ element, index: tagIdx }">
-          <span
-            :style="{
-              pointerEvents: editingStates[rowIdx]?.[tagIdx] ? 'none' : 'auto',
-              cursor: editingStates[rowIdx]?.[tagIdx] ? 'default' : 'pointer',
-              userSelect: 'none',
-            }"
-            @click.stop="onTagNameClick($event, rowIdx, tagIdx)"
-            @dblclick="cancelSingleClick"
-            class="badge m-1"
-            :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
-          >
-            <EditableLabel
-              @editing-changed="onEditingChanged(rowIdx, tagIdx, $event)"
-              :draggable="true"
-              @dragstart="
-                (e) =>
-                  handleDragStart(
-                    e,
-                    element,
-                    row.name,
-                    element.thumbnail ? { thumbnail: element.thumbnail } : {},
-                  )
-              "
-              class="fw-normal"
-              v-model="element.tag"
-              v-bind="element.thumbnail ? { thumbnail: element.thumbnail } : {}"
-            ></EditableLabel>
-            <!-- remove button -->
-            <button
-              class="btn btn-sm btn-outline-danger border-0 p-0 lh-1"
-              @click.stop="removeTag(rowIdx, tagIdx)"
-              title="Remove tag"
+      <!-- Tags (wrap onto multiple lines) and ghost suggestions -->
+      <div class="palette-tags d-flex flex-wrap align-items-center flex-grow-1">
+        <!-- Draggable area for tags -->
+        <draggable
+          v-model="row.tags"
+          item-key="uid"
+          :animation="200"
+          class="d-flex flex-wrap align-items-center"
+        >
+          <!-- each tag -->
+          <template #item="{ element, index: tagIdx }">
+            <span
+              :style="{
+                pointerEvents: editingStates[rowIdx]?.[tagIdx] ? 'none' : 'auto',
+                cursor: editingStates[rowIdx]?.[tagIdx] ? 'default' : 'pointer',
+                userSelect: 'none',
+              }"
+              @click.stop="onTagNameClick($event, rowIdx, tagIdx)"
+              @dblclick="cancelSingleClick"
+              class="badge m-1"
+              :class="isTagSelected(rowIdx, tagIdx) ? 'bg-dark text-light' : 'bg-light text-dark'"
             >
-              &times;
-            </button>
+              <EditableLabel
+                @editing-changed="onEditingChanged(rowIdx, tagIdx, $event)"
+                :draggable="true"
+                @dragstart="
+                  (e) =>
+                    handleDragStart(
+                      e,
+                      element,
+                      row.name,
+                      element.thumbnail ? { thumbnail: element.thumbnail } : {},
+                    )
+                "
+                class="fw-normal"
+                v-model="element.tag"
+                v-bind="element.thumbnail ? { thumbnail: element.thumbnail } : {}"
+              ></EditableLabel>
+              <!-- remove button -->
+              <button
+                class="btn btn-sm btn-outline-danger border-0 p-0 lh-1"
+                @click.stop="removeTag(rowIdx, tagIdx)"
+                title="Remove tag"
+              >
+                &times;
+              </button>
+            </span>
+          </template>
+
+          <!-- footer (adds a tag) -->
+          <template #footer> </template>
+        </draggable>
+
+        <!-- Ghost tag suggestions -->
+        <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
+          <!-- Show spinner while loading ghost tags -->
+          <div
+            v-if="generationStore.isGhostTagsLoading(rowIdx)"
+            class="mx-1 my-auto spinner-border spinner-border-sm text-muted"
+            style="width: 1rem; height: 1rem"
+            role="status"
+          >
+            <span class="visually-hidden">Loading ghost tags...</span>
+          </div>
+
+          <!-- Show ghost tags when loaded -->
+          <span
+            v-else
+            v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
+            :key="`ghost-${rowIdx}-${index}`"
+            class="my-auto badge bg-light text-muted border mx-1 ghost-tag"
+            style="opacity: 0.6; cursor: pointer; border-style: dashed !important"
+            @click="addGhostTag(rowIdx, ghostTag)"
+            @mouseenter="cancelGhostTagHiding"
+            @mouseleave="hideGhostTagsWithDelay"
+          >
+            {{ ghostTag }}
           </span>
         </template>
-
-        <!-- footer (adds a tag) -->
-        <template #footer> </template>
-      </draggable>
+      </div>
+      <!-- Add tag: always at the right, vertically centred on the row -->
       <button
-        class="my-auto btn btn-sm btn-outline-secondary"
+        class="btn btn-sm btn-outline-secondary flex-shrink-0 ms-auto"
         @click="addTag(rowIdx)"
         @mouseenter="showGhostTags(rowIdx)"
         @mouseleave="hideGhostTagsWithDelay"
       >
         +
       </button>
-
-      <!-- Ghost tag suggestions -->
-      <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
-        <!-- Show spinner while loading ghost tags -->
-        <div
-          v-if="generationStore.isGhostTagsLoading(rowIdx)"
-          class="mx-1 my-auto spinner-border spinner-border-sm text-muted"
-          style="width: 1rem; height: 1rem"
-          role="status"
-        >
-          <span class="visually-hidden">Loading ghost tags...</span>
-        </div>
-
-        <!-- Show ghost tags when loaded -->
-        <span
-          v-else
-          v-for="(ghostTag, index) in getRemainingGhostTags(rowIdx)"
-          :key="`ghost-${rowIdx}-${index}`"
-          class="my-auto badge bg-light text-muted border mx-1 ghost-tag"
-          style="opacity: 0.6; cursor: pointer; border-style: dashed !important"
-          @click="addGhostTag(rowIdx, ghostTag)"
-          @mouseenter="cancelGhostTagHiding"
-          @mouseleave="hideGhostTagsWithDelay"
-        >
-          {{ ghostTag }}
-        </span>
-      </template>
     </div>
 
     <!-- Add new property row -->
@@ -761,6 +765,10 @@ const makeTool = () => {
 .form-control-sm {
   width: auto;
   max-width: 80px;
+}
+
+.palette-tags {
+  min-width: 0; /* allow tags to wrap instead of pushing the + out */
 }
 
 .lasso-cursor * {

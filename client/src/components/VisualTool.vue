@@ -69,9 +69,11 @@ const uploadFiles = async (event) => {
         })
       } else {
         console.error(`Failed to upload ${file.name}: ${data.error}`)
+        alert(`Failed to upload ${file.name}: ${data.error}`)
       }
     } catch (err) {
       console.error('Upload error:', err)
+      alert(`Upload failed. Is the backend running at ${BACKEND_URL}?`)
     }
   }
 }

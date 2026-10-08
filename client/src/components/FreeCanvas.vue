@@ -2,7 +2,7 @@
   <canvas id="freeCanvas"></canvas>
   <div
     v-show="generationStore.textGenStatus === 'loading'"
-    class="position-absolute top-50 start-50 translate-middle"
+    class="position-fixed top-50 start-50 translate-middle"
     style="z-index: 9000"
   >
     <div class="spinner-border" role="status">
@@ -122,17 +122,24 @@ watch(
     canvas.selection = !newVal
   },
 )
-watch(
-  () => [nodeStore.nodeXR, nodeStore.nodeYB],
-  ([nodeXR, nodeYB]) => {
-    if (nodeXR > canvas.width || nodeYB > canvas.height) {
-      nodeStore.nodeXR = Math.max(canvas.width, nodeXR)
-      nodeStore.nodeYB = Math.max(canvas.height, nodeYB)
+// Grow (or shrink) the canvas so every node and canvas object fits, plus some room to keep going
+const CANVAS_MARGIN = 200
+function fitCanvasToContent() {
+  if (!canvas) return
+  let { right, bottom } = nodeStore.contentBounds
+  canvas.getObjects().forEach((obj) => {
+    const rect = obj.getBoundingRect()
+    right = Math.max(right, rect.left + rect.width)
+    bottom = Math.max(bottom, rect.top + rect.height)
+  })
+  const width = Math.max(window.innerWidth, Math.ceil(right + CANVAS_MARGIN))
+  const height = Math.max(window.innerHeight, Math.ceil(bottom + CANVAS_MARGIN))
+  if (width !== canvas.width || height !== canvas.height) resizeFabric(width, height)
+  nodeStore.nodeXR = width
+  nodeStore.nodeYB = height
+}
 
-      resizeFabric(nodeStore.nodeXR, nodeStore.nodeYB)
-    }
-  },
-)
+watch(() => nodeStore.contentBounds, fitCanvasToContent)
 
 const loadImgFromUrl = (url, id, x = 0, y = 0) => {
   const img = new Image()
@@ -361,6 +368,11 @@ onMounted(() => {
       preserveObjectStacking: true,
     }),
   )
+  fitCanvasToContent()
+  window.addEventListener('resize', fitCanvasToContent)
+  canvas.on('object:added', fitCanvasToContent)
+  canvas.on('object:modified', fitCanvasToContent)
+  canvas.on('object:removed', fitCanvasToContent)
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       // Check if clicking on existing lasso area
@@ -568,6 +580,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('resize', fitCanvasToContent)
   // Clean up hover overlay and reset state
   removeHoverOverlay()
   isHoveringPrevLasso = false
