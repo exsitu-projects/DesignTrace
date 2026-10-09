@@ -1,3 +1,5 @@
 /static/*.png
 /static/**/*.png
 .env
+/client/*.md
+/client/.*/

@@ -33,22 +33,26 @@ export const useNode = defineStore('nodes', () => {
   // Core data structure
   const nodeBranchList = ref([])
 
-  // Right/bottom edge of all visible nodes, used to grow the canvas to fit
+  // World-space bounding box of all visible nodes (Infinity values when there are none)
   const contentBounds = computed(() => {
-    let right = 0
-    let bottom = 0
+    let left = Infinity
+    let top = Infinity
+    let right = -Infinity
+    let bottom = -Infinity
     nodeBranchList.value.forEach((branch) =>
       branch.nodes.forEach((node) =>
         node.alts.forEach((alt) => {
           if (alt.visible === false) return
           const w = alt.sizing?.nodeWidth || defaultNodeWidth.value
           const h = alt.sizing?.nodeHeight || defaultNodeHeight.value
+          left = Math.min(left, alt.position.x)
+          top = Math.min(top, alt.position.y)
           right = Math.max(right, alt.position.x + w)
           bottom = Math.max(bottom, alt.position.y + h)
         }),
       ),
     )
-    return { right, bottom }
+    return { left, top, right, bottom }
   })
 
   // Current selections and positions
@@ -56,9 +60,6 @@ export const useNode = defineStore('nodes', () => {
   const currentNodeId = ref(null)
   const layerPayload = ref(null)
 
-  // Layout boundaries (start at the window size; FreeCanvas grows them to fit content)
-  const nodeXR = ref(window.innerWidth) // Right boundary
-  const nodeYB = ref(window.innerHeight) // Bottom boundary
   const offsetY = ref(0) // Vertical offset for positioning
 
   // Selection state
@@ -1067,8 +1068,6 @@ export const useNode = defineStore('nodes', () => {
   // ===== EXPORTED VALUES AND FUNCTIONS =====
   return {
     // Constants and Reactive Sizing
-    nodeXR,
-    nodeYB,
     contentBounds,
     nodeW: defaultNodeWidth,
     nodeH: defaultNodeHeight,

@@ -7,9 +7,14 @@ import {
   ArrowBigDownDash,
   ImageOff,
   Download,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
 } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { useNode } from '@/stores/nodeStore.js'
+import { useCamera } from '@/stores/cameraStore.js'
+import { fitAll } from '@/composables/useCanvasNavigation.js'
 import { useGeneration } from '@/stores/generationStore.js'
 import { BACKEND_URL } from '../../public/endpoint.js'
 const emit = defineEmits([
@@ -28,20 +33,32 @@ const triggerFileSelect = () => {
 const generationStore = useGeneration()
 const allUtilStore = useAllUtil()
 const nodeStore = useNode()
+const camera = useCamera()
 function switchLasso() {
   allUtilStore.switchLassoMode()
 }
 
 const addBranchNodeAlt = () => {
-  // it opens a new node and add a new alt
+  // it opens a new node and add a new alt, centred in the current view
+  const center = camera.viewCenter()
+  let x = Math.round(center.x - nodeStore.defaultNodeWidth / 2)
+  let y = Math.round(center.y - nodeStore.defaultNodeHeight / 2)
+  // cascade instead of stacking exactly on top of a node already there
+  const alts = nodeStore.nodeBranchList.flatMap((b) => b.nodes.flatMap((n) => n.alts))
+  while (alts.some((a) => Math.abs(a.position.x - x) < 10 && Math.abs(a.position.y - y) < 10)) {
+    x += 30
+    y += 30
+  }
   nodeStore.addNodeBranch()
-  nodeStore.addNode(nodeStore.currentBranchId)
+  nodeStore.addNode(nodeStore.currentBranchId, x, y)
   nodeStore.addAlt(
     [],
     nodeStore.currentBranchId,
     nodeStore.currentNodeId,
     0,
     nodeStore.currentNodeId,
+    x,
+    y,
   )
 }
 
@@ -139,7 +156,6 @@ function switchTxt2Img() {
       >
         <Lasso color="black" :size="15" /> Select
       </button>
-
     </div>
 
     <div class="btn-group m-1" role="group" aria-label="Basic example">
@@ -167,7 +183,35 @@ function switchTxt2Img() {
     >
       <Download color="black" :size="15"></Download>
     </button>
+
+    <div class="btn-group m-1" role="group" aria-label="Zoom">
+      <button
+        title="Zoom out (Ctrl/Cmd -)"
+        class="btn btn-sm btn-light"
+        @click="camera.zoomBy(1 / 1.2)"
+      >
+        <ZoomOut color="black" :size="15" />
+      </button>
+      <button
+        title="Reset to 100% (Ctrl/Cmd 0)"
+        class="btn btn-sm btn-light zoom-label"
+        @click="camera.resetZoom()"
+      >
+        {{ Math.round(camera.zoom * 100) }}%
+      </button>
+      <button title="Zoom in (Ctrl/Cmd +)" class="btn btn-sm btn-light" @click="camera.zoomBy(1.2)">
+        <ZoomIn color="black" :size="15" />
+      </button>
+      <button title="Fit everything (Shift 1)" class="btn btn-sm btn-light" @click="fitAll()">
+        <Maximize color="black" :size="15" />
+      </button>
+    </div>
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.zoom-label {
+  min-width: 52px; /* keep the toolbar from jumping as the % changes */
+  font-variant-numeric: tabular-nums;
+}
+</style>

@@ -48,8 +48,11 @@
           >+</span
         >
       </div>
-      <!-- Tags (wrap onto multiple lines) and ghost suggestions -->
-      <div class="palette-tags d-flex flex-wrap align-items-center flex-grow-1">
+      <!-- Tags (wrap onto multiple lines) and ghost suggestions; hovering this area shows them -->
+      <div
+        class="palette-tags d-flex flex-wrap align-items-center flex-grow-1"
+        @mouseenter="showGhostTags(rowIdx)"
+      >
         <!-- Draggable area for tags -->
         <draggable
           v-model="row.tags"
@@ -102,10 +105,10 @@
         </draggable>
 
         <!-- Ghost tag suggestions -->
-        <template v-if="hoveredAddButton === rowIdx && row.tags.length < 3">
+        <template v-if="hoveredAddButton === rowIdx">
           <!-- Show spinner while loading ghost tags -->
           <div
-            v-if="generationStore.isGhostTagsLoading(rowIdx)"
+            v-if="generationStore.isGhostTagsLoading(row)"
             class="mx-1 my-auto spinner-border spinner-border-sm text-muted"
             style="width: 1rem; height: 1rem"
             role="status"
@@ -133,7 +136,6 @@
         class="btn btn-sm btn-outline-secondary flex-shrink-0 ms-auto"
         @click="addTag(rowIdx)"
         @mouseenter="showGhostTags(rowIdx)"
-        @mouseleave="hideGhostTagsWithDelay"
       >
         +
       </button>
@@ -210,21 +212,15 @@ let currentPopover = null
 let ghostTagTimeout = null // Timeout for ghost tag hiding
 let propSelected = false // Track if a property is selected for lasso mode
 const mousePosition = ref({ x: 0, y: 0 }) // Track mouse position for tooltip
+// Up to three suggestions the row doesn't already use
 const getRemainingGhostTags = (rowIdx) => {
-  if (!rows.value[rowIdx]) return []
-
-  // Only show ghost tags if we have API results for this row
-  const dynamicGhostTags = generationStore.getGhostTagsForRow(rowIdx)
-  if (dynamicGhostTags.length === 0) {
-    return [] // No ghost tags until API responds
-  }
-
-  const usedTags = rows.value[rowIdx].tags.map((tag) => tag.tag.toLowerCase())
-  const remainingTags = dynamicGhostTags.filter(
-    (ghostTag) => !usedTags.includes(ghostTag.toLowerCase()),
-  )
-
-  return remainingTags.slice(0, 3 - rows.value[rowIdx].tags.length)
+  const row = rows.value[rowIdx]
+  if (!row) return []
+  const usedTags = row.tags.map((tag) => tag.tag.toLowerCase())
+  return generationStore
+    .getGhostTagsForRow(row)
+    .filter((ghostTag) => !usedTags.includes(ghostTag.toLowerCase()))
+    .slice(0, 3)
 }
 
 const editingStates = reactive({})
@@ -276,6 +272,8 @@ const showGhostTags = (rowIdx) => {
     ghostTagTimeout = null
   }
   hoveredAddButton.value = rowIdx
+  // fetch on demand: covers the starting rows and any name that was never fetched
+  generationStore.fetchGhostTags(rows.value[rowIdx])
 }
 
 const hideGhostTagsWithDelay = () => {
@@ -465,6 +463,9 @@ watch(
 )
 
 onMounted(() => {
+  // Fetch suggestions up front so they're ready by the time + is hovered
+  rows.value.forEach((row) => generationStore.fetchGhostTags(row))
+
   // Add global mouse move listener for lasso tooltip
   document.addEventListener('mousemove', handleMouseMove)
 
@@ -769,6 +770,8 @@ const makeTool = () => {
 
 .palette-tags {
   min-width: 0; /* allow tags to wrap instead of pushing the + out */
+  align-self: stretch; /* full row height, so the blank space is hoverable even with no tags */
+  min-height: 34px;
 }
 
 .lasso-cursor * {

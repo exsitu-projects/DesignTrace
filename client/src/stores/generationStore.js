@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
 import { BACKEND_URL } from '@/../public/endpoint.js'
+import { useInfoStore } from '@/stores/infoStore.js'
 export const useGeneration = defineStore('generation', () => {
   // 'notDragging', 'startDragging', 'finishedDragging'
   const img2imgOut = ref({ src: '' })
@@ -12,8 +13,6 @@ export const useGeneration = defineStore('generation', () => {
   const currentGenIds = ref([])
   const generalPrompt = ref('')
   const textGenStatus = ref('finished') // Track text generation status
-  const ghostTagsPerRow = ref({}) // Store ghost tags for each row by rowIndex
-  const ghostTagsLoading = ref({}) // Track loading state for each row
   const alwaysReview = ref(false) // Whether to always show prompt review dialog
   const showReviewDialog = ref(false) // Controls review dialog visibility
   const currentPrompt = ref('') // Current prompt being reviewed
@@ -34,11 +33,15 @@ export const useGeneration = defineStore('generation', () => {
       suffix: ref('. Keep other unmasked parts of the image intact.'),
     },
   })
-  // Function to generate and store ghost tags when property name is finalized
-  const onPropertyNameFinalized = async (propertyName, rowIndex) => {
-    // Set loading state for this row
-    ghostTagsLoading.value[rowIndex] = true
+  // Ghost-tag suggestions live on the palette row itself (row.ghost = { name, tags, loading }),
+  // so they follow the row when other rows are added or removed.
+  async function fetchGhostTags(row) {
+    const propertyName = row?.name?.trim()
+    if (!propertyName || propertyName === 'Attribute') return
+    // already fetched (or fetching) for this name
+    if (row.ghost?.name === propertyName && (row.ghost.loading || row.ghost.tags.length)) return
 
+    row.ghost = { name: propertyName, tags: [], loading: true }
     try {
       const prompt =
         'Please give three common examples for the visual attribute ' +
@@ -52,40 +55,35 @@ export const useGeneration = defineStore('generation', () => {
         body: JSON.stringify({ prompt }),
       })
       const result = await response.json()
+      if (row.ghost.name !== propertyName) return // renamed while waiting
 
       if (response.ok) {
         console.log(`Ghost tags for "${propertyName}":`, result.output)
-
-        // Parse the colon-separated result and store it for this row
-        const ghostTags = result.output
+        row.ghost.tags = result.output
           .split(':')
           .map((tag) => tag.trim())
           .filter((tag) => tag.length > 0)
-        ghostTagsPerRow.value[rowIndex] = ghostTags
-
-        return result.output
       } else {
         console.log(result.error)
-        return null
       }
     } catch (err) {
       console.log(err.message)
-      return null
     } finally {
-      // Clear loading state for this row
-      ghostTagsLoading.value[rowIndex] = false
+      if (row.ghost.name === propertyName) row.ghost.loading = false
     }
   }
 
-  // Function to get ghost tags for a specific row
-  const getGhostTagsForRow = (rowIndex) => {
-    return ghostTagsPerRow.value[rowIndex] || []
+  // Called when a property name is set (renamed, or chosen in "+ Add Asset")
+  const onPropertyNameFinalized = (propertyName, rowIndex) => {
+    const row = useInfoStore().rows[rowIndex]
+    if (row) fetchGhostTags(row)
   }
 
-  // Function to check if ghost tags are loading for a specific row
-  const isGhostTagsLoading = (rowIndex) => {
-    return ghostTagsLoading.value[rowIndex] || false
-  }
+  // Suggestions for a row, only if they belong to its current name
+  const getGhostTagsForRow = (row) => (row?.ghost?.name === row?.name?.trim() ? row.ghost.tags : [])
+
+  const isGhostTagsLoading = (row) =>
+    row?.ghost?.name === row?.name?.trim() && row.ghost.loading === true
 
   const propValSysPrompt = `You are a visual description assistant.
 
@@ -319,8 +317,8 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     currentGenIds,
     excludePropObject,
     onPropertyNameFinalized,
+    fetchGhostTags,
     getGhostTagsForRow,
-    ghostTagsPerRow,
     isGhostTagsLoading,
     removeBg,
     generalPrompt,

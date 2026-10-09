@@ -23,7 +23,7 @@
   </div>
   <div
     class="border border-black rounded-1 p-1 position-fixed bottom-0 start-50 translate-middle-x d-flex justify-content-center"
-    style="z-index: 1050"
+    style="z-index: 1050; width: max-content; max-width: calc(100vw - 32px)"
   >
     <VisualTool
       @removeBg="removeBg"
@@ -45,6 +45,8 @@ import VisualTool from '@/components/VisualTool.vue'
 import { useGeneration } from '@/stores/generationStore.js'
 
 import { useAllUtil } from '@/stores/allUtilStore.js'
+import { useCamera } from '@/stores/cameraStore.js'
+import { registerFreeCanvasBounds } from '@/composables/useCanvasNavigation.js'
 const props = defineProps({
   childActiveSelected: Boolean,
 })
@@ -59,12 +61,14 @@ const objectStore = useObject()
 const allUtilStore = useAllUtil()
 const generationStore = useGeneration()
 const nodeStore = useNode()
+const camera = useCamera()
 const $ = (id) => document.getElementById(id)
 let isLasso = false
 let points = []
 let path = null
 let lassoStart = false
 let startPointer = null
+let lassoMaxDistance = 0 // furthest the mouse got from the start while drawing (screen px)
 let lassoPaths = [] // Store completed lasso paths
 let prevLassoPaths = [] // Store previous lasso paths for hover/drag
 let isHoveringPrevLasso = false // Track if hovering over previous lasso
@@ -122,26 +126,48 @@ watch(
     canvas.selection = !newVal
   },
 )
-// Grow (or shrink) the canvas so every node and canvas object fits, plus some room to keep going
-const CANVAS_MARGIN = 200
-function fitCanvasToContent() {
-  if (!canvas) return
-  let { right, bottom } = nodeStore.contentBounds
-  canvas.getObjects().forEach((obj) => {
-    const rect = obj.getBoundingRect()
-    right = Math.max(right, rect.left + rect.width)
-    bottom = Math.max(bottom, rect.top + rect.height)
-  })
-  const width = Math.max(window.innerWidth, Math.ceil(right + CANVAS_MARGIN))
-  const height = Math.max(window.innerHeight, Math.ceil(bottom + CANVAS_MARGIN))
-  if (width !== canvas.width || height !== canvas.height) resizeFabric(width, height)
-  nodeStore.nodeXR = width
-  nodeStore.nodeYB = height
+// The canvas always fills the window; the camera decides which part of the world it shows
+function fitCanvasToWindow() {
+  if (canvas) resizeFabric(window.innerWidth, window.innerHeight)
 }
 
-watch(() => nodeStore.contentBounds, fitCanvasToContent)
+function syncViewport() {
+  if (!canvas) return
+  canvas.setViewportTransform([camera.zoom, 0, 0, camera.zoom, camera.x, camera.y])
+  canvas.requestRenderAll()
+}
+watch(() => [camera.x, camera.y, camera.zoom], syncViewport)
 
-const loadImgFromUrl = (url, id, x = 0, y = 0) => {
+// Bounding box of everything on the free canvas, in world coordinates
+function sceneBounds() {
+  if (!canvas || canvas.getObjects().length === 0) return null
+  let left = Infinity
+  let top = Infinity
+  let right = -Infinity
+  let bottom = -Infinity
+  canvas.getObjects().forEach((obj) => {
+    const r = obj.getBoundingRect()
+    left = Math.min(left, r.left)
+    top = Math.min(top, r.top)
+    right = Math.max(right, r.left + r.width)
+    bottom = Math.max(bottom, r.top + r.height)
+  })
+  return { left, top, right, bottom }
+}
+
+// Run fn with the camera transform removed, so exports use plain world coordinates
+function withoutViewport(fn) {
+  const vpt = canvas.viewportTransform.slice()
+  canvas.setViewportTransform([1, 0, 0, 1, 0, 0])
+  try {
+    return fn()
+  } finally {
+    canvas.setViewportTransform(vpt)
+  }
+}
+
+// x/y are world coordinates; without them the image is centred in the current view
+const loadImgFromUrl = (url, id, x, y) => {
   const img = new Image()
   img.crossOrigin = 'anonymous'
 
@@ -149,8 +175,8 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
   img.onload = () => {
     try {
       const fabricImage = new fabric.Image(img, {
-        left: x,
-        top: y,
+        left: x ?? 0,
+        top: y ?? 0,
         selectable: true,
         hasControls: true,
         perPixelTargetFind: true,
@@ -189,6 +215,13 @@ const loadImgFromUrl = (url, id, x = 0, y = 0) => {
       })
 
       fabricImage.scaleToWidth(250)
+      if (x === undefined || y === undefined) {
+        const center = camera.viewCenter()
+        fabricImage.set({
+          left: center.x - fabricImage.getScaledWidth() / 2,
+          top: center.y - fabricImage.getScaledHeight() / 2,
+        })
+      }
       fabricImage.set('idInUpload', id) // assign your own ID
       canvas.add(fabricImage) // <-- changed from canvas.value.add(...)
       canvas.renderAll() // <-- changed from canvas.value.renderAll()
@@ -334,15 +367,17 @@ function extractLassoArea(lassoPath) {
   canvas.remove(lassoPath)
   canvas.renderAll()
 
-  // Extract the area as image data
-  const imageData = canvas.toDataURL({
-    left: bounds.left,
-    top: bounds.top,
-    width: bounds.width,
-    height: bounds.height,
-    format: 'png',
-    multiplier: 1,
-  })
+  // Extract the area as image data (bounds are world coordinates)
+  const imageData = withoutViewport(() =>
+    canvas.toDataURL({
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+      format: 'png',
+      multiplier: 1,
+    }),
+  )
 
   // Re-add the lasso path
   canvas.add(lassoPath)
@@ -366,18 +401,17 @@ onMounted(() => {
       selection: true,
       targetFindTolerance: 2,
       preserveObjectStacking: true,
+      containerClass: 'free-canvas-container',
     }),
   )
-  fitCanvasToContent()
-  window.addEventListener('resize', fitCanvasToContent)
-  canvas.on('object:added', fitCanvasToContent)
-  canvas.on('object:modified', fitCanvasToContent)
-  canvas.on('object:removed', fitCanvasToContent)
+  syncViewport()
+  registerFreeCanvasBounds(sceneBounds)
+  window.addEventListener('resize', fitCanvasToWindow)
   canvas.on('mouse:down', function (opt) {
     if (lassoStart === true) {
       // Check if clicking on existing lasso area
       if (prevLassoPaths.length !== 0) {
-        const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+        const isInPrevLasso = isPointInPrevLasso(opt.scenePoint.x, opt.scenePoint.y)
 
         if (isInPrevLasso) {
           // Start drag-to-cut operation
@@ -387,7 +421,7 @@ onMounted(() => {
           let targetLassoPath = null
           for (const path of prevLassoPaths) {
             if (path && path.containsPoint) {
-              const point = new fabric.Point(opt.pointer.x, opt.pointer.y)
+              const point = new fabric.Point(opt.scenePoint.x, opt.scenePoint.y)
               if (path.containsPoint(point)) {
                 targetLassoPath = path
                 break
@@ -416,11 +450,10 @@ onMounted(() => {
 
             // Show tooltip with cutout preview
             // Get the canvas element position for proper tooltip positioning
-            const canvasRect = canvas.getElement().getBoundingClientRect()
             cutoutTooltip.value = {
               visible: true,
-              x: canvasRect.left + opt.pointer.x + 10,
-              y: canvasRect.top + opt.pointer.y - 10,
+              x: opt.e.clientX + 10,
+              y: opt.e.clientY - 10,
               imageData: cutoutImage.imageData,
             }
             console.log('Tooltip set:', cutoutTooltip.value)
@@ -437,22 +470,23 @@ onMounted(() => {
       })
       canvas.selection = false
       isLasso = true
-      startPointer = opt.pointer
-      points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
+      // copy: Fabric reuses the point object for later events
+      startPointer = { x: opt.viewportPoint.x, y: opt.viewportPoint.y }
+      lassoMaxDistance = 0
+      points = [`M ${opt.scenePoint.x} ${opt.scenePoint.y}`] // Start path (world coords)
     }
   })
 
   canvas.on('mouse:move', function (opt) {
     // Update cutout tooltip position during drag
     if (isDraggingCutout.value && cutoutTooltip.value.visible) {
-      const canvasRect = canvas.getElement().getBoundingClientRect()
-      cutoutTooltip.value.x = canvasRect.left + opt.pointer.x + 10
-      cutoutTooltip.value.y = canvasRect.top + opt.pointer.y - 10
+      cutoutTooltip.value.x = opt.e.clientX + 10
+      cutoutTooltip.value.y = opt.e.clientY - 10
     }
 
     // Handle hover detection for existing lasso paths
     if (!isLasso && lassoStart && prevLassoPaths.length > 0) {
-      const isInPrevLasso = isPointInPrevLasso(opt.pointer.x, opt.pointer.y)
+      const isInPrevLasso = isPointInPrevLasso(opt.scenePoint.x, opt.scenePoint.y)
 
       if (isInPrevLasso && !isHoveringPrevLasso) {
         isHoveringPrevLasso = true
@@ -464,7 +498,11 @@ onMounted(() => {
     }
 
     if (!isLasso || !lassoStart) return
-    points.push(`L ${opt.pointer.x} ${opt.pointer.y}`) // Draw smooth lines
+    lassoMaxDistance = Math.max(
+      lassoMaxDistance,
+      Math.hypot(opt.viewportPoint.x - startPointer.x, opt.viewportPoint.y - startPointer.y),
+    )
+    points.push(`L ${opt.scenePoint.x} ${opt.scenePoint.y}`) // Draw smooth lines
 
     if (path) canvas.remove(path)
 
@@ -482,13 +520,13 @@ onMounted(() => {
     canvas.requestRenderAll()
   })
 
-  canvas.on('mouse:up', async function (opt) {
+  canvas.on('mouse:up', async function () {
     if (!isLasso) return
 
     isLasso = false
-    const dx = opt.pointer.x - startPointer.x
-    const dy = opt.pointer.y - startPointer.y
-    const moved = Math.sqrt(dx * dx + dy * dy) > 5 // threshold for "movement"
+    // a click vs. a drawn lasso: judge by how far the mouse travelled, not where it ended,
+    // because a closed lasso ends right next to where it started
+    const moved = lassoMaxDistance > 5
 
     if (!moved) {
       // Single click without drawing - clear ALL existing lassos
@@ -580,7 +618,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', fitCanvasToContent)
+  window.removeEventListener('resize', fitCanvasToWindow)
+  registerFreeCanvasBounds(() => null)
   // Clean up hover overlay and reset state
   removeHoverOverlay()
   isHoveringPrevLasso = false
@@ -603,6 +642,24 @@ body {
   padding: 0;
   height: 100%;
   width: 100%;
+}
+
+/* the free canvas fills the window; the camera pans/zooms its contents */
+.free-canvas-container {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+}
+
+/* Space held: ready to pan; dragging: panning */
+body.canvas-pan-ready,
+body.canvas-pan-ready * {
+  cursor: grab !important;
+}
+body.canvas-panning,
+body.canvas-panning * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .cutout-tooltip {

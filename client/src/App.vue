@@ -28,137 +28,142 @@
       {{ notification.message }}
     </div>
 
-    <!-- nodes & alts overlay -->
-    <div @keydown.delete="handleDelete" tabindex="0" ref="svgWrapper" style="outline: none">
-      <svg
-        :width="nodeStore.nodeXR"
-        :height="nodeStore.nodeYB"
-        style="position: absolute; top: 0; left: 0; pointer-events: none"
-      >
-        <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="6"
-            markerHeight="4"
-            refX="6"
-            refY="2"
-            orient="auto"
-            markerUnits="strokeWidth"
-          >
-            <polygon points="0 0, 6 2, 0 4" fill="#666666" />
-          </marker>
-        </defs>
+    <!-- world layer: nodes and edges, moved and scaled by the camera -->
+    <div class="world-layer" :style="worldStyle">
+      <div @keydown.delete="handleDelete" tabindex="0" ref="svgWrapper" style="outline: none">
+        <svg
+          width="1"
+          height="1"
+          style="position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none"
+        >
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="6"
+              markerHeight="4"
+              refX="6"
+              refY="2"
+              orient="auto"
+              markerUnits="strokeWidth"
+            >
+              <polygon points="0 0, 6 2, 0 4" fill="#666666" />
+            </marker>
+          </defs>
 
-        <path
-          v-for="edge in allVisibleEdges"
-          :key="edge.fromAltId + '-' + edge.toAltId"
-          :d="getBezierPath(edge)"
-          stroke="#666"
-          stroke-width="1.4"
-          fill="none"
-          marker-end="url(#arrowhead)"
-          class="edge-line"
-          :class="{ 'selected-edge': selectedEdge === edge }"
-          @click="selectEdge(edge)"
-          style="pointer-events: stroke"
-        />
-      </svg>
-    </div>
-    <transition-group name="fade" tag="div" class="nodes-layer">
-      <VueDraggableResizable
-        @mouseenter="() => setNodeHover(alt.id, true)"
-        @mouseleave="() => setNodeHover(alt.id, false)"
-        v-for="alt in allAlts"
-        v-show="alt.visible"
-        :id="'drag_' + alt.id"
-        :key="alt.id"
-        :x="alt.position.x"
-        :y="alt.position.y"
-        :w="alt.sizing.nodeWidth"
-        :h="'auto'"
-        :z="alt.z"
-        :class="[
-          'design-space-container alt-item',
-          { 'card-hover': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
-          isSelected(alt.id) ? 'selected' : '',
-          { 'branch-highlighted': highlightedBranchId === alt.branchId },
-          { 'export-mode': isExportingBranch },
-        ]"
-        @mouseup="
-          mouseUpNode(
-            alt.position.x,
-            alt.position.y,
-            alt.branchId,
-            alt.nodeId,
-            alt.id,
-            alt.isStepLock,
-            $event,
-          )
-        "
-        :draggable="true"
-        :drag-handle="'.nodeHandle'"
-        @dragging="(x, y) => onDrag(x, y, alt)"
-      >
-        <transition name="tooltip-fade">
+          <path
+            v-for="edge in allVisibleEdges"
+            :key="edge.fromAltId + '-' + edge.toAltId"
+            :d="getBezierPath(edge)"
+            stroke="#666"
+            stroke-width="1.4"
+            fill="none"
+            marker-end="url(#arrowhead)"
+            class="edge-line"
+            :class="{ 'selected-edge': selectedEdge === edge }"
+            @click="selectEdge(edge)"
+            style="pointer-events: stroke"
+          />
+        </svg>
+      </div>
+      <transition-group name="fade" tag="div" class="nodes-layer">
+        <VueDraggableResizable
+          @mouseenter="() => setNodeHover(alt.id, true)"
+          @mouseleave="() => setNodeHover(alt.id, false)"
+          v-for="alt in allAlts"
+          v-show="alt.visible"
+          :id="'drag_' + alt.id"
+          :key="alt.id"
+          :x="alt.position.x"
+          :y="alt.position.y"
+          :w="alt.sizing.nodeWidth"
+          :h="'auto'"
+          :z="alt.z"
+          :class="[
+            'design-space-container alt-item',
+            { 'card-hover': allUtilStore.isToolTip && nodeHoverStates[alt.id] },
+            isSelected(alt.id) ? 'selected' : '',
+            { 'branch-highlighted': highlightedBranchId === alt.branchId },
+            { 'export-mode': isExportingBranch },
+          ]"
+          @mouseup="
+            mouseUpNode(
+              alt.position.x,
+              alt.position.y,
+              alt.branchId,
+              alt.nodeId,
+              alt.id,
+              alt.isStepLock,
+              $event,
+            )
+          "
+          :draggable="true"
+          :drag-handle="'.nodeHandle'"
+          :scale="camera.zoom"
+          @dragging="(x, y) => onDrag(x, y, alt)"
+        >
+          <transition name="tooltip-fade">
+            <div
+              v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]"
+              :style="{
+                width: alt.sizing.nodeWidth + 'px',
+              }"
+              class="tooltip-popout text-white"
+              @click="applyToFullImg(alt.id)"
+            >
+              Apply to the whole image
+            </div>
+          </transition>
+          <NewNode
+            @selection-changed="handleSelectionChanged"
+            :onCanvasHover="setNodeHover"
+            @remove="() => deleteAlt(alt.id)"
+            :alt="alt"
+            :ref="(el) => setActiveNodeCanvas(el, alt.id)"
+            :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
+          />
+
+          <!-- Connection dots -->
+          <!-- Right edge connection dot (source) -->
           <div
-            v-if="allUtilStore.isToolTip && nodeHoverStates[alt.id]"
-            :style="{
-              width: alt.sizing.nodeWidth + 'px',
+            class="connection-dot source-dot"
+            :class="{
+              visible: hoveredConnectionDot === `${alt.id}-source` || isConnecting,
+              active: sourceAltId === alt.id,
             }"
-            class="tooltip-popout text-white"
-            @click="applyToFullImg(alt.id)"
-          >
-            Apply to the whole image
-          </div>
-        </transition>
-        <NewNode
-          @selection-changed="handleSelectionChanged"
-          :onCanvasHover="setNodeHover"
-          @remove="() => deleteAlt(alt.id)"
-          :alt="alt"
-          :ref="(el) => setActiveNodeCanvas(el, alt.id)"
-          :imgPayload="alt.id === dropAltId ? imgDOMPayload : null"
-        />
+            @mouseenter="hoveredConnectionDot = `${alt.id}-source`"
+            @mouseleave="hoveredConnectionDot = null"
+            @mousedown="startConnection(alt.id, $event)"
+            :style="{
+              right: 'calc(-8px * var(--ui-scale, 1))',
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }"
+          ></div>
 
-        <!-- Connection dots -->
-        <!-- Right edge connection dot (source) -->
-        <div
-          class="connection-dot source-dot"
-          :class="{
-            visible: hoveredConnectionDot === `${alt.id}-source` || isConnecting,
-            active: sourceAltId === alt.id,
-          }"
-          @mouseenter="hoveredConnectionDot = `${alt.id}-source`"
-          @mouseleave="hoveredConnectionDot = null"
-          @mousedown="startConnection(alt.id, $event)"
-          :style="{
-            right: '-8px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-          }"
-        ></div>
-
-        <!-- Left edge connection dot (target) -->
-        <div
-          class="connection-dot target-dot"
-          :class="{
-            visible:
-              hoveredConnectionDot === `${alt.id}-target` ||
-              (isConnecting && sourceAltId !== alt.id),
-            highlighted:
-              isConnecting && sourceAltId !== alt.id && hoveredConnectionDot === `${alt.id}-target`,
-          }"
-          @mouseenter="hoveredConnectionDot = `${alt.id}-target`"
-          @mouseleave="hoveredConnectionDot = null"
-          @mouseup="finishConnection(alt.id, $event)"
-          :style="{
-            left: '-8px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-          }"
-        ></div>
-      </VueDraggableResizable>
-    </transition-group>
+          <!-- Left edge connection dot (target) -->
+          <div
+            class="connection-dot target-dot"
+            :class="{
+              visible:
+                hoveredConnectionDot === `${alt.id}-target` ||
+                (isConnecting && sourceAltId !== alt.id),
+              highlighted:
+                isConnecting &&
+                sourceAltId !== alt.id &&
+                hoveredConnectionDot === `${alt.id}-target`,
+            }"
+            @mouseenter="hoveredConnectionDot = `${alt.id}-target`"
+            @mouseleave="hoveredConnectionDot = null"
+            @mouseup="finishConnection(alt.id, $event)"
+            :style="{
+              left: 'calc(-8px * var(--ui-scale, 1))',
+              top: '50%',
+              transform: 'translateY(-50%)',
+            }"
+          ></div>
+        </VueDraggableResizable>
+      </transition-group>
+    </div>
     <!-- floating palette panel -->
     <VueDraggableResizable
       :x="position.x"
@@ -205,6 +210,8 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
 import { Check } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
+import { useCamera } from '@/stores/cameraStore.js'
+import { useCanvasNavigation } from '@/composables/useCanvasNavigation.js'
 /* --- store instances --- */
 const nodeCanvasRefs = reactive({}) // { [altId]: componentRef }
 const freeCanvasRef = ref(null)
@@ -212,6 +219,13 @@ const nodeHoverStates = reactive({})
 const nodeStore = useNode()
 const objectStore = useObject()
 const allUtilStore = useAllUtil()
+const camera = useCamera()
+useCanvasNavigation()
+const worldStyle = computed(() => ({
+  transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`,
+  // handles and dots keep a usable on-screen size when zoomed (capped so they never get huge)
+  '--ui-scale': Math.min(3, Math.max(0.5, 1 / camera.zoom)),
+}))
 const childActiveSelected = ref(false)
 /* --- plain state --- */
 const allAlts = computed(() =>
@@ -589,18 +603,16 @@ async function mouseUpNode(altPosX, altPosY, branchId, nodeId, altId, altIsStepL
 }
 
 function onDrag(x, y, alt) {
-  const clampedX = Math.max(0, x)
-  const clampedY = Math.max(0, y)
   allUtilStore.nodeOnDrag = true
   if (alt !== undefined) {
     alt.expand = true
-    //dragging an alt
-    alt.position.x = clampedX
-    alt.position.y = clampedY
+    // dragging an alt: world coordinates, no limits on an infinite canvas
+    alt.position.x = x
+    alt.position.y = y
   } else {
-    //dragging the palette
-    position.x = clampedX
-    position.y = clampedY
+    // dragging the palette: keep it on screen
+    position.x = Math.max(0, x)
+    position.y = Math.max(0, y)
   }
   nodeStore.selectedIndices = []
 }
@@ -679,10 +691,24 @@ onMounted(() => {
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
 }
+html,
+body {
+  overflow: hidden; /* the camera pans the canvas; the page itself never scrolls */
+}
+.world-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  pointer-events: none; /* clicks fall through to the free canvas, except on nodes/edges */
+}
 .nodes-layer {
   position: absolute;
+  top: 0;
+  left: 0;
   pointer-events: none;
-  inset: 0; /* full overlay */
 }
 
 /* direct children (each VueDraggableResizable) regain events */
@@ -806,8 +832,8 @@ onMounted(() => {
 /* Connection dots styles */
 .connection-dot {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale, 1));
+  height: calc(12px * var(--ui-scale, 1));
   border-radius: 50%;
   background-color: #42b983;
   border: 2px solid white;

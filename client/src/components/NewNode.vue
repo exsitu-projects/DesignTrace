@@ -165,6 +165,7 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { useGeneration } from '@/stores/generationStore.js'
 import { useInfoStore } from '@/stores/infoStore.js'
+import { useCamera } from '@/stores/cameraStore.js'
 
 const emit = defineEmits(['remove', 'selection-changed']) // or whatever event you want to emit
 
@@ -192,6 +193,7 @@ const objectStore = useObject()
 const nodeStore = useNode()
 const allUtilStore = useAllUtil()
 const generationStore = useGeneration()
+const camera = useCamera()
 const canvasUrlWithoutPath = ref('')
 const pathStr = ref('')
 let isLasso = false
@@ -394,7 +396,8 @@ onMounted(() => {
       })
       fabricCanvas.selection = false
       isLasso = true
-      startPointer = opt.pointer
+      // copy: Fabric reuses the point object for later events
+      startPointer = { x: opt.pointer.x, y: opt.pointer.y }
       points = [`M ${opt.pointer.x} ${opt.pointer.y}`] // Start path
     }
   })
@@ -1079,8 +1082,10 @@ async function undo(event) {
 
 function exportAltToFreeCanv(event) {
   if (fabricCanvas.getObjects().length > 0) {
-    const x = event.clientX - fabricCanvas.getWidth()
-    const y = event.clientY - fabricCanvas.getHeight()
+    // place the exported image up-left of the cursor, in world coordinates
+    const cursor = camera.screenToWorld(event.clientX, event.clientY)
+    const x = cursor.x - fabricCanvas.getWidth()
+    const y = cursor.y - fabricCanvas.getHeight()
     const base64CanvasUrl = fabricCanvas.toDataURL({
       format: 'png',
       multiplier: 1,
@@ -1216,8 +1221,9 @@ function startResize(event, direction) {
 function handleResize(event) {
   if (!isResizing.value) return
 
-  const deltaX = event.clientX - resizeStartPos.value.x
-  const deltaY = event.clientY - resizeStartPos.value.y
+  // mouse moves in screen pixels; the node lives in zoomed world space
+  const deltaX = (event.clientX - resizeStartPos.value.x) / camera.zoom
+  const deltaY = (event.clientY - resizeStartPos.value.y) / camera.zoom
 
   // Calculate the delta that maintains aspect ratio (use the larger absolute delta)
   const absDeltaX = Math.abs(deltaX)
@@ -1474,8 +1480,9 @@ function stopResize() {
   background-color: #42b983;
   border: 2px solid white;
   border-radius: 50%;
-  width: 12px;
-  height: 12px;
+  /* inside the corner (the node clips overflow) and a constant on-screen size at any zoom */
+  width: calc(12px * var(--ui-scale, 1));
+  height: calc(12px * var(--ui-scale, 1));
   pointer-events: all;
   cursor: pointer;
   opacity: 0.8;
@@ -1491,26 +1498,26 @@ function stopResize() {
 
 /* Position the handles at each corner */
 .resize-handle-nw {
-  top: -6px;
-  left: -6px;
+  top: 0;
+  left: 0;
   cursor: nw-resize;
 }
 
 .resize-handle-ne {
-  top: -6px;
-  right: -6px;
+  top: 0;
+  right: 0;
   cursor: ne-resize;
 }
 
 .resize-handle-sw {
-  bottom: -6px;
-  left: -6px;
+  bottom: 0;
+  left: 0;
   cursor: sw-resize;
 }
 
 .resize-handle-se {
-  bottom: -6px;
-  right: -6px;
+  bottom: 0;
+  right: 0;
   cursor: se-resize;
 }
 
