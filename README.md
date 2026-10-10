@@ -132,34 +132,7 @@ npm run build
 
 Flask serves the built files from `client/dist`, so after running `python app.py` the whole app is available at http://127.0.0.1:10000.
 
-## Project structure
-
-```
-DesignTrace/
-├── app.py               # Flask server: API routes and static file serving
-├── requirements.txt
-├── static/assets/       # uploaded and generated images
-└── client/
-    └── src/
-        ├── App.vue          # canvas, nodes and edges
-        ├── config.js        # backend URL
-        ├── components/      # FreeCanvas, NewNode, InfoPalette, ReviewPrompt, ...
-        ├── composables/
-        └── stores/          # Pinia stores (nodes, generation, camera, ...)
-```
-
-## API
-
-| Route                | Method | Purpose                                         |
-| -------------------- | ------ | ----------------------------------------------- |
-| `/upload`            | POST   | Upload an image                                 |
-| `/remove-bg`         | POST   | Remove an image's background                    |
-| `/text-to-image`     | POST   | Generate an image from a prompt                 |
-| `/edit-image`        | POST   | Edit an image with a prompt (and optional mask) |
-| `/image-to-labels`   | POST   | Describe an image and suggest attributes        |
-| `/sample-properties` | POST   | Suggest attributes for a Palette category       |
-
-## Scripts (in `client/`)
+## Frontend Scripts (in `client/`)
 
 | Command          | What it does                |
 | ---------------- | --------------------------- |
@@ -167,13 +140,6 @@ DesignTrace/
 | `npm run build`  | Build for production        |
 | `npm run lint`   | Lint and fix with ESLint    |
 | `npm run format` | Format `src/` with Prettier |
-
-## Tech stack
-
-| Part     | Tools                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------- |
-| Frontend | Vue 3, Vite, Pinia, Fabric.js, Bootstrap 5, Lucide icons                                     |
-| Backend  | Flask, OpenAI API (`gpt-image-1`, `gpt-4o-mini`, `gpt-4.1-nano`), backgroundremover (U²-Net) |
 
 ## Citation
 
@@ -196,6 +162,10 @@ series = {CHI '26}
 }
 
 ```
+
+## License
+
+The code of DesignTrace is released under the [MIT license](LICENSE). You can freely use and adapt the code of DesignTrace, as long as you keep the copyright notice and a copy of the license. If you use it in academic work, please [cite the paper](#citation).
 
 ## Contact
 
