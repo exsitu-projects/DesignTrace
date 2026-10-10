@@ -175,15 +175,17 @@
       class="design-space-container palette-panel"
       @dragging="(x, y) => onDrag(x, y)"
     >
-      <div class="header handle small fw-bolder">
-        Palette
-        <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
-          <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
-        </button>
-      </div>
+      <div class="palette-scale" :style="{ zoom: paletteScale, '--palette-scale': paletteScale }">
+        <div class="header handle small fw-bolder">
+          Palette
+          <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
+            <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+          </button>
+        </div>
 
-      <div class="row p-2 palette-body" v-show="isDesignSpaceVisible">
-        <InfoPalette />
+        <div class="row p-2 palette-body" v-show="isDesignSpaceVisible">
+          <InfoPalette />
+        </div>
       </div>
     </VueDraggableResizable>
 
@@ -226,6 +228,8 @@ const worldStyle = computed(() => ({
   // handles and dots keep a usable on-screen size when zoomed (capped so they never get huge)
   '--ui-scale': Math.min(3, Math.max(0.5, 1 / camera.zoom)),
 }))
+// palette grows and shrinks with the zoom, capped so it stays readable and on screen
+const paletteScale = computed(() => Math.min(1.5, Math.max(0.5, camera.zoom)))
 const childActiveSelected = ref(false)
 /* --- plain state --- */
 const allAlts = computed(() =>
@@ -734,8 +738,9 @@ body {
 }
 .palette-body {
   width: clamp(440px, 36vw, 640px);
-  max-width: calc(100vw - 40px);
-  max-height: calc(100vh - 140px); /* leave room for the bottom toolbar */
+  /* limits are divided by the zoom so the scaled palette still fits the window */
+  max-width: calc((100vw - 40px) / var(--palette-scale, 1));
+  max-height: calc((100vh - 140px) / var(--palette-scale, 1)); /* leave room for the bottom toolbar */
   overflow-y: auto;
 }
 .design-space-container {
