@@ -194,3 +194,9 @@ series = {CHI '26}
 ## Contact
 
 If you have any thoughts or comments, please contact Xiaohan Peng at [xiaohan.peng@outlook.com](mailto:xiaohan.peng@outlook.com)!
+
+<p align="center">
+  <img src="docs/example-trace.webp" alt="A complete DesignTrace trace: tote bag designs branching into textures, gradients, illustrations and product views" width="100%">
+  <br>
+  <sub>An example trace: a tote bag design explored, branched and carried over to other products.</sub>
+</p>
