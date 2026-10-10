@@ -179,7 +179,7 @@
         <div class="header handle small fw-bolder">
           Palette
           <button class="btn btn-sm btn-light" @click="toggleDesignSpace">
-            <i :class="isDesignSpaceVisible ? 'bx bx-chevron-up' : 'bx bx-chevron-down'"></i>
+            <component :is="isDesignSpaceVisible ? ChevronUp : ChevronDown" :size="16" />
           </button>
         </div>
 
@@ -210,7 +210,7 @@ import ReviewPromptTab from '@/components/ReviewPromptTab.vue'
 /* Pinia stores */
 import { useNode } from '@/stores/nodeStore.js'
 import { useObject } from '@/stores/objectStore.js'
-import { Check } from 'lucide-vue-next'
+import { Check, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import { useAllUtil } from '@/stores/allUtilStore.js'
 import { useCamera } from '@/stores/cameraStore.js'
 import { useCanvasNavigation } from '@/composables/useCanvasNavigation.js'

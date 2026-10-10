@@ -16,7 +16,7 @@ import { useNode } from '@/stores/nodeStore.js'
 import { useCamera } from '@/stores/cameraStore.js'
 import { fitAll } from '@/composables/useCanvasNavigation.js'
 import { useGeneration } from '@/stores/generationStore.js'
-import { BACKEND_URL } from '../../public/endpoint.js'
+import { BACKEND_URL } from '@/config.js'
 const emit = defineEmits([
   'forwardLayer',
   'backwardLayer',
@@ -90,7 +90,7 @@ const uploadFiles = async (event) => {
       }
     } catch (err) {
       console.error('Upload error:', err)
-      alert(`Upload failed. Is the backend running at ${BACKEND_URL}?`)
+      alert(`Upload failed. Is the backend running at ${BACKEND_URL || window.location.origin}?`)
     }
   }
 }

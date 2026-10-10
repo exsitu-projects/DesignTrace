@@ -108,10 +108,7 @@
     >
       <!-- Spinner positioned absolutely inside the container -->
       <div
-        v-show="
-          generationStore.currentGenIds.includes(alt.id) &&
-          generationStore.loadingStatus === 'loading'
-        "
+        v-show="generationStore.currentGenIds.includes(alt.id)"
         class="position-absolute top-50 start-50 translate-middle"
         style="z-index: 10"
       >
@@ -592,8 +589,14 @@ async function removeBg() {
     })
 
     // 2. Call your bg removal API
-    generationStore.currentGenIds = [alt.id] // show spinner
-    const newBase64Url = await generationStore.removeBg(base64Url)
+    generationStore.startGen(alt.id) // show spinner
+    let newBase64Url
+    try {
+      newBase64Url = await generationStore.removeBg(base64Url)
+    } finally {
+      generationStore.endGen(alt.id)
+    }
+    if (!newBase64Url) continue // keep the original object if removal failed
     fabricCanvas.remove(obj)
     // 3. Create new Fabric.Image from processed base64
     nodeStore.addAltImgPayload = {
@@ -621,6 +624,10 @@ onBeforeUnmount(() => {
   removeHoverOverlay()
   isHoveringPrevLasso = false
   prevLassoPaths = []
+
+  // Release the Fabric canvas (its listeners, objects and image data) when the node is deleted
+  fabricCanvas?.dispose()
+  fabricCanvas = null
 })
 
 function deleteAlt(e) {

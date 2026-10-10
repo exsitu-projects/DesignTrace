@@ -1,16 +1,26 @@
 import { defineStore } from 'pinia'
 import { reactive, ref } from 'vue'
-import { BACKEND_URL } from '@/../public/endpoint.js'
+import { BACKEND_URL } from '@/config.js'
 import { useInfoStore } from '@/stores/infoStore.js'
 export const useGeneration = defineStore('generation', () => {
   // 'notDragging', 'startDragging', 'finishedDragging'
   const img2imgOut = ref({ src: '' })
   const txt2imgOut = ref({ src: '' })
   const detectedObjects = ref([])
-  const loadingStatus = ref('')
   const promiseLoadImageLabel = ref('')
   const shouldTriggerT2I = ref(false)
+  // ids of the nodes waiting on a generation; each node shows a spinner while its id is listed
   const currentGenIds = ref([])
+
+  function startGen(altId) {
+    currentGenIds.value.push(altId)
+  }
+
+  // remove one entry, so two generations on the same node each clear their own
+  function endGen(altId) {
+    const i = currentGenIds.value.indexOf(altId)
+    if (i !== -1) currentGenIds.value.splice(i, 1)
+  }
   const generalPrompt = ref('')
   const textGenStatus = ref('finished') // Track text generation status
   const alwaysReview = ref(false) // Whether to always show prompt review dialog
@@ -269,9 +279,8 @@ It should return something like “matte surface, dark red, bumpy texture, spher
   }
 
   async function generateOpenAIImg({ original_image, total_mask, prompt, altId }) {
-    loadingStatus.value = 'loading'
+    startGen(altId)
     try {
-      currentGenIds.value.push(altId)
       promiseLoadImageLabel.value = 'loading'
       const response = await fetch(BACKEND_URL + '/edit-image', {
         method: 'POST',
@@ -296,6 +305,9 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     } catch (err) {
       console.log(err.message)
       return null // Optional: consistently return on error
+    } finally {
+      // always stop this node's spinner, whichever path started the generation
+      endGen(altId)
     }
   }
 
@@ -305,7 +317,6 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     resetT2I,
     describeImage,
     promiseLoadImageLabel,
-    loadingStatus,
     detectedObjects,
     storeDetection,
     img2imgOut,
@@ -315,6 +326,8 @@ It should return something like “matte surface, dark red, bumpy texture, spher
     objSysPrompt,
     generateOpenAIImg,
     currentGenIds,
+    startGen,
+    endGen,
     excludePropObject,
     onPropertyNameFinalized,
     fetchGhostTags,

@@ -876,8 +876,6 @@ export const useNode = defineStore('nodes', () => {
         )
       }),
     )
-    generationStore.currentGenIds = []
-    generationStore.loadingStatus = 'finished'
 
     return urls
   }

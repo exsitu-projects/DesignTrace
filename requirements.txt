@@ -3,5 +3,5 @@ flask-cors==6.0.0
 openai==1.82.1
 Pillow==11.0.0
 backgroundremover==0.3.4
-gunicorn
+gunicorn==26.2.0
 python-dotenv

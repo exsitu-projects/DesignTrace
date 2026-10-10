@@ -2,7 +2,6 @@ import os
 import uuid
 import base64
 import mimetypes
-import traceback
 from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from backgroundremover.bg import remove
@@ -15,6 +14,35 @@ app = Flask(__name__, static_folder='client/dist', static_url_path='')
 # CORS(app, resources={r"/*": {"origins": ["http://localhost:5173", "http://localhost:5174","http://localhost:5175", "http://127.0.0.1:10000"]}})
 CORS(app)
 client = OpenAI()
+
+STATIC_DIR = os.path.abspath('static')
+
+
+def safe_static_path(path: str) -> str:
+    """
+    path: e.g. 'static/assets/a2e8.png' or '/static/assets/a2e8.png' (sent by the client)
+    returns: absolute path, only if it is an existing file inside static/
+    """
+    rel = path.lstrip('/')
+    if rel.startswith('static/'):
+        rel = rel[len('static/'):]
+    full = os.path.abspath(os.path.join(STATIC_DIR, rel))
+    if os.path.commonpath([full, STATIC_DIR]) != STATIC_DIR or not os.path.isfile(full):
+        raise ValueError("Invalid image path")
+    return full
+
+
+def decode_data_url(data: str) -> bytes:
+    """'data:image/png;base64,AAA...' or plain base64 -> raw bytes"""
+    if data.startswith("data:"):
+        data = data.split(",", 1)[1]
+    return base64.b64decode(data)
+
+
+def error_response(e: Exception):
+    # full traceback stays in the server log; the client only gets the message
+    app.logger.exception(e)
+    return jsonify({"error": str(e)}), 500
 
 
 def static_to_base64(file_path: str) -> str:
@@ -119,17 +147,18 @@ def remove_bg_endpoint():
     if not json_data or 'src' not in json_data:
         return jsonify({"error": "JSON must include 'src' and 'dst'"}), 400
     src_path = json_data['src']
-    if 'static' not in src_path:
-        src_path = base64_to_static(src_path)
     unique_name = str(uuid.uuid4())  # e.g. 'a8098c1a-f86e-11da-bd1a-00112444be1e'
     dst_path = f"static/assets/{unique_name}.png"
 
     try:
+        if src_path.startswith("data:image"):
+            src_path = base64_to_static(src_path)
+        else:
+            src_path = safe_static_path(src_path)
         remove_bg(src_path, dst_path)
         return jsonify({"status": "success", "output": static_to_base64(dst_path)})
     except Exception as e:
-        print(f"Error during remove_bg: {e}")  # Optional: for debugging
-        return jsonify({"error": str(e)}), 500
+        return error_response(e)
 
 
 @app.route('/sample-properties', methods=['POST'])
@@ -152,9 +181,7 @@ def sample_properties():
         })
 
     except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+        return error_response(e)
 
 @app.route('/text-to-image', methods=['POST','OPTIONS'])
 def text_to_image():
@@ -185,9 +212,7 @@ def text_to_image():
         })
 
     except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+        return error_response(e)
 
 @app.route('/edit-image', methods=['POST','OPTIONS'])
 def edit_image():
@@ -199,36 +224,25 @@ def edit_image():
     original_image = json_data.get('original_image')  #  base64
     total_mask = json_data.get('total_mask')  #  base64
     try:
-        original_image_path = "static/assets/original_image.png"
-        if original_image.startswith("data:image"):
-            original_image = original_image.split(",", 1)[1]
-        os.makedirs(os.path.dirname(original_image_path), exist_ok=True)
-        with open(original_image_path, "wb") as f:
-            f.write(base64.b64decode(original_image))
+        # in-memory files: parallel requests each keep their own image and mask
+        image_file = ("image.png", decode_data_url(original_image), "image/png")
         if total_mask:
-            total_mask_path = "static/assets/total_mask.png"
-            if total_mask.startswith("data:image"):
-                total_mask = total_mask.split(",", 1)[1]
-            os.makedirs(os.path.dirname(total_mask_path), exist_ok=True)
-            with open(total_mask_path, "wb") as f:
-                 f.write(base64.b64decode(total_mask))
             print('openai edit image with mask')
+            mask_file = ("mask.png", decode_data_url(total_mask), "image/png")
             result = client.images.edit(
                 model="gpt-image-1", #dall-e-2
-                image=open(original_image_path, "rb"),
-                mask=open(total_mask_path, "rb"),
+                image=image_file,
+                mask=mask_file,
                 prompt=prompt,
                 size="1024x1024",
-
             )
         else:
             print('openai edit whole image')
             result = client.images.edit(
                 model="gpt-image-1", #dall-e-2
-                image=open(original_image_path, "rb"),
+                image=image_file,
                 prompt=prompt,
                 size="1024x1024",
-
             )
         result_base64 = result.data[0].b64_json
         result_base64 = f"data:image/png;base64,{result_base64}"
@@ -240,22 +254,20 @@ def edit_image():
         })
 
     except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+        return error_response(e)
 
 @app.route('/image-to-labels', methods=['POST'])
 def image_to_labels():
 
     data = request.json
-    image_path = data.get('image_path')  # either staitc/... or base64
-    if (image_path.startswith("data:image")):
-        full_path =  image_path
-    else:
-         full_path = static_to_base64(image_path)
+    image_path = data.get('image_path')  # either static/... or base64
     prompt = data.get('prompt')
     system_prompt = data.get('system_prompt')
     try:
+        if image_path.startswith("data:image"):
+            full_path = image_path
+        else:
+            full_path = static_to_base64(safe_static_path(image_path))
         response = client.responses.create(
             model="gpt-4o-mini",
 
@@ -284,9 +296,7 @@ def image_to_labels():
         })
 
     except Exception as e:
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({"error": str(e), "traceback": traceback_str}), 500
+        return error_response(e)
 
 
 @app.route('/')

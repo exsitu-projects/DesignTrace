@@ -41,6 +41,12 @@ DesignTrace treats design rationale as two connected kinds of artifacts. **Seman
 - **Apply**: draw a lasso on a Node to change a region, or hover it and click _Apply to the whole image_.
 - **Save Combination** keeps the current selection for reuse. Double-click anything to rename it.
 
+<p align="center">
+  <img src="docs/palette.webp" alt="Palette selection modes: cumulative, parallel, and saved combinations" width="100%">
+  <br>
+  <sub>Left to right: cumulative selection, parallel selection, and saved combinations.</sub>
+</p>
+
 </details>
 
 **Node**: Each Node has its own canvas and a local history of generation and editing (← and →), so it records the past while still leading to the future. Branch new Nodes from any earlier one, compare alternatives side by side, and use _Save Step_ to collapse the ones you don't need.
@@ -115,7 +121,7 @@ npm install
 npm run dev
 ```
 
-Open the URL that Vite prints (usually http://localhost:5173). The frontend calls the backend at the address set in `client/public/endpoint.js`.
+Open the URL that Vite prints (usually http://localhost:5173). In development the frontend calls the backend at `http://127.0.0.1:10000`; to use another address, set `VITE_BACKEND_URL` in `client/.env`.
 
 ### 3. Production build
 
@@ -134,9 +140,9 @@ DesignTrace/
 ├── requirements.txt
 ├── static/assets/       # uploaded and generated images
 └── client/
-    ├── public/endpoint.js   # backend URL
     └── src/
         ├── App.vue          # canvas, nodes and edges
+        ├── config.js        # backend URL
         ├── components/      # FreeCanvas, NewNode, InfoPalette, ReviewPrompt, ...
         ├── composables/
         └── stores/          # Pinia stores (nodes, generation, camera, ...)

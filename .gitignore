@@ -3,3 +3,5 @@
 .env
 /client/*.md
 /client/.*/
+/client/dist/
+__pycache__/
